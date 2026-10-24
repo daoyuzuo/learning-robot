@@ -285,6 +285,25 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
                             str(lesson_path),
                         )
                     )
+            listed_exercises = list(dict.fromkeys(manifest.exercises))
+            for exercise_id in exercise_refs:
+                if exercise_id not in listed_exercises:
+                    report.errors.append(
+                        Issue(
+                            "lesson.exercise_unlisted",
+                            f"{manifest.id} mounts exercise {exercise_id} not listed in manifest",
+                            str(lesson_path),
+                        )
+                    )
+            for exercise_id in listed_exercises:
+                if exercise_id not in exercise_refs:
+                    report.errors.append(
+                        Issue(
+                            "lesson.exercise_unmounted",
+                            f"{manifest.id} lists exercise {exercise_id} but does not mount it",
+                            str(lesson_path),
+                        )
+                    )
             for widget_id in widget_refs:
                 if widget_id not in widgets:
                     report.errors.append(

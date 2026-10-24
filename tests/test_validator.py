@@ -175,6 +175,65 @@ def test_whitespace_only_empty_div_mount_is_valid(tmp_path: Path) -> None:
     assert not any(issue.code == "mount.invalid" for issue in report.errors)
 
 
+def _add_exercise(pack: Path, exercise_id: str) -> None:
+    exercises = pack / "exercises.yaml"
+    exercises.write_text(
+        exercises.read_text(encoding="utf-8")
+        + f"  - id: {exercise_id}\n"
+        "    type: single_choice\n"
+        "    concepts: [c-one]\n"
+        "    level: L1\n"
+        "    prompt: Pick A.\n"
+        "    options:\n"
+        "      - {id: a, text: A}\n"
+        "      - {id: b, text: B}\n"
+        "    answer: a\n",
+        encoding="utf-8",
+    )
+
+
+def test_mount_not_listed_in_manifest_is_an_error(tmp_path: Path) -> None:
+    pack = _lesson_pack(
+        tmp_path,
+        '<div data-tb-exercise="EX-TWO"></div>',
+        '<div data-tb-widget="W-ONE"></div>',
+    )
+    _add_exercise(pack, "EX-TWO")
+
+    report = validate_pack(pack)
+
+    assert not report.ok
+    unlisted = [issue for issue in report.errors if issue.code == "lesson.exercise_unlisted"]
+    assert len(unlisted) == 1
+    assert "L-ONE" in unlisted[0].message
+    assert "EX-TWO" in unlisted[0].message
+    assert unlisted[0].path.endswith("L-ONE.html")
+
+
+def test_manifest_exercise_without_mount_is_an_error(tmp_path: Path) -> None:
+    pack = _lesson_pack(
+        tmp_path,
+        '<div data-tb-exercise="EX-ONE"></div>',
+        '<div data-tb-widget="W-ONE"></div>',
+    )
+    _add_exercise(pack, "EX-TWO")
+    lesson = pack / "modules" / "M01" / "lessons" / "L-ONE.html"
+    text = lesson.read_text(encoding="utf-8")
+    lesson.write_text(
+        text.replace('"exercises": ["EX-ONE"]', '"exercises": ["EX-ONE", "EX-TWO"]'),
+        encoding="utf-8",
+    )
+
+    report = validate_pack(pack)
+
+    assert not report.ok
+    unmounted = [issue for issue in report.errors if issue.code == "lesson.exercise_unmounted"]
+    assert len(unmounted) == 1
+    assert "L-ONE" in unmounted[0].message
+    assert "EX-TWO" in unmounted[0].message
+    assert unmounted[0].path.endswith("L-ONE.html")
+
+
 def test_duplicate_widget_id_is_an_error(tmp_path: Path) -> None:
     pack = tmp_path / "pack"
     shutil.copytree(FIXTURE, pack)

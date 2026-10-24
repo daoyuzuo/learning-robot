@@ -48,6 +48,15 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     store = EvidenceStore(database)
 
     app = FastAPI(title="TestBridge")
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'"
+        )
+        return response
+
     templates = Jinja2Templates(directory=str(BASE / "templates"))
     app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
     assets_dir = pack.root / "assets"
@@ -88,7 +97,9 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     def progress_page(request: Request):
         events = store.list(limit=200)
         return templates.TemplateResponse(
-            request=request, name="progress.html", context=ctx(request, events=events)
+            request=request,
+            name="progress.html",
+            context=ctx(request, events=events, total=store.count()),
         )
 
     @app.post("/api/evidence")

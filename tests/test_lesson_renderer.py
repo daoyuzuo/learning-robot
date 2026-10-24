@@ -57,6 +57,28 @@ def test_render_handles_backslashes_in_prompt(tmp_path: Path) -> None:
     assert "Match \\d+ in C:\\Users and trailing \\" in view.body_html
 
 
+def test_entity_only_whitespace_mount_is_replaced(tmp_path: Path) -> None:
+    pack_dir = _copy_pack(tmp_path)
+    lesson = pack_dir / "modules" / "M01" / "lessons" / "L-ONE.html"
+    lesson.write_text(
+        lesson.read_text(encoding="utf-8").replace(
+            '<div data-tb-exercise="EX-ONE"></div>',
+            '<div data-tb-exercise="EX-ONE">&nbsp;</div>',
+        ).replace(
+            '<div data-tb-widget="W-ONE"></div>',
+            '<div data-tb-widget="W-ONE">&#160;</div>',
+        ),
+        encoding="utf-8",
+    )
+
+    view = render_lesson(load_pack(pack_dir), "L-ONE")
+
+    assert 'form class="tb-exercise"' in view.body_html
+    assert 'data-exercise-id="EX-ONE"' in view.body_html
+    assert "tb-widget-canvas" in view.body_html
+    assert "&nbsp;</div>" not in view.body_html
+
+
 def test_widget_discovery_ignores_escaped_markup(tmp_path: Path) -> None:
     pack_dir = _copy_pack(tmp_path)
     lesson = pack_dir / "modules" / "M01" / "lessons" / "L-ONE.html"

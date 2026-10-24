@@ -11,6 +11,10 @@ from testbridge.content.repository import ContentPack, Lesson
 from testbridge.contract.models import Concept, Exercise, Module, Resource, Widget
 from testbridge.contract.sanitize import sanitize_fragment
 
+# Sanitization rewrites whitespace entities (including ``\xa0``) as ``&nbsp;``,
+# so a mount may be "empty" without matching a plain ``\s*`` gap.
+_MOUNT_GAP = r"(?:\s|&nbsp;|&#160;|&#xa0;|&#xA0;)*"
+
 
 @dataclass(frozen=True)
 class WidgetView:
@@ -151,7 +155,7 @@ def render_lesson(pack: ContentPack, lesson_id: str) -> LessonView:
 
     for exercise in exercises:
         pattern = re.compile(
-            rf'<div\b[^>]*data-tb-exercise="{re.escape(exercise.id)}"[^>]*>\s*</div>'
+            rf'<div\b[^>]*data-tb-exercise="{re.escape(exercise.id)}"[^>]*>{_MOUNT_GAP}</div>'
         )
         body = pattern.sub(
             lambda _match, exercise=exercise: render_exercise_form(exercise), body
@@ -159,7 +163,7 @@ def render_lesson(pack: ContentPack, lesson_id: str) -> LessonView:
 
     for view in widgets:
         pattern = re.compile(
-            rf'<div\b[^>]*data-tb-widget="{re.escape(view.widget.id)}"[^>]*>\s*</div>'
+            rf'<div\b[^>]*data-tb-widget="{re.escape(view.widget.id)}"[^>]*>{_MOUNT_GAP}</div>'
         )
         body = pattern.sub(
             lambda _match, view=view: render_widget(view.widget, view.template_html), body

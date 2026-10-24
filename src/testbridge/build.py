@@ -98,10 +98,28 @@ STANDALONE_JS = (
     r"""
 (function () {
   const KEY = "tb-evidence";
+  let memory = null;
   function load() {
+    if (memory !== null) { return memory.slice(); }
     try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { return []; }
   }
-  function save(rows) { localStorage.setItem(KEY, JSON.stringify(rows)); }
+  function showStorageWarning() {
+    if (document.getElementById("tb-storage-warning")) { return; }
+    const warning = document.createElement("p");
+    warning.id = "tb-storage-warning";
+    warning.textContent = "未检测到本地存储，证据仅保留在本次会话，请立即导出。";
+    const button = document.getElementById("tb-export");
+    if (button && button.parentNode) { button.parentNode.insertBefore(warning, button); }
+  }
+  function save(rows) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(rows));
+      memory = null;
+    } catch (e) {
+      memory = rows.slice();
+      showStorageWarning();
+    }
+  }
 """
     + STANDALONE_CORE_JS
     + r"""

@@ -62,3 +62,4 @@ def test_widget_group_transform_survives_sanitization() -> None:
     pack = load_pack(SAMPLE)
     view = render_lesson(pack, "L-SYNC-001")
     assert '<g transform="translate(' in view.body_html
+    assert "translate(20.0, 60)" in view.body_html

@@ -613,8 +613,8 @@ P1 只做三个页面 + CLI：
 | `/progress` | 原始证据列表、按课程/概念聚合的提交数（不做掌握度） |
 | `tb validate` | 校验内容包 |
 | `tb build` | 构建单文件课程 |
-| `tb evidence export/import` | 证据导出/导入 |
-| `tb pack list` | 列出内容包 |
+| `tb evidence-export` / `tb evidence-import` | 证据导出/导入 |
+| `tb list` | 列出内容包 |
 
 知识地图、追问、公司、题库等页面不在 P1 范围；它们属于 P2–P4。
 
@@ -797,6 +797,8 @@ P1 不需要回答，记录在此避免遗忘：
 - YAML 中未加引号的 `created` / `last_verified` 日期在加载边界统一规范化为 ISO 字符串。
 - `tb serve` 在 P1 是仓库内本地能力：运行时把仓库根加入 `sys.path` 再加载 `web.app`，暂不随 wheel 分发。
 - 练习 JSON 目前仍暴露 answer 字段；剥离答案字段推迟到 P2，在掌握度/反作弊之前完成。
+- P1 的 artifact 练习只记录学习者提供的路径；二进制上传、`accept` / `max_size_mb` 强制校验以及 `data/artifacts/<evidence-id>/` 存储都推迟到 P2。
+- P1 独立 HTML 只内嵌课程正文与练习数据，不包含完整的 manifest/objectives 外壳；完整外壳对齐推迟到后续阶段。
 
 | 日期 | 决策 | 理由 |
 |---|---|---|

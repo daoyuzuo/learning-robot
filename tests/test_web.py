@@ -11,6 +11,7 @@ warnings.filterwarnings(
 
 from fastapi.testclient import TestClient
 
+from testbridge.evidence.store import EvidenceStore, new_event
 from web.app import create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
@@ -50,6 +51,32 @@ def test_progress_page(tmp_path: Path) -> None:
     response = c.get("/progress")
     assert response.status_code == 200
     assert "EX-ONE" in response.text
+
+
+def test_progress_page_reports_total_beyond_page_size(tmp_path: Path) -> None:
+    db = tmp_path / "test.db"
+    store = EvidenceStore(db)
+    for _ in range(205):
+        store.append(
+            new_event(
+                kind="exercise_attempt",
+                concept_ids=["c-one"],
+                lesson_id="L-ONE",
+                exercise_id="EX-ONE",
+            )
+        )
+
+    response = TestClient(create_app(FIXTURE, db)).get("/progress")
+
+    assert response.status_code == 200
+    assert "共 205 条证据（显示最近 200 条）" in response.text
+
+
+def test_security_headers(tmp_path: Path) -> None:
+    response = client(tmp_path).get("/")
+    assert response.headers["content-security-policy"] == (
+        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'"
+    )
 
 
 def test_unknown_lesson_is_404(tmp_path: Path) -> None:

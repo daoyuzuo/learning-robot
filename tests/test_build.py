@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 import subprocess
 from datetime import datetime
@@ -21,6 +22,20 @@ def test_build_creates_standalone(tmp_path: Path) -> None:
     assert "localStorage" in html
     assert "tb-exercise" in html
     assert (tmp_path / "fixture" / "assets" / "widgets" / "demo.svg").is_file()
+
+
+def test_standalone_js_falls_back_to_memory_when_storage_fails(tmp_path: Path) -> None:
+    paths = build_pack(FIXTURE, tmp_path)
+    html_text = paths[0].read_text(encoding="utf-8")
+
+    assert "let memory = null;" in html_text
+    assert "未检测到本地存储，证据仅保留在本次会话，请立即导出。" in html_text
+    assert "memory.slice()" in html_text
+    assert re.search(
+        r"try\s*\{\s*localStorage\.setItem\(KEY, JSON\.stringify\(rows\)\);\s*memory = null;\s*\}\s*catch",
+        html_text,
+    )
+    assert "memory = rows.slice();" in html_text
 
 
 def _two_lesson_pack(tmp_path: Path) -> Path:
