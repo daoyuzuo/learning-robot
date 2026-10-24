@@ -23,6 +23,55 @@ def test_build_creates_standalone(tmp_path: Path) -> None:
     assert (tmp_path / "fixture" / "assets" / "widgets" / "demo.svg").is_file()
 
 
+def _two_lesson_pack(tmp_path: Path) -> Path:
+    pack = tmp_path / "two-lesson-pack"
+    shutil.copytree(FIXTURE, pack)
+    module_file = pack / "modules" / "M01" / "module.yaml"
+    module_file.write_text(
+        module_file.read_text(encoding="utf-8").replace(
+            "lessons: [L-ONE]", "lessons: [L-ONE, L-TWO]"
+        ),
+        encoding="utf-8",
+    )
+    (pack / "modules" / "M01" / "lessons" / "L-TWO.html").write_text(
+        """<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-TWO",
+  "title": "Second Lesson",
+  "module": "M01",
+  "concepts": ["c-one"],
+  "target_level": "L2",
+  "minutes": 10,
+  "objectives": ["Explain two"],
+  "prerequisites": [],
+  "exercises": ["EX-ONE"],
+  "resources": ["DOC-ONE"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>Second Lesson</h1>
+  <div data-tb-exercise="EX-ONE"></div>
+</article>
+""",
+        encoding="utf-8",
+    )
+    return pack
+
+
+def test_build_filters_to_single_lesson(tmp_path: Path) -> None:
+    pack = _two_lesson_pack(tmp_path)
+
+    paths = build_pack(pack, tmp_path / "dist", lesson_id="L-ONE")
+
+    assert len(paths) == 1
+    assert paths[0].name == "L-ONE.html"
+    target = tmp_path / "dist" / "fixture"
+    assert not (target / "modules" / "M01" / "lessons" / "L-TWO.html").exists()
+    manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["lessons"] == ["L-ONE"]
+
+
 def _run_core_js(tmp_path: Path, body: str):
     if NODE is None:
         pytest.skip("Node.js is required to exercise standalone JS")

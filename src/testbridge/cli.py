@@ -3,12 +3,27 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from testbridge.build import build_pack
 from testbridge.content.repository import list_packs
 from testbridge.contract.validator import validate_pack
 from testbridge.evidence.store import EvidenceStore
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+
+
+def _load_app(pack_dir: Path, db_path: Path) -> FastAPI:
+    """Load the repo-local web app without requiring a wheel-packaged ``web``."""
+    root = Path(__file__).resolve().parents[2]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from web.app import create_app
+
+    return create_app(pack_dir, db_path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,9 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         import uvicorn
 
-        from web.app import create_app
-
-        uvicorn.run(create_app(Path(args.pack), Path(args.db)), host=args.host, port=args.port)
+        app = _load_app(Path(args.pack), Path(args.db))
+        uvicorn.run(app, host=args.host, port=args.port)
         return 0
 
     if args.command == "list":
@@ -81,3 +95,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
