@@ -33,3 +33,38 @@ def test_find_forbidden_html() -> None:
     issues = find_forbidden_html('<script>x</script><p onclick="x">y</p>')
     assert any("script" in issue for issue in issues)
     assert any("onclick" in issue for issue in issues)
+
+
+def test_find_forbidden_html_flags_style_tag() -> None:
+    issues = find_forbidden_html("<style>body{}</style>")
+    assert any("style" in issue for issue in issues)
+
+
+def test_find_forbidden_html_flags_meta_refresh() -> None:
+    issues = find_forbidden_html('<meta http-equiv="refresh" content="0">')
+    assert any("meta" in issue for issue in issues)
+
+
+def test_find_forbidden_html_flags_javascript_url() -> None:
+    issues = find_forbidden_html('<a href="javascript:alert(1)">x</a>')
+    assert any("javascript" in issue for issue in issues)
+
+
+def test_find_forbidden_html_flags_slash_form_event_handler() -> None:
+    issues = find_forbidden_html('<svg onload="alert(1)"></svg>')
+    assert any("onload" in issue for issue in issues)
+
+
+def test_find_forbidden_html_flags_data_url() -> None:
+    issues = find_forbidden_html('<a href="data:text/html,x">x</a>')
+    assert any("data" in issue for issue in issues)
+
+
+def test_find_forbidden_html_ignores_text_content() -> None:
+    issues = find_forbidden_html('<p>Set style="x" and onclick= handlers in code.</p>')
+    assert issues == []
+
+
+def test_find_forbidden_html_flags_obfuscated_javascript_urls() -> None:
+    assert find_forbidden_html("<a href=javascript:alert(1)>x</a>")
+    assert find_forbidden_html('<a href="java&#115;cript:alert(1)">x</a>')

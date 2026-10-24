@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 
 import nh3
 
@@ -36,13 +37,55 @@ ALLOWED_ATTRIBUTES = {
     "stop": {"offset", "stop-color", "stop-opacity"},
 }
 
-FORBIDDEN_TAG_RE = re.compile(
-    r"<\s*(script|iframe|object|embed|form|input|button|textarea|select)\b",
-    re.IGNORECASE,
+FORBIDDEN_TAGS = frozenset(
+    {
+        "script", "iframe", "object", "embed", "form", "input", "button",
+        "textarea", "select", "style", "link", "meta", "base",
+    }
 )
-EVENT_ATTR_RE = re.compile(r"\son[a-z]+\s*=", re.IGNORECASE)
-STYLE_ATTR_RE = re.compile(r"\sstyle\s*=", re.IGNORECASE)
-JS_URL_RE = re.compile(r"(?:href|src)\s*=\s*[\"']\s*javascript:", re.IGNORECASE)
+SAFE_URL_SCHEMES = frozenset({"http", "https", "mailto"})
+RELATIVE_URL_PREFIXES = ("#", "/", "./", "../")
+SCHEME_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.-]*):")
+
+
+def _url_scheme(value: str) -> str | None:
+    """Return a URL value's lowercased scheme, or None for relative URLs."""
+    compact = "".join(
+        ch for ch in value if not (ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F)
+    )
+    if not compact or compact.startswith(RELATIVE_URL_PREFIXES):
+        return None
+    match = SCHEME_RE.match(compact)
+    return match.group(1).lower() if match else None
+
+
+class _ForbiddenHTMLDetector(HTMLParser):
+    """Collect issue descriptions from start tags; text nodes are ignored."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.issues: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._inspect(tag, attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._inspect(tag, attrs)
+
+    def _inspect(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        lower_tag = tag.lower()
+        if lower_tag in FORBIDDEN_TAGS:
+            self.issues.append(f"forbidden tag: {lower_tag}")
+        for name, value in attrs:
+            lower_name = name.lower()
+            if lower_name.startswith("on"):
+                self.issues.append(f"forbidden event attribute: {lower_name}")
+            elif lower_name == "style":
+                self.issues.append("forbidden inline style")
+            elif lower_name in {"href", "src"} and value:
+                scheme = _url_scheme(value)
+                if scheme is not None and scheme not in SAFE_URL_SCHEMES:
+                    self.issues.append(f"forbidden URL scheme: {scheme}")
 
 
 def sanitize_fragment(html: str) -> str:
@@ -57,13 +100,7 @@ def sanitize_fragment(html: str) -> str:
 
 
 def find_forbidden_html(html: str) -> list[str]:
-    issues: list[str] = []
-    for match in FORBIDDEN_TAG_RE.finditer(html):
-        issues.append(f"forbidden tag: {match.group(1).lower()}")
-    for match in EVENT_ATTR_RE.finditer(html):
-        issues.append(f"forbidden event attribute: {match.group(0).strip()}")
-    if STYLE_ATTR_RE.search(html):
-        issues.append("forbidden inline style")
-    if JS_URL_RE.search(html):
-        issues.append("forbidden javascript: URL")
-    return issues
+    detector = _ForbiddenHTMLDetector()
+    detector.feed(html)
+    detector.close()
+    return list(dict.fromkeys(detector.issues))
