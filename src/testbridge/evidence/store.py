@@ -89,14 +89,18 @@ class EvidenceStore:
             conn.executescript(SCHEMA_SQL)
 
     def append(self, event: EvidenceEvent) -> None:
+        self._insert(event)
+
+    def _insert(self, event: EvidenceEvent) -> bool:
         with sqlite3.connect(self.path) as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
-                INSERT OR IGNORE INTO evidence
+                INSERT INTO evidence
                 (id, learner_id, kind, session_id, lesson_id, exercise_id,
                  concept_ids, outcome, score, max_score, payload, source,
                  created_at, supersedes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO NOTHING
                 """,
                 (
                     event.id, event.learner_id, event.kind, event.session_id,
@@ -107,6 +111,7 @@ class EvidenceStore:
                     event.source, event.created_at, event.supersedes,
                 ),
             )
+            return cursor.rowcount == 1
 
     def list(
         self,
@@ -120,8 +125,8 @@ class EvidenceStore:
             sql += " AND lesson_id = ?"
             params.append(lesson_id)
         if concept_id:
-            sql += " AND concept_ids LIKE ?"
-            params.append(f'%"{concept_id}"%')
+            sql += " AND instr(concept_ids, ?) > 0"
+            params.append(json.dumps(concept_id, ensure_ascii=False))
         sql += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         with sqlite3.connect(self.path) as conn:
@@ -152,9 +157,7 @@ class EvidenceStore:
             if not line.strip():
                 continue
             event = EvidenceEvent(**json.loads(line))
-            before = self.count()
-            self.append(event)
-            if self.count() > before:
+            if self._insert(event):
                 inserted += 1
         return inserted
 
