@@ -789,6 +789,15 @@ P1 不需要回答，记录在此避免遗忘：
 
 ## 14. 决策记录
 
+### P1 implementation decisions
+
+- 多选部分得分使用 Jaccard 相似度（交集 / 并集）；只有所选集合与答案集合完全相等时才给满分。
+- 课程的练习/widget 挂载契约只接受空元素：`<div data-tb-exercise="ID"></div>` 与 `<div data-tb-widget="ID"></div>`，不带任何子内容。
+- widget 模板在挂载前先用课程允许列表净化（`sanitize_fragment`），并转义模板内的 `</template`。
+- YAML 中未加引号的 `created` / `last_verified` 日期在加载边界统一规范化为 ISO 字符串。
+- `tb serve` 在 P1 是仓库内本地能力：运行时把仓库根加入 `sys.path` 再加载 `web.app`，暂不随 wheel 分发。
+- 练习 JSON 目前仍暴露 answer 字段；剥离答案字段推迟到 P2，在掌握度/反作弊之前完成。
+
 | 日期 | 决策 | 理由 |
 |---|---|---|
 | 2026-10-24 | 内容格式用 HTML 片段 + 内嵌 JSON manifest | 人写/AI 生成都稳定；可交互；可离线；契约可校验 |

@@ -3149,7 +3149,7 @@ resources:
     why: 传感器数据流的 QoS 会影响丢包与延迟，间接影响同步判断。
 
   - id: COURSE-TIME-SYNC
-    title: Real-Time Systems: Clock Synchronization
+    title: "Real-Time Systems: Clock Synchronization"
     url: https://en.wikipedia.org/wiki/Clock_synchronization
     type: overview
     trust: B
@@ -3301,7 +3301,7 @@ order: 1
     <p>先区分三件事：<strong>固定偏移</strong>是两条时间轴整体错开；<strong>漂移</strong>是错开量随运行时间累积；<strong>抖动</strong>是每次打点的短时波动。三者的测试方法不同。</p>
   </section>
   <figure>
-    <img src="../../assets/figures/clock-offset.svg" alt="两路信号的时间偏移示意">
+    <img src="../../../assets/figures/clock-offset.svg" alt="两路信号的时间偏移示意">
     <figcaption>固定偏移与漂移的直观差异。</figcaption>
   </figure>
   <div data-tb-widget="W-SYNC-OFFSET"></div>
@@ -3343,7 +3343,7 @@ order: 1
     <p>面试里常被追问：“你怎么判断是偏移还是漂移？”答案是看误差随时间的走势，而不是看单次差值。</p>
   </section>
   <figure>
-    <img src="../../assets/figures/clock-offset.svg" alt="偏移与漂移对比">
+    <img src="../../../assets/figures/clock-offset.svg" alt="偏移与漂移对比">
     <figcaption>同一张图里看“整体错开”和“越走越开”。</figcaption>
   </figure>
   <div data-tb-exercise="EX-SYNC-005"></div>

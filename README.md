@@ -35,4 +35,19 @@ dist/               # 单文件课程构建产物（gitignore）
 
 ## 快速开始
 
-P1 实现后补充安装、`tb validate`、`tb build` 和启动命令。
+```bash
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install -e ".[dev]"
+
+# 校验内容包
+python -m testbridge.cli validate content-packs/sample-sensors
+
+# 构建可离线打开的单文件课程
+python -m testbridge.cli build content-packs/sample-sensors --out dist
+
+# 启动学习界面
+python -m testbridge.cli serve content-packs/sample-sensors --port 8000
+```
+
+打开 http://127.0.0.1:8000 。
