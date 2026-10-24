@@ -39,13 +39,19 @@ def grade(exercise: Exercise, response: Any) -> GradeResult:
         expected = set(exercise.answer or [])
         selected = set(response or []) if isinstance(response, list) else set()
         hits = len(expected & selected)
-        score = hits / len(expected) if expected else 0.0
+        union = expected | selected
+        score = hits / len(union) if union else 0.0
         ok = selected == expected
         outcome: Outcome = "correct" if ok else ("partial" if hits else "incorrect")
         return GradeResult(
             outcome, ok, score, 1.0,
             "全对。" if ok else f"命中了 {hits}/{len(expected)} 个正确项。",
-            {"selected": sorted(selected), "expected": sorted(expected)},
+            {
+                "selected": sorted(selected),
+                "expected": sorted(expected),
+                "missing": sorted(expected - selected),
+                "false_positives": sorted(selected - expected),
+            },
         )
 
     if exercise.type == "short_answer":
@@ -71,9 +77,10 @@ def grade(exercise: Exercise, response: Any) -> GradeResult:
 
     if exercise.type == "artifact":
         payload = response if isinstance(response, dict) else {}
-        path = str(payload.get("path", "")).strip()
+        raw_path = payload.get("path")
+        path = raw_path.strip() if isinstance(raw_path, str) else ""
         if not path:
-            return GradeResult("incorrect", False, 0.0, 1.0, "请填写附件路径。", payload)
+            return GradeResult("incorrect", False, 0.0, 1.0, "请填写附件路径。", dict(payload))
         checked = set(payload.get("checked", []))
         score = sum(item.weight for item in exercise.rubric if item.dimension in checked)
         return GradeResult("submitted", None, score, 1.0, "已记录产出物。", payload)

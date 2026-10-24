@@ -1,5 +1,7 @@
+import pytest
+
 from testbridge.contract.models import Exercise, Hint, RubricItem, ShortAnswer
-from testbridge.exercise.grading import get_hint, grade
+from testbridge.exercise.grading import get_hint, grade, normalize
 
 
 def choice() -> Exercise:
@@ -63,3 +65,65 @@ def test_hint_levels() -> None:
     ex = choice()
     assert get_hint(ex, 1) == "think"
     assert get_hint(ex, 2) is None
+
+
+def multi() -> Exercise:
+    return Exercise(
+        id="EX-M2", type="multi_choice", concepts=["c-one"], level="L2",
+        prompt="Pick", options=[
+            {"id": "a", "text": "A"}, {"id": "b", "text": "B"}, {"id": "c", "text": "C"},
+        ],
+        answer=["a", "b"],
+    )
+
+
+def test_multi_choice_false_positive_is_penalized() -> None:
+    result = grade(multi(), ["a", "b", "c"])
+    assert result.outcome == "partial"
+    assert result.correct is False
+    assert result.score < 1.0
+    assert result.details["false_positives"] == ["c"]
+
+
+def test_multi_choice_exact_match_scores_full() -> None:
+    result = grade(multi(), ["a", "b"])
+    assert result.correct is True
+    assert result.score == 1.0
+
+
+def test_multi_choice_no_hits_scores_zero() -> None:
+    result = grade(multi(), ["c"])
+    assert result.outcome == "incorrect"
+    assert result.score == 0.0
+
+
+def test_artifact_rejects_non_path_values() -> None:
+    for bad in (None, 123, "  "):
+        result = grade(artifact(), {"path": bad})
+        assert result.outcome == "incorrect", bad
+        assert result.correct is False
+        assert result.score == 0.0
+
+
+def test_artifact_accepts_stripped_string_path() -> None:
+    result = grade(artifact(), {"path": "  a.log  "})
+    assert result.outcome == "submitted"
+
+
+def artifact() -> Exercise:
+    return Exercise(
+        id="EX-F2", type="artifact", concepts=["c-one"], level="L3",
+        prompt="Upload", artifact={"accept": ["log"], "max_size_mb": 1},
+        rubric=[RubricItem(dimension="x", weight=1.0, criteria="x")],
+    )
+
+
+def test_normalize_strips_cjk_punctuation_whitespace_and_case() -> None:
+    assert normalize("  Hello，世界。 ") == "hello世界"
+    assert normalize("A\t B\nC！？") == "abc"
+
+
+def test_unsupported_type_raises() -> None:
+    ex = choice().model_copy(update={"type": "unknown"})
+    with pytest.raises(ValueError):
+        grade(ex, "a")
