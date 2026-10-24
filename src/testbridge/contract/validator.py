@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from pathlib import Path
 
 from .loader import ContentError, load_lesson_file, load_model
@@ -66,6 +66,46 @@ def find_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
     return cycles
 
 
+class _MountRefParser(HTMLParser):
+    """Collect exercise/widget mount ids from attributes only.
+
+    Text nodes (including escaped markup shown inside ``code``) and comments are
+    ignored by HTMLParser, and attribute values are entity-decoded regardless of
+    quoting style.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.exercise_ids: list[str] = []
+        self.widget_ids: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def _collect(self, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if not value:
+                continue
+            lower_name = name.lower()
+            if lower_name == "data-tb-exercise":
+                self.exercise_ids.append(value)
+            elif lower_name == "data-tb-widget":
+                self.widget_ids.append(value)
+
+
+def _find_mount_refs(html: str) -> tuple[list[str], list[str]]:
+    parser = _MountRefParser()
+    parser.feed(html)
+    parser.close()
+    return (
+        list(dict.fromkeys(parser.exercise_ids)),
+        list(dict.fromkeys(parser.widget_ids)),
+    )
+
+
 def validate_pack(pack_dir: Path) -> ValidationReport:
     report = ValidationReport()
     if not pack_dir.is_dir():
@@ -112,7 +152,13 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
                 Issue("widget.template", f"missing widget template: {template_path}")
             )
             continue
-        template_text = template_path.read_text(encoding="utf-8")
+        try:
+            template_text = template_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            report.errors.append(
+                Issue("widget.template", f"cannot read template: {exc}", str(template_path))
+            )
+            continue
         for issue in find_forbidden_html(template_text):
             report.errors.append(Issue("widget.template", issue, str(template_path)))
 
@@ -120,6 +166,7 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
         ("concept", concepts, concept_items),
         ("exercise", exercises, exercise_items),
         ("resource", resources, resource_items),
+        ("widget", widgets, widget_items),
     ):
         if len(items) != len(source):
             report.errors.append(Issue(f"{label}.duplicate", f"duplicate {label} id"))
@@ -169,7 +216,8 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
                 )
             for issue in find_forbidden_html(body):
                 report.errors.append(Issue("lesson.html", issue, str(lesson_path)))
-            for exercise_id in re.findall(r'data-tb-exercise="([^"]+)"', body):
+            exercise_refs, widget_refs = _find_mount_refs(body)
+            for exercise_id in exercise_refs:
                 if exercise_id not in exercises:
                     report.errors.append(
                         Issue(
@@ -178,7 +226,7 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
                             str(lesson_path),
                         )
                     )
-            for widget_id in re.findall(r'data-tb-widget="([^"]+)"', body):
+            for widget_id in widget_refs:
                 if widget_id not in widgets:
                     report.errors.append(
                         Issue(
