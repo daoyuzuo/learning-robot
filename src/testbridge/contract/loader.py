@@ -24,11 +24,16 @@ class ContentError(Exception):
     """Raised when a content file cannot be read or validated."""
 
 
-def load_yaml(path: Path) -> dict:
-    if not path.is_file():
-        raise ContentError(f"file not found: {path}")
+def _read_text(path: Path) -> str:
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ContentError(f"cannot read {path}: {exc}") from exc
+
+
+def load_yaml(path: Path) -> dict:
+    try:
+        data = yaml.safe_load(_read_text(path))
     except yaml.YAMLError as exc:
         raise ContentError(f"invalid YAML in {path}: {exc}") from exc
     if not isinstance(data, dict):
@@ -61,6 +66,8 @@ def extract_manifest(html: str) -> tuple[LessonManifest, str]:
 
 
 def load_lesson_file(path: Path) -> tuple[LessonManifest, str]:
-    if not path.is_file():
-        raise ContentError(f"lesson file not found: {path}")
-    return extract_manifest(path.read_text(encoding="utf-8"))
+    html = _read_text(path)
+    try:
+        return extract_manifest(html)
+    except ContentError as exc:
+        raise ContentError(f"{path}: {exc}") from exc

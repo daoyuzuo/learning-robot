@@ -40,3 +40,36 @@ def test_load_lesson_file() -> None:
     manifest, body = load_lesson_file(FIXTURE / "modules/M01/lessons/L-ONE.html")
     assert manifest.title == "Demo Lesson"
     assert "data-tb-exercise" in body
+
+
+def test_invalid_utf8_yaml_raises_content_error(tmp_path: Path) -> None:
+    path = tmp_path / "bad.yaml"
+    path.write_bytes(b"schema: tb/1\nconcepts: [\xff]")
+    with pytest.raises(ContentError):
+        load_model(path, ConceptsFile)
+
+
+def test_invalid_utf8_lesson_raises_content_error(tmp_path: Path) -> None:
+    path = tmp_path / "bad.html"
+    path.write_bytes(b"<article>\xff</article>")
+    with pytest.raises(ContentError):
+        load_lesson_file(path)
+
+
+def test_missing_manifest_error_includes_path(tmp_path: Path) -> None:
+    path = tmp_path / "no-manifest.html"
+    path.write_text("<article>no manifest</article>", encoding="utf-8")
+    with pytest.raises(ContentError) as excinfo:
+        load_lesson_file(path)
+    assert str(path) in str(excinfo.value)
+
+
+def test_invalid_manifest_json_error_includes_path(tmp_path: Path) -> None:
+    path = tmp_path / "bad-json.html"
+    path.write_text(
+        '<script type="application/json" id="tb-manifest">{oops</script>',
+        encoding="utf-8",
+    )
+    with pytest.raises(ContentError) as excinfo:
+        load_lesson_file(path)
+    assert str(path) in str(excinfo.value)
