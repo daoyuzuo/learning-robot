@@ -66,44 +66,99 @@ def find_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
     return cycles
 
 
+@dataclass
+class _Mount:
+    attribute: str
+    value: str
+    tag: str
+    self_closing: bool = False
+    has_content: bool = False
+    closed: bool = False
+
+
 class _MountRefParser(HTMLParser):
-    """Collect exercise/widget mount ids from attributes only.
+    """Collect exercise/widget mounts from attributes only.
 
     Text nodes (including escaped markup shown inside ``code``) and comments are
     ignored by HTMLParser, and attribute values are entity-decoded regardless of
-    quoting style.
+    quoting style. Mounts are tracked through their element lifetime so callers
+    can enforce the empty-``<div>`` contract.
     """
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.exercise_ids: list[str] = []
         self.widget_ids: list[str] = []
+        self.mounts: list[_Mount] = []
+        self._frames: list[tuple[str, list[_Mount]]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self._collect(attrs)
+        self._mark_content()
+        self._frames.append((tag.lower(), self._collect(tag, attrs)))
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self._collect(attrs)
+        self._mark_content()
+        for mount in self._collect(tag, attrs):
+            mount.self_closing = True
+            mount.closed = True
 
-    def _collect(self, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_endtag(self, tag: str) -> None:
+        lower_tag = tag.lower()
+        for index in range(len(self._frames) - 1, -1, -1):
+            if self._frames[index][0] == lower_tag:
+                for _, mounts in self._frames[index:]:
+                    for mount in mounts:
+                        mount.closed = True
+                del self._frames[index:]
+                return
+
+    def handle_data(self, data: str) -> None:
+        if data.strip():
+            self._mark_content()
+
+    def _mark_content(self) -> None:
+        for _, mounts in self._frames:
+            for mount in mounts:
+                mount.has_content = True
+
+    def _collect(self, tag: str, attrs: list[tuple[str, str | None]]) -> list[_Mount]:
+        mounts: list[_Mount] = []
         for name, value in attrs:
             if not value:
                 continue
             lower_name = name.lower()
             if lower_name == "data-tb-exercise":
                 self.exercise_ids.append(value)
+                mounts.append(_Mount(lower_name, value, tag.lower()))
             elif lower_name == "data-tb-widget":
                 self.widget_ids.append(value)
+                mounts.append(_Mount(lower_name, value, tag.lower()))
+        self.mounts.extend(mounts)
+        return mounts
 
 
-def _find_mount_refs(html: str) -> tuple[list[str], list[str]]:
+def _parse_mounts(html: str) -> _MountRefParser:
     parser = _MountRefParser()
     parser.feed(html)
     parser.close()
+    return parser
+
+
+def _find_mount_refs(html: str) -> tuple[list[str], list[str]]:
+    parser = _parse_mounts(html)
     return (
         list(dict.fromkeys(parser.exercise_ids)),
         list(dict.fromkeys(parser.widget_ids)),
     )
+
+
+def _mount_issues(parser: _MountRefParser) -> list[str]:
+    issues: list[str] = []
+    for mount in parser.mounts:
+        label = f"{mount.attribute}={mount.value}"
+        if mount.tag != "div" or mount.self_closing or mount.has_content or not mount.closed:
+            issues.append(f"{label} mount must be an empty <div>")
+    return issues
 
 
 def validate_pack(pack_dir: Path) -> ValidationReport:
@@ -216,7 +271,11 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
                 )
             for issue in find_forbidden_html(body):
                 report.errors.append(Issue("lesson.html", issue, str(lesson_path)))
-            exercise_refs, widget_refs = _find_mount_refs(body)
+            mount_parser = _parse_mounts(body)
+            exercise_refs = list(dict.fromkeys(mount_parser.exercise_ids))
+            widget_refs = list(dict.fromkeys(mount_parser.widget_ids))
+            for message in _mount_issues(mount_parser):
+                report.errors.append(Issue("mount.invalid", message, str(lesson_path)))
             for exercise_id in exercise_refs:
                 if exercise_id not in exercises:
                     report.errors.append(

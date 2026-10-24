@@ -137,6 +137,44 @@ def test_mount_refs_in_text_and_comments_are_ignored(tmp_path: Path) -> None:
     assert report.ok, report.errors
 
 
+def test_mount_with_fallback_content_is_invalid(tmp_path: Path) -> None:
+    pack = _lesson_pack(
+        tmp_path,
+        '<div data-tb-exercise="EX-ONE">fallback</div>',
+        '<div data-tb-widget="W-ONE"></div>',
+    )
+    report = validate_pack(pack)
+    assert not report.ok
+    assert any(
+        issue.code == "mount.invalid" and "EX-ONE" in issue.message
+        for issue in report.errors
+    )
+
+
+def test_mount_must_be_a_div(tmp_path: Path) -> None:
+    pack = _lesson_pack(
+        tmp_path,
+        '<section data-tb-exercise="EX-ONE"></section>',
+        '<div data-tb-widget="W-ONE"></div>',
+    )
+    report = validate_pack(pack)
+    assert not report.ok
+    assert any(
+        issue.code == "mount.invalid" and "EX-ONE" in issue.message
+        for issue in report.errors
+    )
+
+
+def test_whitespace_only_empty_div_mount_is_valid(tmp_path: Path) -> None:
+    pack = _lesson_pack(
+        tmp_path,
+        '<div data-tb-exercise="EX-ONE">\n  </div>',
+        '<div data-tb-widget="W-ONE">  </div>',
+    )
+    report = validate_pack(pack)
+    assert not any(issue.code == "mount.invalid" for issue in report.errors)
+
+
 def test_duplicate_widget_id_is_an_error(tmp_path: Path) -> None:
     pack = tmp_path / "pack"
     shutil.copytree(FIXTURE, pack)

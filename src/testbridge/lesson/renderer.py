@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 
 from testbridge.content.repository import ContentPack, Lesson
 from testbridge.contract.models import Concept, Exercise, Module, Resource, Widget
@@ -32,6 +33,37 @@ class LessonView:
 
 def _esc(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+class _WidgetMountParser(HTMLParser):
+    """Collect widget mount ids from attributes only.
+
+    Text nodes (including escaped markup shown inside ``code``) and comments are
+    ignored by HTMLParser, and attribute values are entity-decoded regardless of
+    quoting style.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.widget_ids: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._collect(attrs)
+
+    def _collect(self, attrs: list[tuple[str, str | None]]) -> None:
+        for name, value in attrs:
+            if value and name.lower() == "data-tb-widget":
+                self.widget_ids.append(value)
+
+
+def _find_widget_ids(body: str) -> list[str]:
+    parser = _WidgetMountParser()
+    parser.feed(body)
+    parser.close()
+    return list(dict.fromkeys(parser.widget_ids))
 
 
 def render_exercise_form(exercise: Exercise) -> str:
@@ -106,28 +138,32 @@ def render_lesson(pack: ContentPack, lesson_id: str) -> LessonView:
     resources = [pack.resource(item) for item in manifest.resources]
     concepts = [pack.concept(item) for item in manifest.concepts]
 
-    widget_ids = list(dict.fromkeys(re.findall(r'data-tb-widget="([^"]+)"', body)))
+    widget_ids = _find_widget_ids(body)
     widgets: list[WidgetView] = []
     for widget_id in widget_ids:
         widget = pack.widget(widget_id)
         template_path = pack.root / widget.spec.template
-        widgets.append(
-            WidgetView(widget=widget, template_html=template_path.read_text(encoding="utf-8"))
+        template_html = sanitize_fragment(template_path.read_text(encoding="utf-8"))
+        template_html = re.sub(
+            r"</template", "&lt;/template", template_html, flags=re.IGNORECASE
         )
+        widgets.append(WidgetView(widget=widget, template_html=template_html))
 
     for exercise in exercises:
         pattern = re.compile(
-            rf'<div\b[^>]*data-tb-exercise="{re.escape(exercise.id)}"[^>]*>\s*</div>',
-            re.IGNORECASE,
+            rf'<div\b[^>]*data-tb-exercise="{re.escape(exercise.id)}"[^>]*>\s*</div>'
         )
-        body = pattern.sub(render_exercise_form(exercise), body)
+        body = pattern.sub(
+            lambda _match, exercise=exercise: render_exercise_form(exercise), body
+        )
 
     for view in widgets:
         pattern = re.compile(
-            rf'<div\b[^>]*data-tb-widget="{re.escape(view.widget.id)}"[^>]*>\s*</div>',
-            re.IGNORECASE,
+            rf'<div\b[^>]*data-tb-widget="{re.escape(view.widget.id)}"[^>]*>\s*</div>'
         )
-        body = pattern.sub(render_widget(view.widget, view.template_html), body)
+        body = pattern.sub(
+            lambda _match, view=view: render_widget(view.widget, view.template_html), body
+        )
 
     prev_lesson, next_lesson = pack.prev_next(lesson_id)
     return LessonView(
