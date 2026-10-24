@@ -110,6 +110,33 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
+## P1 遗留（P2 前必须处理）
+
+P1 已满足退出标准；以下是最终审查确认的遗留项，排进 P2 或更早。
+
+### 必须在 P2 掌握度/防作弊之前
+
+- 前端内嵌练习 JSON 仍包含 `answer` 字段；P2 读证据前改成安全投影或移除。
+- 证据 API 应校验 `exercise_id` 属于请求的 `lesson_id`，避免错误归因。
+- Artifact 仍只记录路径；若 P2 要做产出物评分，先实现 `accept` / `max_size_mb` 和 `data/artifacts/<evidence-id>/`。
+
+### 工程债
+
+- `_script_json` 在 web/build 两份重复；抽成共享 helper。
+- CLI 的 `build --lesson` 未知 ID 抛 `KeyError`；内容/导入错误输出 traceback，而不是 `ERROR code: path: message`。
+- 单文件 HTML 未内联完整 manifest / objectives / 资源列表；P1 只内联正文和练习数据。
+- `web/` 与 `web/static/tb.css` 未进 wheel；P2 打包前移到 package data。
+- `schema` 别名允许 `schema_version` 作为键；P2 前收紧。
+- 证据导出上限 100 万条、导入非原子、`new_event` 不能设置 `supersedes`。
+- CSP 对 `application/json` 内联块可能产生浏览器报告；功能不受影响，P2 观察。
+- 测试补强：黄金课程快照、widget 默认替换、e2e submit → store → export → import、`/assets`、超过 200 条证据的进度页。
+
+### 规格里未实现的 UI
+
+- 首页“继续学习”/内容包列表、按课程/概念聚合的提交数与正确率、证据写入失败 503 降级。
+
+---
+
 ## 后续期摘要
 
 ### P2 学习闭环
