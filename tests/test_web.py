@@ -77,3 +77,13 @@ def test_exercise_data_escapes_script_close(tmp_path: Path) -> None:
     assert "\\u003c/script\\u003e" in body
     # Only the two template-owned closing tags remain.
     assert body.count("</script>") == 2
+
+
+def test_runtime_script_is_served(tmp_path: Path) -> None:
+    response = client(tmp_path).get("/static/tb-runtime.js")
+    assert response.status_code == 200
+    assert "/api/evidence" in response.text
+    assert "tb-widget-template" in response.text
+    assert "JSON.parse" in response.text
+    assert "eval(" not in response.text
+    assert "new Function" not in response.text
