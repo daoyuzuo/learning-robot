@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}进度 · TestBridge{% endblock %}
+{% block content %}
+<h1>进度</h1>
+<p>共 {{ events|length }} 条证据。</p>
+<table>
+<tr><th>时间</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th></tr>
+{% for event in events %}
+<tr><td>{{ event.created_at }}</td><td>{{ event.lesson_id or "" }}</td><td>{{ event.exercise_id or "" }}</td><td>{{ event.outcome or "" }}</td><td>{{ event.score if event.score is not none else "" }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

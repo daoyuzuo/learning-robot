@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ view.lesson.manifest.title }} · TestBridge{% endblock %}
+{% block lesson_id %}{{ view.lesson.manifest.id }}{% endblock %}
+{% block content %}
+<nav class="tb-breadcrumb">{{ view.module.title }}</nav>
+<h1>{{ view.lesson.manifest.title }}</h1>
+<p class="tb-meta">{{ view.lesson.manifest.minutes }} 分钟 · {{ view.lesson.manifest.target_level }}</p>
+<ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
+<article class="tb-lesson">{{ view.body_html | safe }}</article>
+<aside class="tb-resources">
+  <h2>资源</h2>
+  <ul>{% for item in view.resources %}<li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>{% endfor %}</ul>
+</aside>
+<nav class="tb-pager">
+  {% if view.prev_lesson %}<a href="/lesson/{{ view.prev_lesson.manifest.id }}">← {{ view.prev_lesson.manifest.title }}</a>{% endif %}
+  {% if view.next_lesson %}<a href="/lesson/{{ view.next_lesson.manifest.id }}">{{ view.next_lesson.manifest.title }} →</a>{% endif %}
+</nav>
+{% endblock %}
+{% block scripts %}
+<script id="tb-exercise-data" type="application/json">{{ exercise_data | safe }}</script>
+<script src="/static/tb-runtime.js"></script>
+{% endblock %}

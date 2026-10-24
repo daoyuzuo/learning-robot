@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}课程 · TestBridge{% endblock %}
+{% block content %}
+<h1>{{ pack.meta.title }}</h1>
+<p>{{ pack.meta.description }}</p>
+{% for module in modules %}
+<section class="tb-module">
+  <h2>{{ module.title }}</h2>
+  <ul>
+  {% for lesson in lessons_by_module[module.id] %}
+    <li><a href="/lesson/{{ lesson.manifest.id }}">{{ lesson.manifest.title }}</a> · {{ lesson.manifest.minutes }} 分钟</li>
+  {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% endblock %}

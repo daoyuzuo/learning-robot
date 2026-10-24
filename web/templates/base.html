@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}TestBridge{% endblock %}</title>
+  <link rel="stylesheet" href="/static/tb.css">
+</head>
+<body data-lesson-id="{% block lesson_id %}{% endblock %}">
+  <header class="tb-top">
+    <a href="/" class="tb-brand">TestBridge</a>
+    <nav><a href="/">课程</a><a href="/progress">进度</a></nav>
+  </header>
+  <main class="tb-main">{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

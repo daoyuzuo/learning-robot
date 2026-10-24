@@ -1,0 +1,27 @@
+:root { --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb; --accent: #2563eb; --bg: #ffffff; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); line-height: 1.65; }
+.tb-top { display: flex; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--line); }
+.tb-brand { font-weight: 700; color: var(--ink); text-decoration: none; }
+.tb-top nav a { margin-left: 1rem; color: var(--muted); text-decoration: none; }
+.tb-main { max-width: 860px; margin: 0 auto; padding: 2rem 1.25rem 5rem; }
+.tb-lesson h1 { margin-top: 0; }
+.tb-meta, .tb-breadcrumb { color: var(--muted); font-size: .9rem; }
+.tb-objectives { background: #f8fafc; border-left: 4px solid var(--accent); padding: 1rem 1.25rem 1rem 2rem; }
+.tb-exercise { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; }
+.tb-fields label { display: block; margin: .4rem 0; }
+.tb-fields textarea, .tb-fields input[type="text"] { width: 100%; padding: .5rem; border: 1px solid var(--line); border-radius: 6px; }
+.tb-actions { margin-top: .8rem; }
+.tb-actions button { margin-right: .5rem; padding: .45rem .9rem; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.tb-feedback { margin-top: .8rem; padding: .6rem .8rem; background: #f8fafc; border-radius: 6px; }
+.tb-feedback[data-outcome="correct"] { background: #ecfdf5; }
+.tb-feedback[data-outcome="incorrect"] { background: #fef2f2; }
+.tb-widget { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; }
+.tb-widget-controls label { display: block; margin: .4rem 0; }
+.tb-widget-canvas svg { width: 100%; height: auto; }
+.tb-resources { margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.tb-trust { color: var(--muted); font-size: .8rem; border: 1px solid var(--line); padding: 0 .3rem; border-radius: 4px; }
+.tb-pager { display: flex; justify-content: space-between; margin-top: 3rem; }
+.tb-pager a { color: var(--accent); text-decoration: none; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem; }
