@@ -1,0 +1,11 @@
+schema: tb/1
+widgets:
+  - id: W-SYNC-OFFSET
+    type: parameter-svg
+    title: 固定偏移 vs 漂移
+    spec:
+      template: assets/widgets/sync-offset.svg
+      parameters:
+        - {id: offset, label: 固定偏移(ms), min: -50, max: 50, default: 20}
+        - {id: drift, label: 漂移幅度(倍), min: 0.2, max: 2.0, default: 0.5}
+    caption: 调整参数，观察两路信号的对齐变化。

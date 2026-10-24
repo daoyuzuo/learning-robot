@@ -60,6 +60,13 @@ def test_find_forbidden_html_flags_data_url() -> None:
     assert any("data" in issue for issue in issues)
 
 
+def test_keeps_svg_group_transform() -> None:
+    result = sanitize_fragment(
+        '<svg><g transform="translate(1,2)"><path d="M0 0"/></g></svg>'
+    )
+    assert 'transform="translate(1,2)"' in result
+
+
 def test_find_forbidden_html_ignores_text_content() -> None:
     issues = find_forbidden_html('<p>Set style="x" and onclick= handlers in code.</p>')
     assert issues == []

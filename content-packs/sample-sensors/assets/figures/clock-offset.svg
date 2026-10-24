@@ -1,0 +1,6 @@
+<svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <line x1="20" y1="60" x2="380" y2="60" stroke="#d1d5db"/>
+  <path d="M20,45 Q60,15 100,45 T180,45 T260,45 T340,45" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <path d="M20,75 Q60,45 100,75 T180,75 T260,75 T340,75" fill="none" stroke="#dc2626" stroke-width="2"/>
+  <text x="20" y="105" fill="#6b7280" font-size="12">蓝色：传感器 A；红色：传感器 B；两条时间轴整体错开</text>
+</svg>

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 from pathlib import Path
@@ -31,6 +32,22 @@ def _read_text(path: Path) -> str:
         raise ContentError(f"cannot read {path}: {exc}") from exc
 
 
+def _normalize_yaml_scalars(value):
+    """Turn YAML implicit date/datetime scalars into ISO strings.
+
+    ``tb/1`` stores dates as strings, but ``yaml.safe_load`` parses an unquoted
+    ISO date into ``datetime.date``. Normalize at the loader boundary so authors
+    can write ``created: 2026-10-24`` as documented in the contract.
+    """
+    if isinstance(value, (dt.datetime, dt.date)):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {key: _normalize_yaml_scalars(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_yaml_scalars(item) for item in value]
+    return value
+
+
 def load_yaml(path: Path) -> dict:
     try:
         data = yaml.safe_load(_read_text(path))
@@ -38,7 +55,7 @@ def load_yaml(path: Path) -> dict:
         raise ContentError(f"invalid YAML in {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ContentError(f"expected a mapping in {path}")
-    return data
+    return _normalize_yaml_scalars(data)
 
 
 def load_model(path: Path, model: type[T]) -> T:

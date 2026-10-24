@@ -8,7 +8,7 @@ from testbridge.contract.loader import (
     load_lesson_file,
     load_model,
 )
-from testbridge.contract.models import ConceptsFile
+from testbridge.contract.models import ConceptsFile, PackMeta
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
 
@@ -40,6 +40,16 @@ def test_load_lesson_file() -> None:
     manifest, body = load_lesson_file(FIXTURE / "modules/M01/lessons/L-ONE.html")
     assert manifest.title == "Demo Lesson"
     assert "data-tb-exercise" in body
+
+
+def test_unquoted_yaml_date_loads_as_iso_string(tmp_path: Path) -> None:
+    path = tmp_path / "pack.yaml"
+    path.write_text(
+        "schema: tb/1\nid: demo\nversion: 0.1.0\ntitle: Demo\ncreated: 2026-10-24\n",
+        encoding="utf-8",
+    )
+    meta = load_model(path, PackMeta)
+    assert meta.created == "2026-10-24"
 
 
 def test_invalid_utf8_yaml_raises_content_error(tmp_path: Path) -> None:

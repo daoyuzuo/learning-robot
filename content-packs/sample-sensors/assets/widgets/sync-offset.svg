@@ -1,0 +1,8 @@
+<svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <line x1="0" y1="60" x2="400" y2="60" stroke="#d1d5db"/>
+  <path d="M0,45 Q40,15 80,45 T160,45 T240,45 T320,45 T400,45" fill="none" stroke="#2563eb" stroke-width="2"/>
+  <g transform="translate({{offset}}, 60) scale(1, {{drift}}) translate(0, -60)">
+    <path d="M0,45 Q40,15 80,45 T160,45 T240,45 T320,45 T400,45" fill="none" stroke="#dc2626" stroke-width="2"/>
+  </g>
+  <text x="10" y="110" fill="#6b7280" font-size="12">offset={{offset}}ms · drift={{drift}}x</text>
+</svg>

@@ -1,0 +1,31 @@
+<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-SYNC-003",
+  "title": "设计一个同步误差测试",
+  "module": "M01",
+  "concepts": ["sensor-time-sync"],
+  "target_level": "L3",
+  "minutes": 25,
+  "objectives": ["能设计可复现的同步误差测试", "能定义指标、阈值和失败模式"],
+  "prerequisites": ["timestamp-basics", "clock-drift"],
+  "exercises": ["EX-SYNC-002", "EX-SYNC-004"],
+  "resources": ["DOC-ROS2-BAG", "DOC-PTP"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>设计一个同步误差测试</h1>
+  <section>
+    <p>一个好的同步测试必须能回答三个问题：用什么事件做基准？用什么指标判定？失败时怎么定位？</p>
+    <ol>
+      <li>选一个两路传感器都能观测到的物理事件。</li>
+      <li>采集带时间戳的数据，记录时钟源与打点位置。</li>
+      <li>统计时间戳差的均值、方差和随时间的变化趋势。</li>
+      <li>定义阈值，并记录一次失败案例用于复盘。</li>
+    </ol>
+  </section>
+  <pre data-tb-block="code" data-language="bash"><code>ros2 bag record /camera/image_raw /imu/data --output sync-test
+ros2 bag info sync-test</code></pre>
+  <div data-tb-exercise="EX-SYNC-002"></div>
+  <div data-tb-exercise="EX-SYNC-004"></div>
+</article>

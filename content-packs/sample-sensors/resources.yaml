@@ -1,0 +1,51 @@
+schema: tb/1
+resources:
+  - id: DOC-ROS2-TIME
+    title: ROS 2 Time and Clock
+    url: https://docs.ros.org/en/rolling/Concepts/About-Time.html
+    type: official-doc
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-24
+    coverage: [timestamp-basics, sensor-time-sync]
+    why: 解释 ROS 时间源、仿真时间与时钟类型，是同步测试的一手依据。
+
+  - id: DOC-PTP
+    title: IEEE 1588 Precision Time Protocol
+    url: https://standards.ieee.org/ieee/1588/6825/
+    type: standard
+    trust: A
+    license: IEEE
+    last_verified: 2026-10-24
+    coverage: [clock-drift, sensor-time-sync]
+    why: 硬件时间同步的协议基础，理解主从时钟与偏移测量。
+
+  - id: DOC-ROS2-BAG
+    title: Recording and Playing Back Data
+    url: https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html
+    type: tutorial
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-24
+    coverage: [sensor-time-sync]
+    why: 用 rosbag2 采集带时间戳的数据，是同步测试的常用手段。
+
+  - id: DOC-ROS2-QOS
+    title: ROS 2 QoS Settings
+    url: https://docs.ros.org/en/rolling/Concepts/About-Quality-of-Service-Settings.html
+    type: official-doc
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-24
+    coverage: [sensor-time-sync]
+    why: 传感器数据流的 QoS 会影响丢包与延迟，间接影响同步判断。
+
+  - id: COURSE-TIME-SYNC
+    title: "Real-Time Systems: Clock Synchronization"
+    url: https://en.wikipedia.org/wiki/Clock_synchronization
+    type: overview
+    trust: B
+    license: CC-BY-SA-4.0
+    last_verified: 2026-10-24
+    coverage: [clock-drift]
+    why: 快速建立时钟同步的整体图景，关键结论回到 A 级资料。

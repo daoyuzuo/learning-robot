@@ -1,0 +1,10 @@
+schema: tb/1
+id: sample-sensors
+version: 0.1.0
+title: 示例包：传感器时间同步
+description: 用于验证 tb/1 契约与运行时的示例内容，不是最终课程。
+language: zh-CN
+license: CC-BY-4.0
+authors: [testbridge]
+created: 2026-10-24
+fixture: true

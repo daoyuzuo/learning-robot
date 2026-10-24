@@ -1,0 +1,83 @@
+schema: tb/1
+exercises:
+  - id: EX-SYNC-001
+    type: single_choice
+    concepts: [sensor-time-sync]
+    level: L2
+    prompt: 两个传感器时间戳相差 20ms，最不可能的根因是？
+    options:
+      - {id: a, text: 时钟源不同}
+      - {id: b, text: 传输延迟}
+      - {id: c, text: 采样频率不同}
+      - {id: d, text: 驱动时间戳打点位置不同}
+    answer: c
+    explanation: 采样频率影响采样间隔，不直接造成固定时间偏移。
+    hints:
+      - {level: 1, text: 先区分“偏移”和“间隔”。}
+      - {level: 2, text: 固定偏移通常来自时钟或打点位置。}
+    difficulty: 2
+
+  - id: EX-SYNC-002
+    type: short_answer
+    concepts: [sensor-time-sync]
+    level: L3
+    prompt: 写出一个验证两路传感器时间同步误差的测试方案。
+    answer:
+      accepted: ["时间戳对齐", "同一事件", "统计偏移", "阈值"]
+      min_hits: 2
+    rubric:
+      - {dimension: 方法, weight: 0.4, criteria: 有可执行的对比方法}
+      - {dimension: 判定, weight: 0.4, criteria: 有指标和阈值}
+      - {dimension: 失败模式, weight: 0.2, criteria: 提到至少一种异常}
+    hints:
+      - {level: 1, text: 先找一个可同时被两路传感器观测的事件。}
+    difficulty: 3
+
+  - id: EX-SYNC-003
+    type: self_assess
+    concepts: [sensor-time-sync]
+    level: L3
+    prompt: 用自己的话解释“时钟漂移”和“固定偏移”的区别。
+    rubric:
+      - {dimension: 机制, weight: 0.5, criteria: 能区分随时间累积 vs 固定}
+      - {dimension: 测试, weight: 0.5, criteria: 能说出对应的检测方法}
+
+  - id: EX-SYNC-004
+    type: artifact
+    concepts: [sensor-time-sync]
+    level: L3
+    prompt: 提交一次同步误差测试的日志和判定结果。
+    artifact:
+      accept: [log, txt, png, md]
+      max_size_mb: 10
+    rubric:
+      - {dimension: 可复现, weight: 0.4, criteria: 步骤和命令完整}
+      - {dimension: 判定, weight: 0.4, criteria: 有指标和阈值}
+      - {dimension: 分析, weight: 0.2, criteria: 解释了异常}
+
+  - id: EX-SYNC-005
+    type: multi_choice
+    concepts: [clock-drift]
+    level: L2
+    prompt: 下列哪些会造成两路传感器时间戳不一致？
+    options:
+      - {id: a, text: 时钟源不同}
+      - {id: b, text: 采样频率不同}
+      - {id: c, text: 打点位置不同}
+      - {id: d, text: 传输延迟不同}
+    answer: [a, c, d]
+    hints:
+      - {level: 1, text: 先问“时间戳是在哪一刻生成的”。}
+    difficulty: 2
+
+  - id: EX-SYNC-006
+    type: single_choice
+    concepts: [timestamp-basics]
+    level: L1
+    prompt: 时间戳的核心作用是什么？
+    options:
+      - {id: a, text: 标识事件发生的时刻}
+      - {id: b, text: 表示数据大小}
+      - {id: c, text: 表示传感器精度}
+    answer: a
+    difficulty: 1

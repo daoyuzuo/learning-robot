@@ -1,0 +1,33 @@
+schema: tb/1
+concepts:
+  - id: timestamp-basics
+    title: 时间戳基础
+    domain: sensors
+    target_level: L1
+    prerequisites: []
+    weight: 0.5
+    evidence_criteria:
+      - {id: EV-TS-DEFINE, description: 能说出时间戳的组成与单位, level: L1}
+    resources: [DOC-ROS2-TIME]
+
+  - id: clock-drift
+    title: 时钟漂移
+    domain: sensors
+    target_level: L2
+    prerequisites: [timestamp-basics]
+    weight: 0.5
+    evidence_criteria:
+      - {id: EV-DRIFT-EXPLAIN, description: 能解释漂移与固定偏移的区别, level: L2}
+    resources: [DOC-PTP]
+
+  - id: sensor-time-sync
+    title: 传感器时间同步
+    domain: sensors
+    target_level: L3
+    prerequisites: [timestamp-basics]
+    related: [clock-drift]
+    weight: 1.0
+    evidence_criteria:
+      - {id: EV-SYNC-EXPLAIN, description: 能解释时间戳、时钟源、同步误差的来源, level: L2}
+      - {id: EV-SYNC-DESIGN, description: 能设计同步误差的测试方法与判定阈值, level: L3}
+    resources: [DOC-ROS2-TIME, DOC-PTP]

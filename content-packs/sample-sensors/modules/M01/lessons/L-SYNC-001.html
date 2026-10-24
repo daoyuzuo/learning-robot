@@ -1,0 +1,37 @@
+<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-SYNC-001",
+  "title": "时间戳、时钟源与同步误差",
+  "module": "M01",
+  "concepts": ["timestamp-basics", "sensor-time-sync"],
+  "target_level": "L2",
+  "minutes": 20,
+  "objectives": ["区分固定偏移、漂移与抖动", "能说出时间戳的生成位置对同步的影响"],
+  "prerequisites": [],
+  "exercises": ["EX-SYNC-001", "EX-SYNC-003"],
+  "resources": ["DOC-ROS2-TIME", "DOC-PTP"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>时间戳、时钟源与同步误差</h1>
+  <section>
+    <p>时间戳不是一个“附加字段”，它记录了事件在某个时钟域里发生的时刻。两路传感器的时间戳能不能比较，取决于它们是否在同一个时钟域、是否在同一刻打点。</p>
+    <p>先区分三件事：<strong>固定偏移</strong>是两条时间轴整体错开；<strong>漂移</strong>是错开量随运行时间累积；<strong>抖动</strong>是每次打点的短时波动。三者的测试方法不同。</p>
+  </section>
+  <figure>
+    <img src="../../assets/figures/clock-offset.svg" alt="两路信号的时间偏移示意">
+    <figcaption>固定偏移与漂移的直观差异。</figcaption>
+  </figure>
+  <div data-tb-widget="W-SYNC-OFFSET"></div>
+  <section>
+    <h2>测试视角</h2>
+    <ul>
+      <li>先确认两路数据是否使用同一时钟源。</li>
+      <li>找一个可被两路同时观测的事件，比较时间戳差。</li>
+      <li>连续采样，区分固定偏移与随时间增长的漂移。</li>
+    </ul>
+  </section>
+  <div data-tb-exercise="EX-SYNC-001"></div>
+  <div data-tb-exercise="EX-SYNC-003"></div>
+</article>

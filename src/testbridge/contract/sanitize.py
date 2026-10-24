@@ -26,6 +26,7 @@ ALLOWED_ATTRIBUTES = {
     "a": {"href", "target"},
     "img": {"src", "alt", "width", "height"},
     "svg": {"viewBox", "viewbox", "xmlns", "width", "height", "fill", "stroke"},
+    "g": {"transform", "fill", "stroke", "stroke-width"},
     "path": {"d", "fill", "stroke", "stroke-width", "transform"},
     "circle": {"cx", "cy", "r", "fill", "stroke", "stroke-width", "transform"},
     "rect": {"x", "y", "width", "height", "rx", "fill", "stroke", "transform"},
