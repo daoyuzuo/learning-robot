@@ -67,6 +67,13 @@ def test_keeps_svg_group_transform() -> None:
     assert 'transform="translate(1,2)"' in result
 
 
+def test_svg_group_drops_style_and_event_handlers() -> None:
+    result = sanitize_fragment('<svg><g style="fill:red" onmouseover="alert(1)"></g></svg>')
+    assert "<g" in result
+    assert "style" not in result
+    assert "onmouseover" not in result
+
+
 def test_find_forbidden_html_ignores_text_content() -> None:
     issues = find_forbidden_html('<p>Set style="x" and onclick= handlers in code.</p>')
     assert issues == []

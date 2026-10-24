@@ -8,7 +8,7 @@ from testbridge.contract.loader import (
     load_lesson_file,
     load_model,
 )
-from testbridge.contract.models import ConceptsFile, PackMeta
+from testbridge.contract.models import ConceptsFile, PackMeta, ResourcesFile
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
 
@@ -50,6 +50,33 @@ def test_unquoted_yaml_date_loads_as_iso_string(tmp_path: Path) -> None:
     )
     meta = load_model(path, PackMeta)
     assert meta.created == "2026-10-24"
+
+
+def test_nested_yaml_date_loads_as_iso_string(tmp_path: Path) -> None:
+    path = tmp_path / "resources.yaml"
+    path.write_text(
+        "schema: tb/1\nresources:\n"
+        "  - id: DOC-ONE\n"
+        "    title: Example\n"
+        "    url: https://example.com\n"
+        "    type: official-doc\n"
+        "    trust: A\n"
+        "    last_verified: 2026-10-24\n",
+        encoding="utf-8",
+    )
+    data = load_model(path, ResourcesFile)
+    assert data.resources[0].last_verified == "2026-10-24"
+
+
+def test_yaml_datetime_scalar_loads_as_iso_string(tmp_path: Path) -> None:
+    path = tmp_path / "pack.yaml"
+    path.write_text(
+        "schema: tb/1\nid: demo\nversion: 0.1.0\ntitle: Demo\n"
+        "description: 2026-10-24T12:30:00\n",
+        encoding="utf-8",
+    )
+    meta = load_model(path, PackMeta)
+    assert meta.description == "2026-10-24T12:30:00"
 
 
 def test_invalid_utf8_yaml_raises_content_error(tmp_path: Path) -> None:
