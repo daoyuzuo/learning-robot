@@ -1,0 +1,4 @@
+<svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
+  <line x1="0" y1="20" x2="100" y2="20" stroke="#ccc"/>
+  <circle cx="{{offset}}" cy="20" r="4" fill="#2563eb"/>
+</svg>

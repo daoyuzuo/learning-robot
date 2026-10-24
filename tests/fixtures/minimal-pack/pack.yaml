@@ -1,0 +1,8 @@
+schema: tb/1
+id: fixture
+version: 0.1.0
+title: Fixture Pack
+description: Minimal fixture for tests.
+language: zh-CN
+license: CC-BY-4.0
+fixture: true

@@ -1,0 +1,11 @@
+schema: tb/1
+resources:
+  - id: DOC-ONE
+    title: Example
+    url: https://example.com
+    type: official-doc
+    trust: A
+    license: CC-BY-4.0
+    last_verified: "2026-10-24"
+    coverage: [c-one]
+    why: demo

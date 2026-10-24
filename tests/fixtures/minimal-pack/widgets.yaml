@@ -1,0 +1,10 @@
+schema: tb/1
+widgets:
+  - id: W-ONE
+    type: parameter-svg
+    title: Demo
+    spec:
+      template: assets/widgets/demo.svg
+      parameters:
+        - {id: offset, label: Offset, min: -10, max: 10, default: 0}
+    caption: Demo widget

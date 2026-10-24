@@ -1,0 +1,6 @@
+schema: tb/1
+id: M01
+title: Demo Module
+concepts: [c-one]
+lessons: [L-ONE]
+order: 1

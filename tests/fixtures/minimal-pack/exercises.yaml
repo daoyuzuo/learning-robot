@@ -1,0 +1,12 @@
+schema: tb/1
+exercises:
+  - id: EX-ONE
+    type: single_choice
+    concepts: [c-one]
+    level: L1
+    prompt: Pick A.
+    options:
+      - {id: a, text: A}
+      - {id: b, text: B}
+    answer: a
+    difficulty: 1

@@ -1,0 +1,10 @@
+schema: tb/1
+concepts:
+  - id: c-one
+    title: Concept One
+    domain: demo
+    target_level: L2
+    prerequisites: []
+    weight: 1.0
+    evidence_criteria:
+      - {id: EV-ONE, description: explain one, level: L1}
