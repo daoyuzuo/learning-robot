@@ -3133,6 +3133,7 @@ resources:
     url: https://docs.ros.org/en/rolling/Tutorials/Beginner-CLI-Tools/Recording-And-Playing-Back-Data/Recording-And-Playing-Back-Data.html
     type: tutorial
     trust: A
+    license: Apache-2.0
     last_verified: 2026-10-24
     coverage: [sensor-time-sync]
     why: 用 rosbag2 采集带时间戳的数据，是同步测试的常用手段。
