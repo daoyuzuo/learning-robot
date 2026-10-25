@@ -274,7 +274,9 @@ def mount_studio(
             ),
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
         )
-        lesson_writer.write_lesson(store, draft_id, plan, output, replace=replace)
+        lesson_writer.write_lesson(
+            store, draft_id, plan, output, replace=replace, namespace=True
+        )
         store.set_step(
             draft_id, "lessons", lesson_id=lesson_id,
             extra={

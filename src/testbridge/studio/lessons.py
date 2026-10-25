@@ -198,6 +198,66 @@ def _drop_old_lesson_ids(
     )
 
 
+def _unique_id(base: str, used: set[str], prefix: str) -> str:
+    if base not in used:
+        return base
+    candidate = f"{prefix}-{base}"
+    if candidate not in used:
+        return candidate
+    index = 2
+    while f"{candidate}-{index}" in used:
+        index += 1
+    return f"{candidate}-{index}"
+
+
+def _rewrite_attr(html: str, attribute: str, mapping: dict[str, str]) -> str:
+    for original, new_id in mapping.items():
+        html = re.sub(
+            rf'({attribute}\s*=\s*["\']){re.escape(original)}(["\'])',
+            lambda match, value=new_id: match.group(1) + value + match.group(2),
+            html,
+        )
+    return html
+
+
+def _namespace_collisions(
+    lesson: LessonPlan,
+    output: LessonOutput,
+    exercise_ids: set[str],
+    resource_ids: set[str],
+) -> LessonOutput:
+    exercise_map: dict[str, str] = {}
+    for exercise in output.exercises:
+        original = exercise["id"]
+        new_id = _unique_id(original, exercise_ids, lesson.lesson_id)
+        exercise_ids.add(new_id)
+        if new_id != original:
+            exercise_map[original] = new_id
+    resource_map: dict[str, str] = {}
+    for resource in output.resources:
+        original = resource["id"]
+        new_id = _unique_id(original, resource_ids, lesson.lesson_id)
+        resource_ids.add(new_id)
+        if new_id != original:
+            resource_map[original] = new_id
+    if not exercise_map and not resource_map:
+        return output
+    html = _rewrite_attr(output.html, "data-tb-exercise", exercise_map)
+    html = _rewrite_attr(html, "data-tb-resource", resource_map)
+    return LessonOutput(
+        manifest=output.manifest,
+        html=html,
+        exercises=[
+            {**item, "id": exercise_map.get(item["id"], item["id"])}
+            for item in output.exercises
+        ],
+        resources=[
+            {**item, "id": resource_map.get(item["id"], item["id"])}
+            for item in output.resources
+        ],
+    )
+
+
 def write_lesson(
     store: DraftStore,
     draft_id: str,
@@ -205,8 +265,15 @@ def write_lesson(
     output: LessonOutput,
     *,
     replace: bool = False,
+    namespace: bool = False,
 ) -> None:
     module_id = lesson.module_id or DEFAULT_MODULE_ID
+    lesson_path = (
+        store.path(draft_id) / "modules" / module_id
+        / "lessons" / f"{lesson.lesson_id}.html"
+    )
+    if not replace and lesson_path.is_file():
+        raise LessonError(f"课程已存在，请使用重写：{lesson.lesson_id}")
     existing_exercises = _load_list(store, draft_id, "exercises.yaml", "exercises")
     existing_resources = _load_list(store, draft_id, "resources.yaml", "resources")
     if replace:
@@ -217,6 +284,10 @@ def write_lesson(
 
     known_exercises = {item.get("id") for item in existing_exercises}
     known_resources = {item.get("id") for item in existing_resources}
+    if namespace:
+        output = _namespace_collisions(
+            lesson, output, set(known_exercises), set(known_resources)
+        )
 
     for exercise in output.exercises:
         if exercise["id"] in known_exercises:

@@ -7,8 +7,10 @@ UTC helpers instead of importing ``testbridge.learning``.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
+import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,9 +54,63 @@ def _step() -> dict:
     return {"status": "pending", "error": None, "at": None}
 
 
+def _process_alive(pid: int) -> bool:
+    """Return whether ``pid`` is a live process.
+
+    Windows has no signal 0, so it asks the kernel for the exit code; POSIX
+    uses the usual no-op signal. Unknown failures count as dead so a stale
+    ``running`` step never blocks the UI forever.
+    """
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        process_query_limited_information = 0x1000
+        still_active = 259
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        kernel32.OpenProcess.argtypes = [
+            ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong,
+        ]
+        kernel32.GetExitCodeProcess.argtypes = [
+            ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong),
+        ]
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        handle = kernel32.OpenProcess(
+            process_query_limited_information, False, pid
+        )
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return False
+            return code.value == still_active
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
 class DraftStore:
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        instance_id: str | None = None,
+        pid: int | None = None,
+    ) -> None:
         self.root = root
+        self.instance_id = instance_id or uuid.uuid4().hex
+        self.pid = os.getpid() if pid is None else pid
         self._lock = threading.RLock()
 
     def path(self, draft_id: str) -> Path:
@@ -195,11 +251,33 @@ class DraftStore:
             if status is not None:
                 entry["status"] = status
                 entry["at"] = _iso(_utcnow())
+                if status == "running":
+                    entry["owner"] = self.instance_id
+                    entry["pid"] = self.pid
+                else:
+                    entry.pop("owner", None)
+                    entry.pop("pid", None)
             entry["error"] = error
             if extra:
                 entry.update(extra)
             self.save(draft)
             return draft
+
+    def _owned_by_live_process(self, entry: dict) -> bool:
+        """Whether another live server owns this running step.
+
+        Two servers may share ``drafts/`` during development. Startup must not
+        mark the other server's jobs as interrupted, but a step left behind by
+        a crashed process (or by an earlier store instance in this process)
+        still needs to be released.
+        """
+        owner = entry.get("owner")
+        pid = entry.get("pid")
+        if not owner or owner == self.instance_id:
+            return False
+        if not isinstance(pid, int) or pid == self.pid:
+            return False
+        return _process_alive(pid)
 
     def mark_interrupted(self) -> int:
         changed = 0
@@ -212,11 +290,16 @@ class DraftStore:
                     else list((container or {}).values())
                 )
                 for entry in entries:
-                    if entry.get("status") == "running":
-                        entry["status"] = "failed"
-                        entry["error"] = "interrupted"
-                        changed += 1
-                        dirty = True
+                    if entry.get("status") != "running":
+                        continue
+                    if self._owned_by_live_process(entry):
+                        continue
+                    entry["status"] = "failed"
+                    entry["error"] = "interrupted"
+                    entry.pop("owner", None)
+                    entry.pop("pid", None)
+                    changed += 1
+                    dirty = True
             if dirty:
                 self.save(draft)
         return changed

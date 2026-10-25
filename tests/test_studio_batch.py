@@ -360,6 +360,23 @@ def test_batch_lessons_continues_after_failure(tmp_path: Path) -> None:
     assert len(exercises(app)) == 6
 
 
+def test_batch_lessons_namespaces_cross_lesson_ids(tmp_path: Path) -> None:
+    app = make_app(tmp_path, llm=FakeLlm(fixed_ids=True))
+    seed_draft(app)
+
+    response = app.post("/api/studio/demo/batch", json={"mode": "lessons"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["started"] == ["L-1", "L-2"]
+    ids = [item["id"] for item in exercises(app)]
+    assert ids == [
+        "EX-1-1", "EX-1-2", "EX-1-3",
+        "L-2-EX-1-1", "L-2-EX-1-2", "L-2-EX-1-3",
+    ]
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["steps"]["batch"]["status"] == "done"
+
+
 def test_batch_lessons_rewrites_failed_lesson_with_replace(tmp_path: Path) -> None:
     llm = FakeLlm(fixed_ids=True)
     app = make_app(tmp_path, llm=llm)

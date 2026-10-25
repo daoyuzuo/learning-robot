@@ -75,6 +75,64 @@ def test_mark_interrupted_flips_running(tmp_path: Path) -> None:
     assert step["error"] == "interrupted"
 
 
+def test_running_step_records_its_owner_and_pid(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts", instance_id="owner-a", pid=4242)
+    create(store)
+
+    store.set_step("demo-pack", "lessons", status="running", lesson_id="L-1")
+
+    step = store.load("demo-pack")["steps"]["lessons"]["L-1"]
+    assert step["owner"] == "owner-a"
+    assert step["pid"] == 4242
+
+    store.set_step("demo-pack", "lessons", status="done", lesson_id="L-1")
+    step = store.load("demo-pack")["steps"]["lessons"]["L-1"]
+    assert "owner" not in step
+    assert "pid" not in step
+
+
+def test_mark_interrupted_keeps_a_live_other_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = DraftStore(tmp_path / "drafts", instance_id="owner-a", pid=4242)
+    create(first)
+    first.set_step("demo-pack", "outline", status="running")
+    second = DraftStore(tmp_path / "drafts", instance_id="owner-b", pid=5252)
+    monkeypatch.setattr(
+        "testbridge.studio.store._process_alive", lambda pid: pid == 4242
+    )
+
+    assert second.mark_interrupted() == 0
+    assert second.load("demo-pack")["steps"]["outline"]["status"] == "running"
+
+
+def test_mark_interrupted_flips_a_dead_other_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = DraftStore(tmp_path / "drafts", instance_id="owner-a", pid=4242)
+    create(first)
+    first.set_step("demo-pack", "outline", status="running")
+    second = DraftStore(tmp_path / "drafts", instance_id="owner-b", pid=5252)
+    monkeypatch.setattr("testbridge.studio.store._process_alive", lambda pid: False)
+
+    assert second.mark_interrupted() == 1
+    step = second.load("demo-pack")["steps"]["outline"]
+    assert step["status"] == "failed"
+    assert step["error"] == "interrupted"
+
+
+def test_mark_interrupted_flips_a_stale_owner_in_the_same_process(
+    tmp_path: Path,
+) -> None:
+    store = make_store(tmp_path)
+    create(store)
+    store.set_step("demo-pack", "outline", status="running")
+    restarted = DraftStore(tmp_path / "drafts")
+
+    assert restarted.mark_interrupted() == 1
+    assert restarted.load("demo-pack")["steps"]["outline"]["status"] == "failed"
+
+
 def test_write_and_read_files(tmp_path: Path) -> None:
     store = make_store(tmp_path)
     create(store)

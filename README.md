@@ -25,6 +25,13 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 .venv/Scripts/python -m testbridge.cli tutor check
 ```
 
+请求遇到超时、连接错误或 `429/5xx` 时会自动重试一次；超时重试把截止时间延长到
+3 倍（最多 300 秒）。生成整节课通常超过 30 秒，使用 Studio 时建议：
+
+```bash
+export TESTBRIDGE_LLM_TIMEOUT=90
+```
+
 回答会标注依据：本课内容 / 包内资源 / 通用知识。追问记录只存在 `tutor_message` 表，不写入学习证据。
 
 ### 答后讲评
@@ -45,7 +52,9 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 
 「全部调研 / 全部写课」只跑 `pending` / `failed` 的课，按模块与课的顺序串行执行；
 单课失败不中断后续课，批量结束时汇总为 `failed`。已完成的课用「重写这一课」替换旧的
-练习与资源，不产生重复 ID。批量与单课任务互斥（运行中返回 409），批量不会自动定稿。
+练习与资源，不产生重复 ID。模型在多节课复用同一练习/资源 ID 时，写盘会自动加课程前缀
+（如 `L-002-001-EX-1`），并同步正文里的 `data-tb-exercise` / `data-tb-resource`。
+批量与单课任务互斥（运行中返回 409），批量不会自动定稿。
 旧草稿（单模块、扁平 outline、无模块字段）仍按单模块 `M01` 继续可用。
 
 草稿在 `drafts/`（已 gitignore）；密钥仍走 `TESTBRIDGE_LLM_*` 环境变量。
