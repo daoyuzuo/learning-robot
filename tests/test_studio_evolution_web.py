@@ -258,12 +258,16 @@ def test_history_page_shows_snapshot_and_current(tmp_path: Path) -> None:
 
     assert page.status_code == 200
     text = page.text
-    assert "最近快照" in text
+    assert "上一版快照" in text
     assert "当前内容" in text
-    assert text.count("练习 3 道") == 2
+    assert "studio/1" in text
+    assert "studio/2" in text
     assert "练习题干" in text
+    assert "EX-1-1" in text
+    assert "EX-5-1" in text
     assert "文档" in text
     assert "https://docs.example/x" in text
+    assert "资源可信 A 1" in text
     assert "data-action=\"restore\"" not in text
 
 
@@ -285,6 +289,8 @@ def test_history_page_without_snapshot_renders_empty_state(
         ([], "invalid_request"),
         ([{"draft_id": "demo", "lesson_id": "L-404"}], "invalid_target"),
         ([{"draft_id": "missing", "lesson_id": "L-1"}], "invalid_target"),
+        ([{"draft_id": "../evil", "lesson_id": "L-1"}], "invalid_target"),
+        ([{"draft_id": "demo", "lesson_id": "../evil"}], "invalid_target"),
     ],
 )
 def test_evolution_rejects_invalid_targets(
@@ -360,6 +366,67 @@ def test_evolution_continues_after_one_lesson_fails(tmp_path: Path) -> None:
         (tmp_path / "drafts" / "demo" / "history" / "L-1").glob("*.json")
     )
     assert len(demo_snapshots) == 1
+
+
+def test_evolution_does_not_rewrite_when_before_snapshot_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    llm = FakeLlm()
+    app = make_app(tmp_path, llm)
+    seed_draft(app, "demo")
+    write_lessons(app, "demo")
+    lesson_path = (
+        tmp_path / "drafts" / "demo"
+        / "modules" / "M01" / "lessons" / "L-1.html"
+    )
+    original = lesson_path.read_text(encoding="utf-8")
+    saves = {"count": 0}
+
+    def failing_save(store, snapshot):
+        saves["count"] += 1
+        raise OSError("disk full")
+
+    monkeypatch.setattr("web.studio.save_snapshot", failing_save)
+    llm_calls_before = llm.calls
+
+    response = app.post("/api/studio/evolution", json={"targets": [
+        {"draft_id": "demo", "lesson_id": "L-1"},
+    ]})
+
+    assert response.status_code == 200, response.text
+    assert saves["count"] == 1
+    assert llm.calls == llm_calls_before
+    assert lesson_path.read_text(encoding="utf-8") == original
+
+    state = app.get("/api/studio/evolution/status").json()
+    assert state["status"] == "failed"
+    lesson = state["results"][0]["lessons"][0]
+    assert lesson["ok"] is False
+    assert "disk full" in lesson["error"]
+
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["steps"]["lessons"]["L-1"]["status"] == "failed"
+    assert draft["steps"]["lessons"]["L-1"]["error"] == "disk full"
+    assert draft["steps"]["batch"]["status"] == "failed"
+
+
+def test_evolution_page_disabled_shows_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("web.app.load_config", lambda: None)
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts",
+        studio_packs=tmp_path / "packs",
+    ))
+    seed_draft(app, "demo")
+
+    page = app.get("/studio/evolution")
+
+    assert page.status_code == 200
+    assert "未配置模型服务" in page.text
+    assert 'data-enabled="false"' in page.text
+    assert 'data-action="start" disabled' in page.text
 
 
 def test_evolution_api_disabled_returns_503(

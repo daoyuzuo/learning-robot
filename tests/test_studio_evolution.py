@@ -18,6 +18,7 @@ from testbridge.studio.evolution import (
     draft_quality,
     latest_snapshot,
     lesson_metrics,
+    list_snapshots,
     save_snapshot,
     snapshot_lesson,
 )
@@ -207,6 +208,32 @@ def test_latest_snapshot_picks_newest(tmp_path: Path) -> None:
     )
     assert latest_snapshot(store, "demo", "L-2") is None
     assert latest_snapshot(store, "demo", "../evil") is None
+
+
+def test_list_snapshots_is_newest_first(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2", lesson_count=1,
+                 searches_per_lesson=5, model="m")
+    for created_at in (
+        "2026-10-26T08:00:00+00:00",
+        "2026-10-26T09:30:00+00:00",
+        "2026-10-26T09:00:00+00:00",
+    ):
+        save_snapshot(store, {
+            "schema": "studio-snapshot/1", "draft_id": "demo",
+            "lesson_id": "L-1", "created_at": created_at,
+            "prompt_version": "studio/2", "metrics": {},
+        })
+
+    snapshots = list_snapshots(store, "demo", "L-1")
+
+    assert [item["created_at"] for item in snapshots] == [
+        "2026-10-26T09:30:00+00:00",
+        "2026-10-26T09:00:00+00:00",
+        "2026-10-26T08:00:00+00:00",
+    ]
+    assert list_snapshots(store, "demo", "L-2") == []
+    assert list_snapshots(store, "../evil", "L-1") == []
 
 
 def test_snapshot_rejects_invalid_draft_id(tmp_path: Path) -> None:

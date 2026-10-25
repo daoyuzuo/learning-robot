@@ -40,7 +40,8 @@
 
   function qualityLine(quality) {
     if (!quality) return "质量分不可用";
-    return "质量 " + quality.score + "/" + quality.possible;
+    return "质量 " + quality.score + "/" + quality.possible +
+      (quality.ok === false ? "（未通过）" : "");
   }
 
   function qualityDelta(before, after) {
@@ -63,6 +64,7 @@
       item.appendChild(node(
         "span", "失败：" + (lesson.error || "未知错误"), "tb-error"
       ));
+      item.appendChild(historyLink(draftId, lesson.lesson_id));
       return item;
     }
     const before = lesson.before || {};
@@ -148,6 +150,7 @@
       const payload = await call("/api/studio/evolution/status");
       render(payload);
       if (payload.status === "running") {
+        if (start) start.disabled = true;
         startPolling();
       } else {
         stopPolling();

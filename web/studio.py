@@ -25,7 +25,7 @@ from testbridge.studio.evolution import (
     EvolutionJob,
     compare_snapshots,
     draft_quality,
-    latest_snapshot,
+    list_snapshots,
     save_snapshot,
     snapshot_lesson,
     timestamp_now,
@@ -56,7 +56,7 @@ from testbridge.studio.prompts import (
 )
 from testbridge.studio.search import SearchProvider
 from testbridge.studio.search_router import SearchRoute, SearchRouter
-from testbridge.studio.store import DraftError, DraftStore
+from testbridge.studio.store import ID_RE, DraftError, DraftStore
 from testbridge.studio.version import PROMPT_VERSION
 from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
@@ -429,11 +429,30 @@ def mount_studio(
         wanted: dict[str, set[str]] = {}
         draft_order: list[str] = []
         seen: set[tuple[str, str]] = set()
+        plan_cache: dict[str, list[str]] = {}
+
+        def plan_ids(draft_id: str) -> list[str]:
+            if draft_id not in plan_cache:
+                plan_cache[draft_id] = [
+                    plan.lesson_id for plan in outline_plans(draft_id)
+                ]
+            return plan_cache[draft_id]
+
         for target in body.targets:
             key = (target.draft_id, target.lesson_id)
             if key in seen:
                 continue
             seen.add(key)
+            if not ID_RE.fullmatch(target.draft_id) or not ID_RE.fullmatch(
+                target.lesson_id
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "invalid_target",
+                        "message": "草稿或课程 ID 不合法",
+                    },
+                )
             if not store.exists(target.draft_id):
                 raise HTTPException(
                     status_code=400,
@@ -442,9 +461,7 @@ def mount_studio(
                         "message": f"草稿不存在：{target.draft_id}",
                     },
                 )
-            if target.lesson_id not in {
-                plan.lesson_id for plan in outline_plans(target.draft_id)
-            }:
+            if target.lesson_id not in plan_ids(target.draft_id):
                 raise HTTPException(
                     status_code=400,
                     detail={
@@ -461,9 +478,8 @@ def mount_studio(
             (
                 draft_id,
                 [
-                    plan.lesson_id
-                    for plan in outline_plans(draft_id)
-                    if plan.lesson_id in wanted[draft_id]
+                    lesson_id for lesson_id in plan_ids(draft_id)
+                    if lesson_id in wanted[draft_id]
                 ],
             )
             for draft_id in draft_order
@@ -546,14 +562,25 @@ def mount_studio(
                 status_code=404,
                 detail={"code": "lesson_not_found", "message": "课程不存在"},
             )
+        current = snapshot_lesson(store, draft_id, plan)
+        current_hash = (current.get("metrics") or {}).get("html_hash")
+        snapshots = list_snapshots(store, draft_id, lesson_id)
+        before = next(
+            (
+                snapshot for snapshot in snapshots
+                if (snapshot.get("metrics") or {}).get("html_hash")
+                != current_hash
+            ),
+            snapshots[0] if snapshots else None,
+        )
         return templates.TemplateResponse(
             request=request, name="studio_history.html",
             context=ctx(
                 request,
                 draft=draft,
                 plan=plan,
-                before=latest_snapshot(store, draft_id, lesson_id),
-                current=snapshot_lesson(store, draft_id, plan),
+                before=before,
+                current=current,
             ),
         )
 

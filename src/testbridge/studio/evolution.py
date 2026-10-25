@@ -196,6 +196,23 @@ def latest_snapshot(
     return json.loads(files[-1].read_text(encoding="utf-8"))
 
 
+def list_snapshots(
+    store: DraftStore, draft_id: str, lesson_id: str
+) -> list[dict]:
+    """Return every snapshot for a lesson, newest first."""
+    if not ID_RE.fullmatch(str(draft_id)) or not ID_RE.fullmatch(
+        str(lesson_id)
+    ):
+        return []
+    root = store.path(draft_id) / "history" / lesson_id
+    if not root.is_dir():
+        return []
+    return [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(root.glob("*.json"), reverse=True)
+    ]
+
+
 def compare_snapshots(before: dict, after: dict) -> dict:
     """Summarize the differences between two snapshots."""
     old = before.get("metrics") or EMPTY_METRICS
