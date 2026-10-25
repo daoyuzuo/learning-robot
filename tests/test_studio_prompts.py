@@ -23,3 +23,8 @@ def test_lesson_prompt_embeds_all_sections() -> None:
     assert "<outline>" in prompt
     assert "<concepts>" in prompt
     assert "<research>" in prompt
+
+
+def test_lesson_prompt_encodes_quality_gates() -> None:
+    for token in ("至少 2 道", "target_level", "每个概念", "A/B"):
+        assert token in LESSON_SYSTEM

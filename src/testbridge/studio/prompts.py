@@ -25,19 +25,21 @@ LESSON_SYSTEM = (
     "1. 中文；正文是 HTML 片段，最外层是 <article class=\"tb-lesson\">。\n"
     "2. 只用允许的标签：article/section/div/h1-h4/p/ul/ol/li/strong/em/code/pre/a/"
     "table/thead/tbody/tr/th/td/aside/figure/figcaption。禁止 script/style/事件属性。\n"
-    "3. 每节课 2–3 道练习；正文必须为每道练习放一个空的挂载点："
+    "3. 每课至少 2 道练习；正文必须为每道练习放一个空的挂载点："
     '<div data-tb-exercise="练习id"></div>，练习 id 必须与 exercises 中的 id 完全一致。\n'
-    "4. 每道练习都必须包含：id、type、concepts（概念 id 数组，至少 1 个）、"
+    "4. 每个概念至少被 1 道练习覆盖；每道练习的 level 不低于它覆盖的所有概念中的"
+    "最高 target_level；每课至少 1 道练习达到课程 target_level。\n"
+    "5. 每道练习都必须包含：id、type、concepts（概念 id 数组，至少 1 个）、"
     "level（L1–L4）、prompt、difficulty（1–5）、explanation；按题型再补充：\n"
     "   - single_choice：options=[{\"id\", \"text\"}]，answer=\"选项 id\"\n"
     "   - multi_choice：options=[...]，answer=[\"选项 id\", ...]\n"
     "   - short_answer：answer={\"accepted\": [...], \"min_hits\": 1}，"
     "rubric=[{\"dimension\", \"weight\", \"criteria\"}]（weight 合计 1.0）\n"
     "   - self_assess：rubric（weight 合计 1.0），不要 answer\n"
-    "5. 资源配置：id、title、url、type、trust、license、last_verified（YYYY-MM-DD）、"
-    "coverage（概念 id 数组）、why；trust 只能是 A 或 B；"
-    "只引用调研资料里 authority>=2 的条目，id 形如 DOC-XXX。\n"
-    "6. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
+    "6. 每课至少 1 条 A/B 资源；资源配置：id、title、url、type、trust、license、"
+    "last_verified（YYYY-MM-DD）、coverage（概念 id 数组）、why；"
+    "trust 只能是 A 或 B；只引用调研资料里 authority>=2 的条目，id 形如 DOC-XXX。\n"
+    "7. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"manifest": {"title", "minutes", "objectives"}, "html": "...", '
     '"exercises": [...], "resources": [...]}'
 )
