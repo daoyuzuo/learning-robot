@@ -47,19 +47,41 @@ class GradeSuggestion:
     model: str | None = None
 
 
+def safe_text(value: object) -> str:
+    """Return UTF-8 encodable text, replacing lone surrogates.
+
+    Model replies and user answers are untrusted: a lone surrogate parses as
+    valid JSON but cannot be stored by sqlite3. Sanitize before persistence.
+    """
+
+    if not isinstance(value, str):
+        return ""
+    return value.encode("utf-8", "replace").decode("utf-8")
+
+
 def build_user_prompt(
     question: InterviewQuestion,
     answer: str,
     concepts: dict[str, Concept],
 ) -> str:
-    titles = [
-        concepts[cid].title for cid in question.concepts if cid in concepts
-    ]
+    concept_lines: list[str] = []
+    for concept_id in question.concepts:
+        concept = concepts.get(concept_id)
+        if concept is None:
+            continue
+        concept_lines.append(
+            f"- {concept.title}（目标等级 {concept.target_level}）"
+        )
+        for criterion in concept.evidence_criteria:
+            concept_lines.append(
+                f"  - 证据标准 {criterion.level}：{criterion.description}"
+            )
     lines = [
         f"题目：{question.title}",
         question.prompt,
         "",
-        "本题概念：" + "、".join(titles),
+        "本题概念：",
+        *concept_lines,
         "评分维度：",
     ]
     for item in question.rubric:
@@ -108,12 +130,16 @@ def parse_suggestion(
         score = item.get("score")
         if isinstance(score, bool) or not isinstance(score, (int, float)):
             raise ScoringError(f"维度 {dimension} 的分数不是数字")
-        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+        try:
+            numeric = float(score)
+        except (OverflowError, ValueError) as exc:
+            raise ScoringError(f"维度 {dimension} 的分数越界") from exc
+        if not math.isfinite(numeric) or not 0.0 <= numeric <= 1.0:
             raise ScoringError(f"维度 {dimension} 的分数越界")
         rationale = item.get("rationale")
         seen[dimension] = (
-            float(score),
-            _clip(rationale, MAX_RATIONALE) if isinstance(rationale, str) else "",
+            numeric,
+            _clip(safe_text(rationale), MAX_RATIONALE),
         )
 
     missing = [dimension for dimension in expected if dimension not in seen]
@@ -134,8 +160,7 @@ def parse_suggestion(
             )
             for item in question.rubric
         ],
-        summary=_clip(data.get("summary"), MAX_SUMMARY)
-        if isinstance(data.get("summary"), str) else "",
+        summary=_clip(safe_text(data.get("summary")), MAX_SUMMARY),
         strengths=_items(data.get("strengths")),
         gaps=_items(data.get("gaps")),
         model=model,
@@ -200,9 +225,13 @@ def validate_confirmed_scores(
         score = item.get("score")
         if isinstance(score, bool) or not isinstance(score, (int, float)):
             raise ValueError(f"维度 {dimension} 的分数不是数字")
-        if not 0.0 <= float(score) <= 1.0:
+        try:
+            numeric = float(score)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError(f"维度 {dimension} 的分数越界") from exc
+        if not math.isfinite(numeric) or not 0.0 <= numeric <= 1.0:
             raise ValueError(f"维度 {dimension} 的分数越界")
-        seen[dimension] = float(score)
+        seen[dimension] = numeric
     if set(seen) != set(expected):
         raise ValueError("确认分数必须覆盖全部 rubric 维度")
     return [
@@ -224,6 +253,6 @@ def _items(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     return [
-        item[:MAX_ITEM_CHARS] for item in value
+        _clip(safe_text(item), MAX_ITEM_CHARS) for item in value
         if isinstance(item, str) and item
     ][:MAX_LIST_ITEMS]

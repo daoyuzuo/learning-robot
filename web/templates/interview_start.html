@@ -29,14 +29,21 @@
   </form>
   <h2>最近会话</h2>
   {% if sessions %}
+  {% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
   <table>
     <tr><th>时间</th><th>状态</th><th>题数</th><th></th></tr>
     {% for session in sessions %}
     <tr>
       <td>{{ session.created_at }}</td>
-      <td>{{ session.status }}</td>
+      <td data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</td>
       <td>{{ session.question_ids|length }}</td>
-      <td><a href="/interview/session/{{ session.id }}/summary">查看</a></td>
+      <td>
+        {% if session.status == "running" %}
+        <a href="/interview/session/{{ session.id }}">继续</a>
+        {% else %}
+        <a href="/interview/session/{{ session.id }}/summary">查看</a>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

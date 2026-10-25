@@ -2,7 +2,14 @@
 {% block title %}面试汇总 · TestBridge{% endblock %}
 {% block content %}
 <h1>面试汇总</h1>
-<p class="tb-meta">{{ session.created_at }} · {{ session.status }} · {{ session.question_ids|length }} 题</p>
+{% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
+<p class="tb-meta" data-status="{{ session.status }}">{{ session.created_at }} · {{ status_labels.get(session.status, session.status) }} · {{ session.question_ids|length }} 题</p>
+{% if missing_questions %}
+  <p class="tb-interview-error">题目已不在题库中：{{ missing_questions|join("、") }}</p>
+{% endif %}
+{% if session.status == "running" %}
+  <p><a href="/interview/session/{{ session.id }}">继续作答</a></p>
+{% endif %}
 {% if session.status != "completed" %}
   <p class="tb-meta">本次尚未完成，以下只统计已确认的题目。</p>
 {% endif %}
@@ -10,9 +17,10 @@
 <table>
   <tr><th>题目</th><th>概念</th><th>分数</th><th>回答</th><th>证据</th></tr>
   {% for answer in summary.answers %}
+  {% set question = questions.get(answer.question_id) %}
   <tr>
-    <td>{{ questions[answer.question_id].title }}</td>
-    <td>{{ questions[answer.question_id].concepts|join("、") }}</td>
+    <td>{% if question %}{{ question.title }}{% else %}题目已不在题库中{% endif %}</td>
+    <td>{% if question %}{{ question.concepts|join("、") }}{% else %}—{% endif %}</td>
     <td>{% if answer.question_id in summary.question_totals %}{{ "%.2f"|format(summary.question_totals[answer.question_id]) }}{% else %}—{% endif %}</td>
     <td>
       {% if answer.answer %}
@@ -20,8 +28,10 @@
       {% else %}—{% endif %}
     </td>
     <td>
-      {% if answer.evidence_id %}
-        <a href="/progress?concept={{ questions[answer.question_id].concepts[0] }}">下钻</a>
+      {% if answer.evidence_id and question %}
+        <a href="/progress?concept={{ question.concepts[0] }}">下钻</a>
+      {% elif answer.evidence_id %}
+        已确认
       {% else %}
         未确认
       {% endif %}

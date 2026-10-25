@@ -95,7 +95,9 @@ def mount_interview(
             context=ctx(
                 request,
                 weak=weak_preview(),
-                sessions=store.list_sessions(learner_id, limit=5),
+                sessions=store.list_sessions(
+                    learner_id, limit=5, pack_id=pack.meta.id
+                ),
                 concepts=[
                     {"id": cid, "title": pack.concepts[cid].title}
                     for cid in (bank.concepts_with_questions() if bank else [])
@@ -139,7 +141,10 @@ def mount_interview(
         answers = service.answers(session_id)
         index = min(session.current_index, len(session.question_ids) - 1)
         question_id = session.question_ids[index]
-        question = bank.by_id(question_id)
+        try:
+            question = service._question(session, question_id)
+        except SessionError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
         answer = answers.get(question_id)
         return templates.TemplateResponse(
             request=request,
@@ -204,11 +209,15 @@ def mount_interview(
         if not isinstance(scores, list):
             raise HTTPException(status_code=400, detail="scores 必须是数组")
         try:
+            duration_ms = int(payload.get("duration_ms", 0))
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise HTTPException(status_code=400, detail="时长必须是整数") from exc
+        try:
             evidence_id = service.confirm(
                 session_id,
                 str(payload.get("question_id") or ""),
                 scores,
-                duration_ms=int(payload.get("duration_ms", 0)),
+                duration_ms=duration_ms,
             )
         except (SessionError, ValueError, TypeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -225,10 +234,14 @@ def mount_interview(
     def interview_summary(request: Request, session_id: str):
         session = session_or_404(session_id)
         summary = service.summary(session_id)
-        questions = {
-            question_id: bank.by_id(question_id)
-            for question_id in session.question_ids
-        }
+        questions: dict[str, object] = {}
+        missing_questions: list[str] = []
+        for question_id in session.question_ids:
+            try:
+                questions[question_id] = bank.by_id(question_id)
+            except KeyError:
+                questions[question_id] = None
+                missing_questions.append(question_id)
         return templates.TemplateResponse(
             request=request,
             name="interview_summary.html",
@@ -237,6 +250,7 @@ def mount_interview(
                 session=session,
                 summary=summary,
                 questions=questions,
+                missing_questions=missing_questions,
             ),
         )
 

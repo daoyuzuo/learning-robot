@@ -356,3 +356,141 @@ def test_malformed_duration_is_400(tmp_path: Path) -> None:
         },
     )
     assert response.status_code == 400
+    assert "时长必须是整数" in response.text
+
+
+def test_non_finite_duration_is_400(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    payload = {
+        "question_id": question_id,
+        "scores": [
+            {"dimension": item["dimension"], "score": 0.6}
+            for item in graded["scores"]
+        ],
+        "duration_ms": 0,
+    }
+    # JSON has no Infinity literal; 1e400 parses to inf on the server.
+    raw = json.dumps(payload).replace('"duration_ms": 0', '"duration_ms": 1e400')
+    response = c.post(
+        f"/api/interview/session/{session_id}/confirm",
+        content=raw,
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 400
+    assert "时长必须是整数" in response.text
+
+
+class HugeScoreClient:
+    """Return valid rubrics but with an integer too large for float()."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, system: str, user: str) -> str:
+        self.calls += 1
+        dimensions = re.findall(r"^- (.+?)（权重", user, flags=re.MULTILINE)
+        return json.dumps({
+            "scores": [
+                {"dimension": dimension, "score": int("9" * 400)}
+                for dimension in dimensions
+            ],
+            "summary": "huge", "strengths": [], "gaps": [],
+        }, ensure_ascii=False)
+
+
+def test_grade_huge_integer_falls_back_to_manual(tmp_path: Path) -> None:
+    client = HugeScoreClient()
+    c = make_app(tmp_path, llm=client, config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    )
+    assert graded.status_code == 200
+    assert graded.json()["mode"] == "manual"
+    assert client.calls == 2
+
+
+def test_confirm_huge_integer_score_is_400(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    response = c.post(
+        f"/api/interview/session/{session_id}/confirm",
+        json={
+            "question_id": question_id,
+            "scores": [
+                {"dimension": item["dimension"], "score": int("9" * 400)}
+                for item in graded["scores"]
+            ],
+            "duration_ms": 1000,
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_cross_pack_session_is_not_listed_and_does_not_500(
+    tmp_path: Path,
+) -> None:
+    db = tmp_path / "i.db"
+    first = TestClient(create_app(
+        SAMPLE, db, interview_banks=BANKS,
+        interview_llm=FakeClient(), interview_config=CONFIG,
+    ))
+    session_id = start_session(first)
+    ros2 = ROOT / "content-packs" / "ros2-qos"
+    second = TestClient(create_app(
+        ros2, db, interview_banks=BANKS,
+        interview_llm=FakeClient(), interview_config=CONFIG,
+    ))
+    start_page = second.get("/interview")
+    assert start_page.status_code == 200
+    assert session_id not in start_page.text
+    assert second.get(f"/interview/session/{session_id}").status_code == 404
+    summary = second.get(f"/interview/session/{session_id}/summary")
+    assert summary.status_code == 200
+    assert "题目已不在题库中" in summary.text
+
+
+def test_start_page_links_running_session_to_continue(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get("/interview").text
+    assert f'href="/interview/session/{session_id}"' in page
+    assert "继续" in page
+    assert "进行中" in page
+    assert "running" in page
+
+
+def test_abandoned_session_offers_no_continue(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    assert c.post(f"/api/interview/session/{session_id}/abandon",
+                  json={}).status_code == 200
+    summary = c.get(f"/interview/session/{session_id}/summary")
+    assert summary.status_code == 200
+    assert "继续作答" not in summary.text
+    assert "已放弃" in summary.text
+    page = c.get("/interview").text
+    assert f'href="/interview/session/{session_id}/summary"' in page
+    assert "已放弃" in page

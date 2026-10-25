@@ -122,18 +122,28 @@ class InterviewStore:
             ).fetchone()
         return self._row_to_session(row) if row else None
 
-    def list_sessions(self, learner_id: str, limit: int = 5) -> list[InterviewSession]:
-        with sqlite3.connect(self.path) as conn:
-            conn.row_factory = sqlite3.Row
-            rows = conn.execute(
-                """
+    def list_sessions(
+        self,
+        learner_id: str,
+        limit: int = 5,
+        pack_id: str | None = None,
+    ) -> list[InterviewSession]:
+        query = """
                 SELECT * FROM interview_session
                 WHERE learner_id = ?
+                """
+        params: list[object] = [learner_id]
+        if pack_id is not None:
+            query += " AND pack_id = ?"
+            params.append(pack_id)
+        query += """
                 ORDER BY created_at DESC, rowid DESC
                 LIMIT ?
-                """,
-                (learner_id, limit),
-            ).fetchall()
+                """
+        params.append(limit)
+        with sqlite3.connect(self.path) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(query, params).fetchall()
         return [self._row_to_session(row) for row in rows]
 
     def update_session(self, session: InterviewSession) -> None:

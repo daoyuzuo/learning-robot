@@ -33,6 +33,26 @@ def test_list_sessions_newest_first_with_limit(tmp_path: Path) -> None:
     assert first.id != second.id
 
 
+def test_list_sessions_filters_by_pack(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    sample = store.create_session(
+        learner_id="local", pack_id="sample-sensors",
+        question_ids=["q1"], concept_ids=["c1"],
+    )
+    ros2 = store.create_session(
+        learner_id="local", pack_id="ros2-qos",
+        question_ids=["q2"], concept_ids=["c2"],
+    )
+    filtered = store.list_sessions("local", pack_id="sample-sensors")
+    assert [item.id for item in filtered] == [sample.id]
+    assert [item.id for item in store.list_sessions("local", pack_id="ros2-qos")] == [
+        ros2.id
+    ]
+    assert {item.id for item in store.list_sessions("local")} == {
+        sample.id, ros2.id
+    }
+
+
 def test_update_session(tmp_path: Path) -> None:
     from dataclasses import replace
 

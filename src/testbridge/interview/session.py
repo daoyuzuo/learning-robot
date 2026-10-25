@@ -13,6 +13,7 @@ from testbridge.interview.scoring import (
     DimensionScore,
     GradeSuggestion,
     grade_with_llm,
+    safe_text,
     total_score,
     validate_confirmed_scores,
 )
@@ -115,6 +116,7 @@ class InterviewService:
     ) -> InterviewAnswer:
         session = self._running(session_id)
         question = self._question(session, question_id)
+        answer = safe_text(answer)
         if len(answer) > MAX_ANSWER_CHARS:
             raise SessionError(f"回答不能超过 {MAX_ANSWER_CHARS} 字符")
         existing = self.store.get_answer(session_id, question_id)
@@ -153,7 +155,10 @@ class InterviewService:
     ) -> InterviewQuestion:
         if question_id not in session.question_ids:
             raise SessionError("题目不属于本次会话")
-        return self.bank.by_id(question_id)
+        try:
+            return self.bank.by_id(question_id)
+        except KeyError as exc:
+            raise SessionError("题目已不在题库中") from exc
 
     def grade(self, session_id: str, question_id: str) -> GradeSuggestion:
         session = self._running(session_id)
@@ -324,7 +329,10 @@ class InterviewService:
             for score in item.confirmed_scores:
                 totals.setdefault(score["dimension"], []).append(float(score["score"]))
             if question_total < 0.5:
-                question = self.bank.by_id(item.question_id)
+                try:
+                    question = self.bank.by_id(item.question_id)
+                except KeyError:
+                    continue
                 for concept_id in question.concepts:
                     if concept_id not in weakest:
                         weakest.append(concept_id)
