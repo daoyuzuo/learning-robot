@@ -217,6 +217,20 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] 写课提示词包含质量约束
 - [x] P3.2 前 369 个测试无回归；当前全量 421 passed（2 个 live 默认取消选择）
 
+### P3.2 遗留（合并后记录）
+
+- **溯源信任缺口（需 spec 决策）**：资源 URL 只要出现在任意调研命中即可追溯，
+  未要求命中本身为 A/B；模型可把 C 级来源标成 `trust: A` 绕过。留待 P3.3 或
+  单独 spec 决定是否要求匹配命中为 A/B。
+- 重新生成课程后，页面继续显示上一次校验分数，直到再次校验；定稿门禁每次
+  重算，不影响安全。
+- `tb quality --json` 遇结构无效包仍打印人类可读错误（非 JSON）；显式空
+  `--research-dir ""` 的文案显示 `None`。
+- `evaluate_provenance(include_metrics=...)` 只控制 trust/metadata 两项指标，
+  traceable/dossiers/queries 不受控；当前无调用者触发。
+- 依赖边界测试只匹配 `testbridge.<module>` 字符串，不覆盖相对 import。
+- `test_force_does_not_bypass_quality` 在两个测试文件中重名（行为各自独立）。
+
 ---
 
 ## 后续期摘要
