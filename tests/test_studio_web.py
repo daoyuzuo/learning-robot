@@ -95,13 +95,16 @@ LESSON_JSON = (
 
 
 class FakeLlm:
-    def __init__(self) -> None:
+    def __init__(self, outline_json: str = OUTLINE_JSON) -> None:
         self.calls = 0
+        self.outline_json = outline_json
+        self.outline_prompts: list[str] = []
 
     def complete(self, system: str, user: str) -> str:
         self.calls += 1
         if "课程设计师" in system:
-            return OUTLINE_JSON
+            self.outline_prompts.append(user)
+            return self.outline_json
         return LESSON_JSON
 
 
@@ -119,12 +122,12 @@ class FakeSearch:
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
 
 
-def make_app(tmp_path: Path) -> TestClient:
+def make_app(tmp_path: Path, llm: FakeLlm | None = None) -> TestClient:
     return TestClient(create_app(
         SAMPLE, tmp_path / "e.db",
         studio_drafts=tmp_path / "drafts",
         studio_packs=tmp_path / "packs",
-        studio_llm=FakeLlm(),
+        studio_llm=llm or FakeLlm(),
         studio_search=FakeSearch(),
         studio_config=CONFIG,
     ))
@@ -154,12 +157,55 @@ def test_studio_list_page_renders(tmp_path: Path) -> None:
     assert "新建草稿" in make_app(tmp_path).get("/studio").text
 
 
+def test_studio_list_offers_module_fields(tmp_path: Path) -> None:
+    page = make_app(tmp_path).get("/studio").text
+    assert 'name="module_count"' in page
+    assert 'name="lessons_per_module"' in page
+    assert 'name="lesson_count"' not in page
+
+
 def test_create_draft_runs_outline(tmp_path: Path) -> None:
     app = make_app(tmp_path)
     create_draft(app)
     draft = app.app.state.studio_store.load("demo")
     assert draft["steps"]["outline"]["status"] == "done"
     assert (tmp_path / "drafts" / "demo" / "outline.html").is_file()
+    assert draft["module_count"] == 1
+    assert draft["lessons_per_module"] == 1
+
+
+def test_create_draft_with_module_counts(tmp_path: Path) -> None:
+    llm = FakeLlm(MULTI_OUTLINE_JSON)
+    app = make_app(tmp_path, llm)
+    response = app.post("/studio", data={
+        "draft_id": "multi", "topic": "t", "level": "L2",
+        "module_count": "2", "lessons_per_module": "2",
+        "searches_per_lesson": "5",
+    }, follow_redirects=False)
+
+    assert response.status_code == 303
+    draft = app.app.state.studio_store.load("multi")
+    assert draft["module_count"] == 2
+    assert draft["lessons_per_module"] == 2
+    assert draft["lesson_count"] == 4
+    assert draft["steps"]["outline"]["status"] == "done"
+    assert "模块数：2" in llm.outline_prompts[-1]
+    assert "每模块课数：2" in llm.outline_prompts[-1]
+    page = app.get("/studio/multi")
+    assert "2 模块" in page.text
+    assert "2 课/模块" in page.text
+
+
+def test_create_rejects_inconsistent_counts(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    response = app.post("/studio", data={
+        "draft_id": "bad", "topic": "t", "level": "L2",
+        "module_count": "2", "lessons_per_module": "2", "lesson_count": "3",
+        "searches_per_lesson": "5",
+    }, follow_redirects=False)
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_lesson_count"
 
 
 def test_draft_page_renders_steps(tmp_path: Path) -> None:

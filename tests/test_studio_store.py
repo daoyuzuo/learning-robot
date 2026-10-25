@@ -107,3 +107,55 @@ def test_search_backend_defaults_and_validates(tmp_path: Path) -> None:
             searches_per_lesson=5, model="m", prompt_version="studio/1",
             search_backend="bogus",
         )
+
+
+def test_module_fields_default_and_validate(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    draft = store.create(
+        draft_id="multi", topic="t", level="L2",
+        module_count=2, lessons_per_module=3, searches_per_lesson=5,
+        model="m", prompt_version="studio/1",
+    )
+    assert draft["module_count"] == 2
+    assert draft["lessons_per_module"] == 3
+    assert draft["lesson_count"] == 6
+
+    with pytest.raises(DraftError):
+        store.create(
+            draft_id="bad-modules", topic="t", level="L2",
+            module_count=4, lessons_per_module=1, searches_per_lesson=5,
+            model="m", prompt_version="studio/1",
+        )
+
+
+def test_legacy_lesson_count_still_works(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    draft = store.create(
+        draft_id="legacy", topic="t", level="L2", lesson_count=2,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    assert draft["module_count"] == 1
+    assert draft["lessons_per_module"] == 2
+    assert draft["lesson_count"] == 2
+
+
+def test_rejects_inconsistent_lesson_count(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    with pytest.raises(DraftError) as excinfo:
+        store.create(
+            draft_id="mismatch", topic="t", level="L2",
+            module_count=2, lessons_per_module=2, lesson_count=3,
+            searches_per_lesson=5, model="m", prompt_version="studio/1",
+        )
+    assert excinfo.value.code == "invalid_lesson_count"
+
+
+def test_rejects_bad_lessons_per_module(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    with pytest.raises(DraftError) as excinfo:
+        store.create(
+            draft_id="too-many-lessons", topic="t", level="L2",
+            module_count=1, lessons_per_module=6,
+            searches_per_lesson=5, model="m", prompt_version="studio/1",
+        )
+    assert excinfo.value.code == "invalid_lessons_per_module"

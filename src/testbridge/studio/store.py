@@ -16,8 +16,8 @@ SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 STEPS = ("outline", "research", "lessons", "validation", "promote")
 SEARCH_BACKENDS = ("auto", "deepseek", "openalex")
-MIN_LESSONS = 1
-MAX_LESSONS = 5
+MAX_MODULES = 3
+MAX_LESSONS_PER_MODULE = 5
 MIN_SEARCHES = 1
 MAX_SEARCHES = 50
 
@@ -65,7 +65,9 @@ class DraftStore:
         draft_id: str,
         topic: str,
         level: str,
-        lesson_count: int,
+        module_count: int = 1,
+        lessons_per_module: int | None = None,
+        lesson_count: int | None = None,
         searches_per_lesson: int,
         model: str,
         prompt_version: str,
@@ -73,8 +75,18 @@ class DraftStore:
     ) -> dict:
         if not ID_RE.fullmatch(draft_id):
             raise DraftError("invalid_id", "草稿 ID 只能包含字母、数字和连字符")
-        if not MIN_LESSONS <= lesson_count <= MAX_LESSONS:
-            raise DraftError("invalid_lesson_count", "课数必须在 1–5 之间")
+        if lessons_per_module is None:
+            lessons_per_module = lesson_count or 1
+        if lesson_count is None:
+            lesson_count = module_count * lessons_per_module
+        if not 1 <= module_count <= MAX_MODULES:
+            raise DraftError("invalid_module_count", "模块数必须在 1–3 之间")
+        if not 1 <= lessons_per_module <= MAX_LESSONS_PER_MODULE:
+            raise DraftError(
+                "invalid_lessons_per_module", "每模块课数必须在 1–5 之间"
+            )
+        if lesson_count != module_count * lessons_per_module:
+            raise DraftError("invalid_lesson_count", "总课数与模块数不匹配")
         if not MIN_SEARCHES <= searches_per_lesson <= MAX_SEARCHES:
             raise DraftError("invalid_search_budget", "每课检索次数必须在 1–50 之间")
         if search_backend not in SEARCH_BACKENDS:
@@ -90,6 +102,8 @@ class DraftStore:
             "id": draft_id,
             "topic": topic,
             "level": level,
+            "module_count": module_count,
+            "lessons_per_module": lessons_per_module,
             "lesson_count": lesson_count,
             "searches_per_lesson": searches_per_lesson,
             "model": model,

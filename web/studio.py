@@ -157,14 +157,18 @@ def mount_studio(
 
     def generate_outline(draft_id: str) -> None:
         draft = store.load(draft_id)
+        module_count = int(draft.get("module_count") or 1)
+        lessons_per_module = int(
+            draft.get("lessons_per_module") or draft.get("lesson_count") or 1
+        )
         parsed = generate(
             draft_id,
             OUTLINE_SYSTEM,
             render_outline_prompt(
-                draft["topic"], draft["level"], 1, draft["lesson_count"]
+                draft["topic"], draft["level"], module_count, lessons_per_module
             ),
             lambda raw: outline_writer.parse_outline_json(
-                raw, 1, draft["lesson_count"]
+                raw, module_count, lessons_per_module
             ),
         )
         write_outline(store, draft_id, parsed)
@@ -237,7 +241,9 @@ def mount_studio(
         draft_id: str = Form(...),
         topic: str = Form(...),
         level: str = Form("L2"),
-        lesson_count: int = Form(3),
+        module_count: int = Form(1),
+        lessons_per_module: int | None = Form(None),
+        lesson_count: int | None = Form(None),
         searches_per_lesson: int = Form(20),
         search_backend: str = Form("auto"),
     ):
@@ -249,7 +255,10 @@ def mount_studio(
         try:
             store.create(
                 draft_id=draft_id, topic=topic, level=level,
-                lesson_count=lesson_count, searches_per_lesson=searches_per_lesson,
+                module_count=module_count,
+                lessons_per_module=lessons_per_module,
+                lesson_count=lesson_count,
+                searches_per_lesson=searches_per_lesson,
                 model=config.model if config else "unconfigured",
                 prompt_version="studio/1",
                 search_backend=search_backend,
