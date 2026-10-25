@@ -207,3 +207,22 @@ def test_manifest_concepts_prefer_lesson_plan(tmp_path: Path) -> None:
         .split(">", 1)[1]
     )
     assert manifest["concepts"] == ["plan-a", "plan-b"]
+
+
+def test_cross_lesson_id_collisions_are_namespaced(tmp_path: Path) -> None:
+    store = setup(tmp_path)
+    output = parse_lesson_json(json.dumps(PAYLOAD), LESSON, {"executor-basics"})
+    write_lesson(store, "demo", LESSON, output, namespace=True)
+
+    second = LessonPlan(
+        "L-EXEC-002", "课二", 20, ["o"], [],
+        module_id="M01", concepts=["executor-basics"],
+    )
+    write_lesson(store, "demo", second, output, namespace=True)
+
+    exercises = yaml.safe_load(store.read("demo", "exercises.yaml"))["exercises"]
+    resources = yaml.safe_load(store.read("demo", "resources.yaml"))["resources"]
+    assert [item["id"] for item in exercises] == ["EX-1", "L-EXEC-002-EX-1"]
+    assert [item["id"] for item in resources] == ["DOC-1", "L-EXEC-002-DOC-1"]
+    html = store.read("demo", "modules/M01/lessons/L-EXEC-002.html")
+    assert 'data-tb-exercise="L-EXEC-002-EX-1"' in html
