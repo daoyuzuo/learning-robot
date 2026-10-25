@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
 from testbridge.career.store import TargetJd, TargetJdStore
@@ -30,11 +31,21 @@ def test_save_and_get_roundtrip(tmp_path: Path) -> None:
     assert loaded.updated_at
 
 
-def test_save_refreshes_updated_at(tmp_path: Path) -> None:
+def test_save_refreshes_updated_at(tmp_path: Path, monkeypatch) -> None:
+    instants = iter([
+        datetime(2026, 10, 26, 1, 0, 0, tzinfo=timezone.utc),
+        datetime(2026, 10, 26, 1, 0, 1, tzinfo=timezone.utc),
+    ])
+    monkeypatch.setattr(
+        "testbridge.career.store.utcnow", lambda: next(instants)
+    )
     store = make_store(tmp_path)
     first = store.save(TargetJd(learner_id="local", source_text="first"))
     second = store.save(TargetJd(learner_id="local", source_text="second"))
-    assert second.updated_at != first.updated_at
+    loaded = store.get()
+    assert first.updated_at != second.updated_at
+    assert loaded is not None
+    assert loaded.updated_at == second.updated_at
 
 
 def test_roundtrip_preserves_source_and_model(tmp_path: Path) -> None:
