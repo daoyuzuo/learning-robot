@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -125,8 +126,26 @@ def create_app(
         studio_llm = OpenAICompatibleClient(studio_cfg)
     if studio_cfg is not None and studio_search is None:
         from testbridge.studio.search import DeepSeekSearch
+        from testbridge.studio.search_openalex import OpenAlexSearch
+        from testbridge.studio.search_router import SearchRouter
 
-        studio_search = DeepSeekSearch(studio_cfg)
+        try:
+            openalex_timeout = float(
+                os.environ.get("TESTBRIDGE_OPENALEX_TIMEOUT") or 10.0
+            )
+        except ValueError:
+            openalex_timeout = 10.0
+        studio_search = SearchRouter({
+            "deepseek": DeepSeekSearch(studio_cfg),
+            "openalex": OpenAlexSearch(
+                mailto=os.environ.get("TESTBRIDGE_OPENALEX_MAILTO") or None,
+                base_url=(
+                    os.environ.get("TESTBRIDGE_OPENALEX_BASE_URL")
+                    or "https://api.openalex.org"
+                ),
+                timeout=openalex_timeout,
+            ),
+        })
     mount_studio(
         app,
         templates,
