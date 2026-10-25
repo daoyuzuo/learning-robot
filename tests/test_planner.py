@@ -1,7 +1,9 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 from testbridge.content.repository import load_pack
+from testbridge.contract.models import Concept, Exercise
 from testbridge.learning.store import Goal, ReviewState
 from testbridge.mastery.estimator import MasteryView
 from testbridge.mastery.rule import level_for
@@ -153,6 +155,69 @@ def test_future_due_review_is_not_planned() -> None:
     )
     plan = planner.plan(NOW)
     assert plan.items == []
+
+
+def test_review_reason_uses_exercise_prompt() -> None:
+    mastery = {
+        "timestamp-basics": view("timestamp-basics", 1.0, 3),
+        "clock-drift": view("clock-drift", 1.0, 3),
+        "sensor-time-sync": view("sensor-time-sync", 1.0, 3),
+    }
+    planner = Planner(
+        PACK, Goal(learner_id="local", daily_minutes=45), mastery,
+        [review("EX-SYNC-001")], {},
+    )
+    plan = planner.plan(NOW)
+    assert plan.items[0].reason == "到期复习：两个传感器时间戳相差 20ms，最不可能的根因是？"
+
+
+def test_priority_orders_on_raw_value_before_clamp() -> None:
+    mastery = {
+        "timestamp-basics": view("timestamp-basics", 0.2, 2),
+        "clock-drift": view("clock-drift", 0.2, 2),
+        "sensor-time-sync": view("sensor-time-sync", 1.0, 5),
+    }
+    planner = Planner(
+        PACK, Goal(learner_id="local", daily_minutes=45), mastery, [],
+        {"timestamp-basics": 1.5, "clock-drift": 3.0},
+    )
+    plan = planner.plan(NOW)
+    weak = [item for item in plan.items if item.type == "weak"]
+    assert [item.concept_ids[0] for item in weak] == ["clock-drift", "timestamp-basics"]
+    assert all(item.priority == 1.0 for item in weak)
+
+
+def pack_with_orphan_concept():
+    concept = Concept.model_validate({
+        "id": "orphan-concept", "title": "Orphan", "domain": "demo",
+        "target_level": "L2",
+    })
+    exercise = Exercise.model_validate({
+        "id": "EX-ORPHAN", "type": "single_choice", "concepts": ["orphan-concept"],
+        "level": "L1", "prompt": "Orphan prompt",
+        "options": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}],
+        "answer": "a",
+    })
+    return replace(
+        PACK,
+        concepts={**PACK.concepts, concept.id: concept},
+        exercises={**PACK.exercises, exercise.id: exercise},
+    )
+
+
+def test_weak_concept_without_lesson_falls_back_to_exercise() -> None:
+    mastery = {"orphan-concept": view("orphan-concept", 0.2, 2)}
+    planner = Planner(
+        pack_with_orphan_concept(), Goal(learner_id="local", daily_minutes=45),
+        mastery, [], {"orphan-concept": 1.0},
+    )
+    plan = planner.plan(NOW)
+    assert [item.type for item in plan.items] == ["weak"]
+    item = plan.items[0]
+    assert item.lesson_id is None
+    assert item.exercise_id == "EX-ORPHAN"
+    assert item.estimated_minutes == 10
+    assert item.reason.startswith("掌握度偏低：orphan-concept")
 
 
 def test_plan_is_deterministic() -> None:

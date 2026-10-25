@@ -32,6 +32,27 @@ def test_evidence_round_trip(tmp_path: Path, capsys) -> None:
     assert main(["evidence-import", str(db), str(out)]) == 0
 
 
+def test_evidence_import_warns_on_bad_lines(tmp_path: Path, capsys) -> None:
+    import json
+
+    path = tmp_path / "mixed.jsonl"
+    good = {
+        "id": "good", "learner_id": "local", "kind": "exercise_attempt",
+        "concept_ids": ["c-one"], "payload": {}, "source": "cli",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+    path.write_text(
+        json.dumps(good) + "\n" + json.dumps({**good, "id": "bad", "created_at": "never"}),
+        encoding="utf-8",
+    )
+
+    assert main(["evidence-import", str(tmp_path / "e.db"), str(path)]) == 0
+    captured = capsys.readouterr()
+    assert "imported 1" in captured.out
+    assert "WARN" in captured.err
+    assert "line 2" in captured.err
+
+
 def test_python_dash_m_invokes_cli() -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src")

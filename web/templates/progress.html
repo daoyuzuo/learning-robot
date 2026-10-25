@@ -12,7 +12,11 @@
 {% endfor %}
 </table>
 <h2>{% if selected %}概念 {{ selected }} 的证据{% else %}证据{% endif %}</h2>
+{% if selected %}
+<p>已按概念筛选：{{ selected }} · 本概念 {{ filtered_total }} 条 / 全局 {{ total }} 条（显示最近 {{ events|length }} 条）</p>
+{% else %}
 <p>共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
+{% endif %}
 <table>
 <tr><th>时间</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th></tr>
 {% for event in events %}

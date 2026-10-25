@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from testbridge.content.repository import load_pack
 from testbridge.learning.store import Goal
 from testbridge.learning.weights import concept_weights
@@ -7,6 +9,7 @@ from testbridge.mastery.estimator import MasteryView
 from testbridge.readiness import calculate_readiness
 
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+MINIMAL = Path(__file__).parent / "fixtures" / "minimal-pack"
 PACK = load_pack(SAMPLE)
 
 
@@ -40,6 +43,15 @@ def test_readiness_weighted_total() -> None:
     assert 0.0 < result.total <= 1.0
     assert result.gate_active is False
     assert "M01" in result.by_module
+
+
+def test_readiness_without_p0_is_never_gated() -> None:
+    pack = load_pack(MINIMAL)  # M01 is priority P1
+    mastery = {"c-one": view("c-one", 0.2, "L0")}  # below target L2
+    result = calculate_readiness(pack, Goal(learner_id="local"), mastery)
+    assert result.gate_active is False
+    assert result.gate_reasons == []
+    assert result.total == pytest.approx(0.2)
 
 
 def test_p0_gate_caps_readiness() -> None:

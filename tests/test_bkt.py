@@ -1,3 +1,5 @@
+import pytest
+
 from testbridge.mastery.bkt import BKTParams, initial_state, observe, replay
 
 
@@ -21,6 +23,13 @@ def test_replay_is_deterministic() -> None:
     two = replay([True, True, False])
     assert one == two
     assert one.observations == 3
+
+
+def test_replay_matches_known_probabilities() -> None:
+    assert replay([True]).p == pytest.approx(0.7097560975609757)
+    assert replay([True, True]).p == pytest.approx(0.9291914595729787)
+    assert replay([True, True, False]).p == pytest.approx(0.6780697854016992)
+    assert replay([False]).p == pytest.approx(0.19322033898305085)
 
 
 def test_custom_params() -> None:

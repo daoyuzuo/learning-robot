@@ -1,9 +1,6 @@
 import json
-import sqlite3
 from dataclasses import asdict, replace
 from pathlib import Path
-
-import pytest
 
 from testbridge.evidence.store import EvidenceStore, new_event
 
@@ -89,23 +86,42 @@ def test_same_id_does_not_overwrite_body(tmp_path: Path) -> None:
     assert store.count() == 1
 
 
-def test_import_rejects_not_null_violation(tmp_path: Path) -> None:
+def _row(event_id: str, **overrides: object) -> dict:
+    row = {
+        "id": event_id,
+        "learner_id": "local",
+        "kind": "exercise_attempt",
+        "concept_ids": ["c-one"],
+        "payload": {},
+        "source": "web",
+        "created_at": "2026-01-01T00:00:00+00:00",
+    }
+    row.update(overrides)
+    return row
+
+
+def test_import_skips_invalid_rows_and_warns(tmp_path: Path) -> None:
     store = EvidenceStore(tmp_path / "e.db")
-    path = tmp_path / "bad.jsonl"
+    path = tmp_path / "mixed.jsonl"
     path.write_text(
-        json.dumps(
-            {
-                "id": "bad",
-                "learner_id": "local",
-                "kind": None,
-                "concept_ids": [],
-                "payload": {},
-                "source": "web",
-                "created_at": "2026-01-01T00:00:00+00:00",
-            }
-        )
-        + "\n",
+        "\n".join([
+            json.dumps(_row("good-1")),
+            json.dumps(_row("bad-date", created_at="yesterday")),
+            json.dumps(_row("bad-payload", payload=[1, 2])),
+            json.dumps(_row("bad-score", score="abc")),
+            json.dumps(_row("bad-kind", kind=None)),
+            "{not json",
+            "",
+            json.dumps(_row("good-2")),
+        ]),
         encoding="utf-8",
     )
-    with pytest.raises(sqlite3.IntegrityError):
-        store.import_jsonl(path)
+
+    warnings: list[str] = []
+    assert store.import_jsonl(path, on_warning=warnings.append) == 2
+    assert store.count() == 2
+    [stored] = [event for event in store.list() if event.id == "good-2"]
+    assert stored.id == "good-2"
+    assert len(warnings) == 5
+    assert any("line 2" in message for message in warnings)
+    assert any("line 6" in message for message in warnings)

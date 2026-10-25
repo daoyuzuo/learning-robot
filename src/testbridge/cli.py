@@ -129,7 +129,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "evidence-import":
-        count = EvidenceStore(Path(args.db)).import_jsonl(Path(args.path))
+        count = EvidenceStore(Path(args.db)).import_jsonl(
+            Path(args.path),
+            on_warning=lambda message: print(f"WARN {message}", file=sys.stderr),
+        )
         print(f"imported {count}")
         return 0
 
@@ -150,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"WARN skipped exercises: {', '.join(result.skipped_exercises)}",
                 file=sys.stderr,
             )
+        for message in result.warnings:
+            print(f"WARN {message}", file=sys.stderr)
         return 0
 
     if args.command == "goal":

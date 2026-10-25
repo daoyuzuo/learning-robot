@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS goal (
   concept_overrides_json TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_review_due ON review_state(learner_id, due);
 """
 
 

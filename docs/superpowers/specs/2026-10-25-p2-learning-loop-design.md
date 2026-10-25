@@ -320,19 +320,22 @@ readiness = Σ(weight_c * mastery_c) / Σ(weight_c)
 ```yaml
 type: review | new | weak
 concept_ids: [...]
-lesson_id: ...        # new/weak
-exercise_id: ...      # review
+lesson_id: ...        # new/weak（有课程时）
+exercise_id: ...      # review；weak 无课程回退到练习时
 reason: "..."
-estimated_minutes: 5 | lesson.minutes
-priority: 0.0-1.0
+estimated_minutes: 5 | lesson.minutes | 10
+priority: 0.0-1.0     # 展示值，按原始权重截断
 ```
+
+`priority` 用于展示和排序稳定性，但候选项排序使用未截断的原始值
+`weight × (1 - estimate)`；goal override > 1 时排序仍能区分强弱。
 
 ### 9.3 生成顺序
 
 1. **到期复习**
    - 取所有 `due <= now` 的卡，按 due 升序。
    - 最多占 `daily_minutes * 0.5`；每张按 5 分钟估。
-   - 理由：“到期复习：<exercise 标题>”。
+   - 理由：“到期复习：<exercise 题干前 30 字>”（`Exercise` 没有 title 字段，用题干代替）。
 
 2. **新学**
    - 候选：没有任何 evidence 的概念；所有先修概念 `mastery >= 0.5`（或等级 >= L2）；当前 `level < target_level`。
@@ -343,7 +346,9 @@ priority: 0.0-1.0
 3. **补弱**
    - 候选：有 evidence 且 `mastery < 0.5` 的概念。
    - 排序：`weight_c * (1 - mastery_c)` 降序。
-   - 取一个 lesson 或一次练习；优先 lesson。
+   - 取一个 lesson 或一次练习；优先 lesson。概念没有课程、或课程都已用时，
+     回退到该概念按 `exercise_id` 排序的第一道练习，`lesson_id` 为空、
+     `exercise_id` 有值，按 10 分钟估；两者都没有才跳过。
    - 理由：“掌握度偏低：<concept>（<estimate>）”。
 
 4. 预算截断
@@ -435,6 +440,7 @@ P2 概念页用**表格 + 先修关系文本**；`/today` 和 `/concepts` 都是
 | Goal 缺失 | 使用默认值 |
 | `rebuild-state` 失败 | 事务回滚，旧表保留 |
 | 时间解析失败 | 该事件跳过并 warning |
+| 导入行非法（JSON、`created_at`、`payload`、`score`） | 跳过该行并 warning，已导入的行保留 |
 | 计划为空 | `empty=true` + 可选建议 |
 | P0 门控 | 显示原因，不隐藏总分 |
 

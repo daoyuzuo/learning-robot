@@ -3,10 +3,11 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P2（学习闭环）**
-> 状态：实现完成，待验收
+> **当前期：P2.1（P2 收尾）**
+> 状态：完成，合并到 `master`
 >
-> P1（内容契约 + 运行时）已完成并合并到 `master`。
+> P1（内容契约 + 运行时）与 P2（学习闭环）已完成。下一步二选一：
+> 内容试点（ROS2 通信/QoS 或 EtherCAT）或 P3 内容生产流水线。
 
 ---
 
@@ -145,18 +146,26 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ## P2 遗留（P2.1 / 后续）
 
+### P2.1 已完成（2026-10-25，分支 `p2.1-cleanup`）
+
+- [x] `/progress?concept=` 过滤时同时显示“本概念 N 条 / 全局 M 条”。
+- [x] Planner 复习理由改用题干（`Exercise` 无 title 字段，截断 30 字）。
+- [x] Planner 候选项按未截断原始分排序，`PlanItem.priority` 只做展示截断。
+- [x] 补弱概念没有课程时回退到该概念的练习（10 分钟）；课程都用完时同样回退。
+- [x] 导入证据时非法 JSON / `created_at` / `payload` / `score` 的行跳过并 warning；`rebuild-state` 对脏证据同样跳过，CLI 输出 `WARN`。
+- [x] `all_mastery()` 单次扫描证据；`readiness()` / `today_plan()` 可复用传入的 views。
+- [x] `review_state` 增加 `(learner_id, due)` 索引。
+- [x] Web/测试补强：两概念过滤、到期复习行、补弱回退、无 P0 readiness、数值型 BKT 序列。
+
+### 仍未做
+
 - 概念页图形化（Mermaid/SVG）；P2 用表格 + 先修关系文本。
 - 独立复习播放器；P2 的 `/review` 列表跳转课程页复用已有表单。
 - BKT 参数校准（P3 用真实数据）。
 - 概念级 FSRS 卡与复习后手动自评。
 - Artifact 仍只记录路径；产出物评分（`accept` / `max_size_mb`、`data/artifacts/<evidence-id>/`）顺延。
-- CLI 的内容/导入错误仍直接打印 traceback，而不是 `ERROR code: path: message`。
-- 旧证据迁移：P1 时期把 self_assess / artifact 行写成 `exercise_attempt` 的记录，在 P2.1 / 真实数据使用前需要规范化。
-- `/progress?concept=` 过滤证据时，总数仍显示全局值；应显示过滤后的总数或明确标注。
-- Planner 复习理由使用 exercise ID；priority 在排序前被 clamp，override >1 时排序会丢失差异；补弱项没有练习回退。
-- 导入证据的非法 `created_at` / `payload` 数值应跳过并 warning，而不是中断 rebuild。
-- `all_mastery()` 每概念重复扫描证据；`review_state` 缺 `(learner_id, due)` 索引；P2.1 批量读取。
-- Web/E2E 补强：两概念证据过滤、到期复习行、补弱项、无 P0 的 readiness、数值型 BKT 序列。
+- CLI 的内容加载/构建错误仍直接打印 traceback，而不是 `ERROR code: path: message`。
+- 旧证据迁移：P1 时期把 self_assess / artifact 行写成 `exercise_attempt` 的记录，在真实数据使用前需要规范化。
 - P1 工程债中未随 P2 处理的部分：`tb build --lesson` 未知 ID 抛 `KeyError`；单文件 HTML 未内联完整 manifest / objectives / 资源列表；`web/` 与 `web/static` 未进 wheel；`schema_version` 别名；证据导出 100 万条上限、导入非原子、`new_event` 不支持 `supersedes`；CSP 对 `application/json` 内联块的内联报告；首页“继续学习”/内容包列表、提交聚合统计、证据写入失败 503 降级。
 
 ---

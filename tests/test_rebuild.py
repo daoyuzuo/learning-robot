@@ -107,6 +107,26 @@ def test_unknown_concept_and_exercise_are_skipped(tmp_path: Path) -> None:
     assert service.store.list_reviews("local") == {}
 
 
+def test_rebuild_skips_invalid_evidence_and_warns(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    good = replace(attempt("correct"), id="good")
+    bad_time = replace(attempt("correct"), id="bad-time", created_at="yesterday")
+    bad_score = replace(attempt("correct"), id="bad-score", score="abc")
+    service.evidence.append(good)
+    service.evidence.append(bad_time)
+    service.evidence.append(bad_score)
+
+    result = rebuild_state(service)
+
+    assert result.events == 1
+    assert len(result.warnings) == 2
+    assert any("bad-time" in message for message in result.warnings)
+    assert any("bad-score" in message for message in result.warnings)
+    state = service.store.get_mastery("local", "sensor-time-sync")
+    assert state is not None
+    assert state.exercise_observations == 1
+
+
 def test_duplicate_concept_ids_count_once(tmp_path: Path) -> None:
     service = make_service(tmp_path)
     item = replace(
