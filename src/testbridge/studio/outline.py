@@ -68,7 +68,7 @@ def parse_outline_json(
 
     pack_title = data.get("pack_title") or data.get("module_title")
     if not isinstance(pack_title, str) or not pack_title.strip():
-        raise OutlineError("缺少 pack_title")
+        raise OutlineError("缺少 pack_title 或 module_title")
 
     concepts = data.get("concepts")
     if not isinstance(concepts, list) or not 1 <= len(concepts) <= MAX_CONCEPTS:
@@ -108,12 +108,12 @@ def parse_outline_json(
             "concepts": list(concept_ids), "lessons": raw_lessons,
         }]
 
-    if not isinstance(raw_modules, list) or len(raw_modules) != module_count:
-        raise OutlineError(f"模块数量必须是 {module_count}")
     if not 1 <= module_count <= MAX_MODULES:
         raise OutlineError("模块数量必须在 1–3 之间")
     if not 1 <= lessons_per_module <= MAX_LESSONS_PER_MODULE:
         raise OutlineError("每模块课数必须在 1–5 之间")
+    if not isinstance(raw_modules, list) or len(raw_modules) != module_count:
+        raise OutlineError(f"模块数量必须是 {module_count}")
 
     module_ids: list[str] = []
     lesson_ids: list[str] = []
@@ -142,8 +142,13 @@ def parse_outline_json(
                 raise OutlineError("lesson 必须是对象")
             _check_id(lesson.get("id"), "lesson.id")
             lesson_ids.append(lesson["id"])
-            if not lesson.get("objectives"):
+            objectives = lesson.get("objectives")
+            if not isinstance(objectives, list) or not objectives:
                 raise OutlineError(f"{lesson['id']} 缺少 objectives")
+            for name in ("exercise_intents", "research_queries"):
+                value = lesson.get(name)
+                if value is not None and not isinstance(value, list):
+                    raise OutlineError(f"{lesson['id']} 的 {name} 必须是数组")
             minutes = lesson.get("minutes")
             if not isinstance(minutes, int) or isinstance(minutes, bool) or minutes <= 0:
                 raise OutlineError(f"{lesson['id']} 的 minutes 必须是正整数")

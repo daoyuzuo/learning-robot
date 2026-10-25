@@ -21,6 +21,14 @@ def test_outline_prompt_asks_for_json() -> None:
     assert "每模块课数：3" in prompt
 
 
+def test_outline_prompt_caps_module_concepts_by_lesson_count() -> None:
+    one = render_outline_prompt("ROS 2", "L2", 1, 1)
+    two = render_outline_prompt("ROS 2", "L2", 1, 2)
+
+    assert "每模块概念上限：2" in one
+    assert "每模块概念上限：4" in two
+
+
 def test_lesson_prompt_embeds_all_sections() -> None:
     prompt = render_lesson_prompt("<article>outline</article>", "- c1 概念", "{}")
     assert "<outline>" in prompt

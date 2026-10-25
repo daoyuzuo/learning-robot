@@ -85,6 +85,20 @@ def test_parse_outline_json_rejects_lesson_concept_outside_module() -> None:
         parse_outline_json(json.dumps(broken), 2, 2)
 
 
+def test_parse_outline_json_rejects_string_objectives() -> None:
+    broken = json.loads(json.dumps(SCHEMA))
+    broken["modules"][0]["lessons"][0]["objectives"] = "说明调度顺序"
+    with pytest.raises(OutlineError):
+        parse_outline_json(json.dumps(broken), 2, 2)
+
+
+def test_parse_outline_json_rejects_non_list_research_queries() -> None:
+    broken = json.loads(json.dumps(SCHEMA))
+    broken["modules"][0]["lessons"][0]["research_queries"] = "ROS 2 executors"
+    with pytest.raises(OutlineError):
+        parse_outline_json(json.dumps(broken), 2, 2)
+
+
 def test_parse_outline_json_rejects_missing_prerequisite() -> None:
     broken = json.loads(json.dumps(SCHEMA))
     broken["concepts"][0]["prerequisites"] = ["nope"]
