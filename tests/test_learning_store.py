@@ -1,7 +1,9 @@
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
 from testbridge.learning.store import Goal, LearningStore, MasteryState, ReviewState
+from testbridge.learning.timeutil import iso
 
 
 def state(concept_id: str = "c-one") -> MasteryState:
@@ -58,3 +60,42 @@ def test_replace_all_and_clear(tmp_path: Path) -> None:
     store.clear_reviews("local")
     assert store.list_mastery("local") == {}
     assert store.list_reviews("local") == {}
+
+
+def test_iso_treats_naive_as_utc() -> None:
+    assert iso(datetime(2026, 10, 25, 12, 0)) == "2026-10-25T12:00:00+00:00"
+
+
+def test_mastery_upsert_updates_existing_row(tmp_path: Path) -> None:
+    store = LearningStore(tmp_path / "learning.db")
+    store.upsert_mastery(state())
+    store.upsert_mastery(replace(state(), estimate=0.9, confidence=0.9, level="L4"))
+    stored = store.get_mastery("local", "c-one")
+    assert stored.estimate == 0.9
+    assert stored.confidence == 0.9
+    assert stored.level == "L4"
+    assert len(store.list_mastery("local")) == 1
+
+
+def test_review_upsert_updates_existing_row(tmp_path: Path) -> None:
+    store = LearningStore(tmp_path / "learning.db")
+    store.upsert_review(review())
+    store.upsert_review(
+        replace(review(), reps=2, state="Relearning", due="2026-10-27T00:00:00+00:00")
+    )
+    stored = store.get_review("local", "EX-ONE")
+    assert stored.reps == 2
+    assert stored.state == "Relearning"
+    assert stored.due == "2026-10-27T00:00:00+00:00"
+    assert len(store.list_reviews("local")) == 1
+
+
+def test_goal_upsert_updates_existing_row(tmp_path: Path) -> None:
+    store = LearningStore(tmp_path / "learning.db")
+    store.set_goal(Goal(learner_id="local", daily_minutes=60))
+    store.set_goal(
+        Goal(learner_id="local", daily_minutes=30, concept_overrides={"c-one": 2.0})
+    )
+    goal = store.get_goal("local")
+    assert goal.daily_minutes == 30
+    assert goal.concept_overrides == {"c-one": 2.0}

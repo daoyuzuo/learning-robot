@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .timeutil import iso
+from .timeutil import iso, utcnow
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS mastery_state (
@@ -130,7 +130,7 @@ class LearningStore:
                     goal.learner_id, goal.target_role, goal.weekly_hours,
                     goal.daily_minutes,
                     json.dumps(goal.concept_overrides, ensure_ascii=False),
-                    iso(datetime.now().astimezone()),
+                    iso(utcnow()),
                 ),
             )
 
