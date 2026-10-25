@@ -2,6 +2,7 @@
 {% block title %}概念 · TestBridge{% endblock %}
 {% block content %}
 <h1>概念掌握度</h1>
+{% if graph %}<div class="tb-graph-wrap">{{ graph | safe }}</div>{% endif %}
 <table>
 <tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th><th>到期</th><th>先修</th><th>课程</th></tr>
 {% for concept_id, view in views.items() %}

@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from testbridge.concept_graph import prerequisite_svg
 from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.exercise.grading import grade, kind_for_exercise
@@ -194,6 +195,7 @@ def create_app(
             context=ctx(
                 request, views=views, due_counts=due_counts,
                 lesson_for_concept=lesson_for_concept,
+                graph=prerequisite_svg(pack, views),
             ),
         )
 

@@ -117,6 +117,12 @@ def test_review_lists_due_cards(tmp_path: Path) -> None:
     assert 'href="/lesson/L-SYNC-001"' in text
 
 
+def test_concepts_page_renders_prerequisite_graph(tmp_path: Path) -> None:
+    text = client(tmp_path).get("/concepts").text
+    assert 'class="tb-graph"' in text
+    assert 'data-concept="qos-testing"' in text or 'data-concept="sensor-time-sync"' in text
+
+
 def test_concepts_link_to_evidence(tmp_path: Path) -> None:
     c = client(tmp_path)
     text = c.get("/concepts").text
