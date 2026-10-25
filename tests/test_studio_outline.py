@@ -166,6 +166,22 @@ def test_parse_outline_html_rejects_duplicate_module_ids() -> None:
         parse_outline_html(render_outline_html("包", [first, second]))
 
 
+def test_parse_outline_html_rejects_lessons_outside_modules() -> None:
+    module = ModulePlan(
+        "M01", "模块一", ["c-one"],
+        [LessonPlan("L-1", "课一", 20, ["目标"], ["q1"], module_id="M01",
+                    concepts=["c-one"])],
+    )
+    html = render_outline_html("包", [module]).replace(
+        "</article>",
+        '<section class="tb-outline-lesson" id="L-2"><h2>模块外</h2>'
+        "</section></article>",
+    )
+
+    with pytest.raises(OutlineError, match="模块 section"):
+        parse_outline_html(html)
+
+
 def test_legacy_flat_outline_html_falls_back_to_m01() -> None:
     html = (
         '<article class="tb-outline"><h1 class="tb-module-title">旧包</h1>'
@@ -233,6 +249,28 @@ def test_save_outline_rewrites_module_yaml_and_rekeys(tmp_path: Path) -> None:
     assert "L-CB-002" not in draft["steps"]["lessons"]
 
 
+def test_save_outline_creates_module_without_concepts(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2",
+                 lesson_count=4, searches_per_lesson=5,
+                 model="m", prompt_version="studio/1")
+    write_outline(store, "demo", parse_outline_json(json.dumps(SCHEMA), 2, 2))
+    modules = parse_outline_html(store.read("demo", "outline.html"))
+    modules.append(ModulePlan(
+        "M03", "新模块", None,
+        [LessonPlan("L-NEW-001", "新课", 20, ["目标"], ["q"],
+                    module_id="M03", concepts=[])],
+    ))
+
+    save_outline_html(store, "demo", render_outline_html("ROS 2 执行器", modules))
+
+    module = yaml.safe_load(store.read("demo", "modules/M03/module.yaml"))
+    assert module["concepts"] == []
+    assert module["lessons"] == ["L-NEW-001"]
+    assert module["order"] == 3
+    assert "L-NEW-001" in store.load("demo")["steps"]["lessons"]
+
+
 def test_save_outline_renames_removed_module_yaml(tmp_path: Path) -> None:
     store = DraftStore(tmp_path / "drafts")
     store.create(draft_id="demo", topic="t", level="L2",
@@ -266,7 +304,7 @@ def test_save_outline_rejects_unknown_module_concept(tmp_path: Path) -> None:
         save_outline_html(store, "demo", html)
 
 
-def test_write_outline_sanitizes_edited_html(tmp_path: Path) -> None:
+def test_save_outline_sanitizes_edited_html(tmp_path: Path) -> None:
     store = DraftStore(tmp_path / "drafts")
     store.create(
         draft_id="demo", topic="t", level="L2", lesson_count=1,
@@ -278,6 +316,9 @@ def test_write_outline_sanitizes_edited_html(tmp_path: Path) -> None:
         "</article>", "<script>alert(1)</script></article>"
     )
 
-    store.write("demo", "outline.html", html)
-    parsed = parse_outline_html(store.read("demo", "outline.html"))
+    save_outline_html(store, "demo", html)
+
+    saved = store.read("demo", "outline.html")
+    assert "<script>" not in saved
+    parsed = parse_outline_html(saved)
     assert parsed[0].lessons[0].lesson_id == "L-1"

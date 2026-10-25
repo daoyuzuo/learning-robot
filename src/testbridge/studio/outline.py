@@ -337,6 +337,8 @@ def parse_outline_html(html: str) -> list[ModulePlan]:
     parser.feed(html)
     parser.close()
     raw_modules = parser.modules
+    if raw_modules and parser.legacy_lessons:
+        raise OutlineError("课程必须位于模块 section 内")
     if not raw_modules:
         raw_modules = [{
             "id": "M01",
@@ -409,9 +411,11 @@ def write_module_files(
     for index, module in enumerate(modules, start=1):
         path = root / module.module_id / "module.yaml"
         if module.concepts is None:
-            if not path.is_file():
-                continue
-            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            data = (
+                yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                if path.is_file()
+                else {"concepts": []}
+            )
         else:
             data = {
                 "schema": "tb/1", "id": module.module_id,
