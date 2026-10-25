@@ -1,8 +1,14 @@
+import os
 from pathlib import Path
 
 import pytest
 
-from testbridge.studio.store import DraftError, DraftNotFound, DraftStore
+from testbridge.studio.store import (
+    DraftError,
+    DraftNotFound,
+    DraftStore,
+    _process_alive,
+)
 
 
 def make_store(tmp_path: Path) -> DraftStore:
@@ -131,6 +137,12 @@ def test_mark_interrupted_flips_a_stale_owner_in_the_same_process(
 
     assert restarted.mark_interrupted() == 1
     assert restarted.load("demo-pack")["steps"]["outline"]["status"] == "failed"
+
+
+def test_process_alive_recognizes_this_process_and_missing_pids() -> None:
+    assert _process_alive(os.getpid()) is True
+    assert _process_alive(0) is False
+    assert _process_alive(2**31 - 1) is False
 
 
 def test_write_and_read_files(tmp_path: Path) -> None:
