@@ -15,6 +15,7 @@ from pathlib import Path
 SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 STEPS = ("outline", "research", "lessons", "validation", "promote")
+SEARCH_BACKENDS = ("auto", "deepseek", "openalex")
 MIN_LESSONS = 1
 MAX_LESSONS = 5
 MIN_SEARCHES = 1
@@ -68,6 +69,7 @@ class DraftStore:
         searches_per_lesson: int,
         model: str,
         prompt_version: str,
+        search_backend: str = "auto",
     ) -> dict:
         if not ID_RE.fullmatch(draft_id):
             raise DraftError("invalid_id", "草稿 ID 只能包含字母、数字和连字符")
@@ -75,6 +77,11 @@ class DraftStore:
             raise DraftError("invalid_lesson_count", "课数必须在 1–5 之间")
         if not MIN_SEARCHES <= searches_per_lesson <= MAX_SEARCHES:
             raise DraftError("invalid_search_budget", "每课检索次数必须在 1–50 之间")
+        if search_backend not in SEARCH_BACKENDS:
+            raise DraftError(
+                "invalid_search_backend",
+                "检索源必须是 auto / deepseek / openalex",
+            )
         if self.exists(draft_id):
             raise DraftError("draft_exists", f"草稿已存在：{draft_id}")
         now = _iso(_utcnow())
@@ -87,6 +94,7 @@ class DraftStore:
             "searches_per_lesson": searches_per_lesson,
             "model": model,
             "prompt_version": prompt_version,
+            "search_backend": search_backend,
             "created_at": now,
             "updated_at": now,
             "usage": {"searches": 0, "llm_calls": 0},

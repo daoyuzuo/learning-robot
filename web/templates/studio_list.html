@@ -9,6 +9,11 @@
   <label>级别 <select name="level"><option>L2</option><option>L3</option><option>L4</option></select></label>
   <label>课数 <input name="lesson_count" type="number" min="1" max="5" value="3"></label>
   <label>每课检索 <input name="searches_per_lesson" type="number" min="1" max="50" value="20"></label>
+  <label>检索源 <select name="search_backend">
+    <option value="auto">自动</option>
+    <option value="deepseek">DeepSeek Search</option>
+    <option value="openalex">OpenAlex</option>
+  </select></label>
   <button type="submit" {% if not enabled %}disabled{% endif %}>新建草稿</button>
 </form>
 <ul class="tb-drafts">

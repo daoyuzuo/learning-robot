@@ -26,6 +26,7 @@ class ResearchResult:
     hits: list[SearchHit]
     errors: list[str] = field(default_factory=list)
     searches: int = 0
+    backend: str = ""
 
 
 def build_queries(
@@ -48,6 +49,7 @@ def run_research(
     search: SearchProvider,
     budget: int,
     progress: Callable[[int, int, int], None] | None = None,
+    backend: str = "",
 ) -> ResearchResult:
     queries = build_queries(lesson, concept_titles, budget)
     hits: list[SearchHit] = []
@@ -66,7 +68,7 @@ def run_research(
             progress(index, len(queries), len(hits))
     return ResearchResult(
         lesson_id=lesson.lesson_id, queries=queries, hits=hits,
-        errors=errors, searches=len(queries),
+        errors=errors, searches=len(queries), backend=backend,
     )
 
 
@@ -105,6 +107,7 @@ def write_research(
         "lesson_id": result.lesson_id,
         "queries": result.queries,
         "searches": result.searches,
+        "backend": result.backend,
         "errors": result.errors,
         "hits": [
             {

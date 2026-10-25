@@ -12,10 +12,12 @@
 **P3.2 已完成。** `/studio` 提供“主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”工作台，产物是普通 `tb/1` 包，引擎零改动。P3.2 增加确定性质量门禁：`tb quality` 给出 0–100 质量分，硬错误阻断定稿。规则、分值与验收见
 `docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md`。
 
-**当前 P3.3（检索后端）设计已批准，待实现。** 本期只实现 OpenAlex：插件化
-`SearchRouter`、学术关键词 + domain 自动路由、auto 回退、草稿级手动覆盖，以及
-“资源必须来自 A/B 命中”的溯源收紧。设计见
+**P3.3 已完成。** 新增 OpenAlex 后端、插件化 `SearchRouter`、学术关键词 +
+domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“资源必须来自 A/B 命中”
+的溯源收紧。默认 `pytest` 458 passed、3 个 live 取消选择；live 3 passed。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
+
+**下一步：P3.4（批量/多模块内容演进）。**
 
 **不要提前实现：**
 
@@ -56,6 +58,8 @@
 5. **契约版本化。**
    - 所有内容文件带 `schema: tb/1`。
    - 破坏性变更升 `tb/2` + 迁移脚本；不得静默改语义。
+
+**边界例外（P3.3 裁决）：** `src/testbridge/studio/` 是作者层，可以包含确定性的检索路由词表（学术关键词 / domain）与来源站点提示；核心引擎（`mastery`、`schedule`、`evidence`、`contract`、`learning`）必须保持内容无关。路由词表不写入内容包，也不参与判分。
 
 ## 内容契约速查
 

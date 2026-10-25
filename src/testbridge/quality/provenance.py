@@ -145,17 +145,30 @@ def evaluate_provenance(
     dossiers, malformed, issues = load_dossiers(research_dir)
     result.errors.extend(issues)
 
-    urls = {
+    all_urls = {
         normalize_url(str(hit.get("url") or ""))
         for dossier in dossiers.values()
         for hit in dossier.hits
     }
-    urls.discard("")
+    ab_urls = {
+        normalize_url(str(hit.get("url") or ""))
+        for dossier in dossiers.values()
+        for hit in dossier.hits
+        if _is_ab(hit)
+    }
+    all_urls.discard("")
+    ab_urls.discard("")
     traceable = 0
     for resource in resources:
         normalized = normalize_url(resource.url)
-        if normalized and normalized in urls:
+        if normalized and normalized in ab_urls:
             traceable += 1
+        elif normalized and normalized in all_urls:
+            result.errors.append(_error(
+                "quality.resource_untrusted_source",
+                f"资源 {resource.id} 的来源命中不是 A/B",
+                resource_id=resource.id,
+            ))
         else:
             result.errors.append(_error(
                 "quality.resource_unsourced",

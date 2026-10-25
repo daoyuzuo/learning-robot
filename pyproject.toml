@@ -34,7 +34,7 @@ packages = ["src/testbridge"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]
-markers = ["live: real DeepSeek calls; enable with TESTBRIDGE_LIVE=1"]
+markers = ["live: real OpenAlex/DeepSeek calls; enable with TESTBRIDGE_LIVE=1"]
 addopts = "-m 'not live'"
 
 [tool.ruff]

@@ -37,6 +37,7 @@ from testbridge.studio.prompts import (
     render_outline_prompt,
 )
 from testbridge.studio.search import SearchProvider
+from testbridge.studio.search_router import SearchRoute, SearchRouter
 from testbridge.studio.store import DraftError, DraftStore
 from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
@@ -56,7 +57,7 @@ def mount_studio(
     packs_root: Path,
     config: TutorConfig | None,
     llm: LlmClient | None,
-    search: SearchProvider | None,
+    search: SearchProvider | SearchRouter | None,
     inline: bool = False,
 ) -> None:
     store = DraftStore(drafts_root)
@@ -101,6 +102,16 @@ def mount_studio(
     def concepts_text(draft_id: str) -> str:
         draft = store.load(draft_id)
         return render_concepts_text(draft.get("level") or "L2", concepts(draft_id))
+
+    def route_for(draft: dict, titles: list[str], domains: list[str]) -> SearchRoute:
+        if hasattr(search, "route"):
+            return search.route(
+                str(draft.get("search_backend") or "auto"),
+                topic=str(draft.get("topic") or ""),
+                concept_titles=titles,
+                concept_domains=domains,
+            )
+        return SearchRoute("custom", search)
 
     def outline_plans(draft_id: str) -> list:
         try:
@@ -158,7 +169,10 @@ def mount_studio(
     def generate_research(draft_id: str, lesson_id: str) -> None:
         draft = store.load(draft_id)
         plan = lesson_plan(draft_id, lesson_id)
-        titles = [str(item.get("title", "")) for item in concepts(draft_id)]
+        items = concepts(draft_id)
+        titles = [str(item.get("title", "")) for item in items]
+        domains = [str(item.get("domain", "")) for item in items]
+        route = route_for(draft, titles, domains)
 
         def progress(done: int, total: int, hits: int) -> None:
             store.set_step(
@@ -167,13 +181,18 @@ def mount_studio(
             )
 
         result = research_runner.run_research(
-            plan, titles, search, draft["searches_per_lesson"], progress=progress
+            plan, titles, route.provider, draft["searches_per_lesson"],
+            progress=progress, backend=route.name,
         )
         research_runner.write_research(store, draft_id, plan, result)
         add_usage(draft_id, searches=result.searches)
         store.set_step(
             draft_id, "research", lesson_id=lesson_id,
-            extra={"queries": result.searches, "hits": len(result.hits)},
+            extra={
+                "queries": result.searches,
+                "hits": len(result.hits),
+                "backend": route.name,
+            },
         )
 
     def research_text(draft_id: str, lesson_id: str) -> str:
@@ -210,6 +229,7 @@ def mount_studio(
         level: str = Form("L2"),
         lesson_count: int = Form(3),
         searches_per_lesson: int = Form(20),
+        search_backend: str = Form("auto"),
     ):
         if level not in LEVELS:
             raise HTTPException(
@@ -222,6 +242,7 @@ def mount_studio(
                 lesson_count=lesson_count, searches_per_lesson=searches_per_lesson,
                 model=config.model if config else "unconfigured",
                 prompt_version="studio/1",
+                search_backend=search_backend,
             )
         except DraftError as exc:
             raise HTTPException(

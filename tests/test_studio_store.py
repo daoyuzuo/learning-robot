@@ -94,3 +94,16 @@ def test_list_returns_drafts_sorted(tmp_path: Path) -> None:
     create(store, "b-pack")
     create(store, "a-pack")
     assert [draft["id"] for draft in store.list()] == ["a-pack", "b-pack"]
+
+
+def test_search_backend_defaults_and_validates(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    draft = create(store)
+    assert draft["search_backend"] == "auto"
+
+    with pytest.raises(DraftError):
+        store.create(
+            draft_id="bad-backend", topic="t", level="L2", lesson_count=1,
+            searches_per_lesson=5, model="m", prompt_version="studio/1",
+            search_backend="bogus",
+        )
