@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
+from testbridge.evidence.store import event_problem
 from testbridge.learning.mastery_builder import build_mastery_state
 from testbridge.learning.service import LearningService
 from testbridge.schedule.fsrs import review_event
@@ -16,13 +17,21 @@ class RebuildResult:
     reviews: int
     skipped_concepts: list[str] = field(default_factory=list)
     skipped_exercises: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def rebuild_state(service: LearningService) -> RebuildResult:
-    events = sorted(
+    warnings: list[str] = []
+    events = []
+    for event in sorted(
         service.visible_events(),
-        key=lambda event: (event.created_at, event.id),
-    )
+        key=lambda item: (item.created_at, item.id),
+    ):
+        problem = event_problem(asdict(event))
+        if problem:
+            warnings.append(f"skipped evidence {event.id}: {problem}")
+            continue
+        events.append(event)
 
     seen = {concept_id for event in events for concept_id in event.concept_ids}
     touched = [
@@ -70,4 +79,5 @@ def rebuild_state(service: LearningService) -> RebuildResult:
         reviews=len(reviews),
         skipped_concepts=sorted(skipped_concepts),
         skipped_exercises=sorted(skipped_exercises),
+        warnings=warnings,
     )

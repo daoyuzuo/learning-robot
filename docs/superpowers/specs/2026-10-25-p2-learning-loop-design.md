@@ -440,6 +440,7 @@ P2 概念页用**表格 + 先修关系文本**；`/today` 和 `/concepts` 都是
 | Goal 缺失 | 使用默认值 |
 | `rebuild-state` 失败 | 事务回滚，旧表保留 |
 | 时间解析失败 | 该事件跳过并 warning |
+| 导入行非法（JSON、`created_at`、`payload`、`score`） | 跳过该行并 warning，已导入的行保留 |
 | 计划为空 | `empty=true` + 可选建议 |
 | P0 门控 | 显示原因，不隐藏总分 |
 

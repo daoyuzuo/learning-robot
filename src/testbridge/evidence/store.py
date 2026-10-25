@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from testbridge.learning.timeutil import parse_iso
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS evidence (
@@ -48,6 +52,38 @@ class EvidenceEvent:
     score: float | None = None
     max_score: float | None = None
     supersedes: str | None = None
+
+
+def event_problem(data: Any) -> str | None:
+    """Return why a serialized event cannot be replayed, or None when valid."""
+    if not isinstance(data, dict):
+        return "event is not an object"
+    for key in ("id", "learner_id", "kind", "source", "created_at"):
+        value = data.get(key)
+        if not isinstance(value, str) or not value:
+            return f"missing or invalid {key}"
+    concepts = data.get("concept_ids")
+    if not isinstance(concepts, list) or not all(
+        isinstance(item, str) and item for item in concepts
+    ):
+        return "concept_ids must be a list of non-empty strings"
+    if not isinstance(data.get("payload"), dict):
+        return "payload must be an object"
+    for key in ("score", "max_score"):
+        value = data.get(key)
+        if value is None:
+            continue
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+        ):
+            return f"{key} must be a finite number"
+    try:
+        parse_iso(data["created_at"])
+    except (TypeError, ValueError):
+        return "created_at is not an ISO datetime"
+    return None
 
 
 def new_event(
@@ -158,15 +194,37 @@ class EvidenceStore:
                 handle.write(json.dumps(asdict(event), ensure_ascii=False) + "\n")
         return len(events)
 
-    def import_jsonl(self, path: Path) -> int:
+    def import_jsonl(
+        self,
+        path: Path,
+        on_warning: Callable[[str], None] | None = None,
+    ) -> int:
         inserted = 0
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
             if not line.strip():
                 continue
-            event = EvidenceEvent(**json.loads(line))
-            if self._insert(event):
-                inserted += 1
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as exc:
+                self._warn(on_warning, f"line {number}: invalid JSON: {exc.msg}")
+                continue
+            problem = event_problem(data)
+            if problem:
+                self._warn(on_warning, f"line {number}: {problem}")
+                continue
+            try:
+                if self._insert(EvidenceEvent(**data)):
+                    inserted += 1
+            except (TypeError, sqlite3.IntegrityError) as exc:
+                self._warn(on_warning, f"line {number}: {exc}")
         return inserted
+
+    @staticmethod
+    def _warn(on_warning: Callable[[str], None] | None, message: str) -> None:
+        if on_warning is not None:
+            on_warning(message)
 
     @staticmethod
     def _row_to_event(row: sqlite3.Row) -> EvidenceEvent:
