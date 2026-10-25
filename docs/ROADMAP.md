@@ -4,7 +4,7 @@
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
 > **当前期：P3.4（多模块与批量）已完成，2026-10-26**
-> 状态：已实现（分支 `p3.4-multi-module-batch`）；默认 `pytest` 508 passed、3 deselected，
+> 状态：已实现（分支 `p3.4-multi-module-batch`）；默认 `pytest` 518 passed、3 deselected，
 > 两个现有包 `tb validate` 0/0，`tb quality` 100/100。下一期 P3.5（内容演进）范围待定义。
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成。P3.4
@@ -285,13 +285,13 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] 单课重写替换旧输出（`test_single_lesson_rewrite_uses_replace`：旧 `EX-1-*` 释放，练习数不变且 ID 唯一）
 - [x] 旧草稿可继续使用（`tests/test_studio_multi_legacy.py` 3 个测试：旧 store 字段、扁平 outline 保存、缺字段跑大纲）
 - [x] 批量与单课互斥返回 409（`test_batch_rejected_while_single_job_runs`、`test_single_job_rejected_while_batch_runs`）
-- [x] 默认 `pytest` 全绿，现有 458 个测试无回归（508 passed，3 deselected，21.98s）
+- [x] 默认 `pytest` 全绿，现有 458 个测试无回归（518 passed，3 deselected）
 
 **验证命令（2026-10-26）：**
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-508 passed, 3 deselected in 21.98s
+518 passed, 3 deselected
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0

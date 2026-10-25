@@ -13,7 +13,7 @@
 一个包 1–3 个模块、每模块 1–5 课；大纲 HTML 可编辑模块标题、模块概念与课程归属，
 保存时同步 `module.yaml`；包内顺序批量「全部调研 / 全部写课」只跑 pending/failed；
 已完成的课可「重写这一课」替换旧输出。旧草稿（单模块、扁平 outline）按 `M01` 兼容。
-默认 `pytest` 508 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
+默认 `pytest` 518 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
 `tb quality` 100/100。设计见
 `docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md`。
 
