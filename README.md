@@ -27,6 +27,11 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 
 回答会标注依据：本课内容 / 包内资源 / 通用知识。追问记录只存在 `tutor_message` 表，不写入学习证据。
 
+### 答后讲评
+
+提交任意练习后，反馈区会出现「让 AI 讲讲」。有 rubric 的题型（简答、自评）会附带参考评分，
+记为 `llm_review` 证据，标注模型名；它不参与掌握度、复习排期与 readiness。
+
 ## 文档
 
 - [总设计](docs/superpowers/specs/2026-10-24-teaching-engine-design.md)
