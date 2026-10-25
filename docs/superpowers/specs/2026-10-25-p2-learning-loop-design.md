@@ -120,13 +120,14 @@ CREATE TABLE review_state (
   learner_id TEXT NOT NULL,
   exercise_id TEXT NOT NULL,
   concept_ids TEXT NOT NULL,          -- JSON array
-  due TEXT NOT NULL,                  -- ISO datetime
+  due TEXT NOT NULL,                  -- ISO datetime, mirrored for queries
   stability REAL NOT NULL,
   difficulty REAL NOT NULL,
   reps INTEGER NOT NULL,
   lapses INTEGER NOT NULL,
-  state TEXT NOT NULL,                -- FSRS state
+  state TEXT NOT NULL,                -- FSRS state name
   last_review TEXT,
+  card_json TEXT NOT NULL,            -- serialized py-fsrs Card
   PRIMARY KEY (learner_id, exercise_id)
 );
 
@@ -146,7 +147,8 @@ CREATE TABLE goal (
 - `concept_ids` 和 `concept_overrides_json` 存 JSON。
 - `goal` 没有行时使用默认值：`daily_minutes=45`、`weekly_hours=0`、`overrides={}`。
 - `mastery_state.rule_score` 是最近一次计算/重建的快照；读取时 `LearningService` 会按当前时间重算规则分（见 6.1），所以它只是缓存，不是事实。
-- `review_state` 的 FSRS 字段由 `py-fsrs` Card 序列化；重建时按 evidence 顺序重放。
+- `review_state` 的 `card_json` 是 `py-fsrs` Card 的完整序列化（`Card.to_dict()`）；`due`/`stability`/`difficulty`/`state` 是为查询和展示做的镜像字段，重建时按 evidence 顺序重放。
+- P2 新增依赖 `fsrs>=6.3,<7`（PyPI 包名是 `fsrs`，仓库是 `open-spaced-repetition/py-fsrs`）。
 
 ## 6. Mastery
 
@@ -236,6 +238,7 @@ P2 引入 `MasteryLevel = L0 | L1 | L2 | L3 | L4`；`Concept.target_level` 仍�
 ### 7.1 卡片
 
 - 每个 `exercise_id` 一张卡；第一次练习作答时创建。
+- 调度器固定为 `Scheduler(learning_steps=(), relearning_steps=(), enable_fuzzing=False)`：新卡首次评分后直接进入按稳定性计算的间隔，避免默认 60 秒/10 分钟学习步在每日计划里反复出现。
 - 自评/产出物不创建卡。
 - 卡片 `concept_ids` 来自 exercise 的 concepts。
 
