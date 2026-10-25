@@ -7,6 +7,37 @@
 <p class="tb-meta">{{ view.lesson.manifest.minutes }} 分钟 · {{ view.lesson.manifest.target_level }}</p>
 <ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
 <article class="tb-lesson">{{ view.body_html | safe }}</article>
+<section class="tb-tutor" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
+  <h2>追问</h2>
+  {% if not tutor %}
+    <p class="tb-tutor-hint">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
+  {% else %}
+    <label class="tb-tutor-anchor-label">围绕
+      <select class="tb-tutor-anchor">
+        <option value="">整节课</option>
+        {% for heading in tutor_headings %}<option value="{{ heading }}">{{ heading }}</option>{% endfor %}
+      </select>
+    </label>
+    <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
+    <button type="button" class="tb-tutor-submit">提问</button>
+    <p class="tb-tutor-error" hidden></p>
+    <div class="tb-tutor-log">
+      {% for message in tutor_history %}
+        <div class="tb-tutor-message" data-role="{{ message.role }}">
+          {% if message.role == "assistant" %}
+            <span class="tb-tutor-basis" data-basis="{{ message.basis }}">
+              {%- if message.basis == "lesson" %}本课内容
+              {%- elif message.basis == "resource" %}包内资源
+              {%- else %}通用知识{% endif -%}
+            </span>
+          {% endif %}
+          <p>{{ message.content }}</p>
+          {% if message.citations %}<p class="tb-tutor-citations">依据：{{ message.citations|join("、") }}</p>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
 <aside class="tb-resources">
   <h2>资源</h2>
   <ul>{% for item in view.resources %}<li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>{% endfor %}</ul>

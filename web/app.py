@@ -18,6 +18,19 @@ from testbridge.exercise.grading import grade, kind_for_exercise
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import LearningStore
 from testbridge.lesson.renderer import render_lesson
+from testbridge.tutor.client import (
+    OpenAICompatibleClient,
+    TutorTimeoutError,
+    TutorUpstreamError,
+)
+from testbridge.tutor.config import load_config, missing_vars
+from testbridge.tutor.context import build_context
+from testbridge.tutor.service import (
+    InvalidQuestionError,
+    LessonNotFoundError,
+    TutorService,
+)
+from testbridge.tutor.store import TutorStore
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
@@ -32,7 +45,17 @@ class EvidenceRequest(BaseModel):
     session_id: str | None = None
 
 
-def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> FastAPI:
+class TutorRequest(BaseModel):
+    lesson_id: str
+    anchor: str = ""
+    question: str
+
+
+def create_app(
+    pack_dir: Path | None = None,
+    db_path: Path | None = None,
+    tutor: TutorService | None = None,
+) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
     pack = load_pack(pack_path)
@@ -40,10 +63,18 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     learning_store = LearningStore(database)
     learning = LearningService(pack, store, learning_store)
 
+    if tutor is None:
+        config = load_config()
+        if config is not None:
+            tutor = TutorService(
+                pack, TutorStore(database), OpenAICompatibleClient(config), config
+            )
+
     app = FastAPI(title="TestBridge")
     app.state.pack = pack
     app.state.store = store
     app.state.learning = learning
+    app.state.tutor = tutor
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -90,10 +121,18 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         if lesson_id not in pack.lessons:
             raise HTTPException(status_code=404, detail="lesson not found")
         view = render_lesson(pack, lesson_id)
+        headings = build_context(pack, lesson_id).headings
         return templates.TemplateResponse(
             request=request,
             name="lesson.html",
-            context=ctx(request, view=view),
+            context=ctx(
+                request,
+                view=view,
+                tutor=tutor,
+                tutor_missing=missing_vars() if tutor is None else [],
+                tutor_headings=headings,
+                tutor_history=tutor.history(lesson_id) if tutor else [],
+            ),
         )
 
     @app.get("/progress", response_class=HTMLResponse)
@@ -191,6 +230,47 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         store.append(event)
         learning.record(event)
         return {"evidence_id": event.id, "grade": asdict(result)}
+
+    @app.post("/api/tutor")
+    def ask_tutor(payload: TutorRequest):
+        if tutor is None:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "tutor_disabled",
+                    "message": "未配置模型服务",
+                    "missing": missing_vars(),
+                },
+            )
+        try:
+            reply = tutor.ask(payload.lesson_id, payload.anchor, payload.question)
+        except LessonNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "lesson_not_found", "message": "课程不存在"},
+            ) from None
+        except InvalidQuestionError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_question", "message": str(exc)},
+            ) from None
+        except TutorTimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail={"code": "tutor_timeout", "message": "模型服务超时"},
+            ) from None
+        except TutorUpstreamError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"code": "tutor_upstream", "message": str(exc)},
+            ) from None
+        return {
+            "answer": reply.answer.answer,
+            "basis": reply.answer.basis,
+            "citations": reply.answer.citations,
+            "followups": reply.answer.followups,
+            "saved": reply.saved,
+        }
 
     @app.get("/api/health")
     def health():

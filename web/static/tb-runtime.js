@@ -91,4 +91,78 @@
     inputs.forEach((input) => input.addEventListener("input", render));
     render();
   });
+
+  const tutor = document.querySelector(".tb-tutor");
+  if (tutor && tutor.dataset.tutorEnabled === "true") {
+    const anchor = tutor.querySelector(".tb-tutor-anchor");
+    const input = tutor.querySelector(".tb-tutor-question");
+    const button = tutor.querySelector(".tb-tutor-submit");
+    const log = tutor.querySelector(".tb-tutor-log");
+    const error = tutor.querySelector(".tb-tutor-error");
+
+    const basisLabels = {
+      lesson: "本课内容",
+      resource: "包内资源",
+      general: "通用知识",
+    };
+
+    function appendMessage(role, content, basis, citations) {
+      const item = document.createElement("div");
+      item.className = "tb-tutor-message";
+      item.dataset.role = role;
+      if (basis) {
+        const badge = document.createElement("span");
+        badge.className = "tb-tutor-basis";
+        badge.dataset.basis = basis;
+        badge.textContent = basisLabels[basis] || basisLabels.general;
+        item.appendChild(badge);
+      }
+      const body = document.createElement("p");
+      body.textContent = content;
+      item.appendChild(body);
+      if (citations && citations.length) {
+        const meta = document.createElement("p");
+        meta.className = "tb-tutor-citations";
+        meta.textContent = "依据：" + citations.join("、");
+        item.appendChild(meta);
+      }
+      log.appendChild(item);
+    }
+
+    button.addEventListener("click", async () => {
+      const question = input.value.trim();
+      if (!question) return;
+      button.disabled = true;
+      error.hidden = true;
+      try {
+        const response = await fetch("/api/tutor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lesson_id: document.body.dataset.lessonId || "",
+            anchor: anchor ? anchor.value : "",
+            question,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail ? payload.detail.message : "追问失败");
+        }
+        appendMessage("user", question, null, []);
+        appendMessage("assistant", payload.answer, payload.basis, payload.citations);
+        if (!payload.saved) {
+          const warn = document.createElement("p");
+          warn.className = "tb-tutor-citations";
+          warn.textContent = "本次回答未保存。";
+          log.appendChild(warn);
+        }
+        input.value = "";
+      } catch (err) {
+        error.hidden = false;
+        error.textContent = "追问失败：" + err.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
 })();
