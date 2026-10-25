@@ -7,6 +7,7 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
+import pytest
 from fastapi.testclient import TestClient
 
 from web.app import create_app
@@ -181,7 +182,9 @@ def test_end_to_end_target_weights_reach_planner_inputs(tmp_path: Path) -> None:
     goal = LearningStore(db).get_goal()
     pack = load_pack(SAMPLE)
     weights = concept_weights(pack, goal)
-    assert weights["sensor-time-sync"] > weights["timestamp-basics"]
+    assert weights["sensor-time-sync"] == pytest.approx(1.6)
+    assert weights["clock-drift"] == pytest.approx(0.65)
+    assert weights["timestamp-basics"] == pytest.approx(0.5)
     page = c.get("/target").text
     assert "岗位匹配度" in page
     assert "未达标概念" in page
@@ -194,10 +197,15 @@ def test_confirm_preserves_goal_time_budget(tmp_path: Path) -> None:
     )
     c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
     parse_form(c)
-    c.post("/target/confirm", data=confirm_data())
+    response = c.post("/target/confirm", data=confirm_data(),
+                      follow_redirects=False)
+    assert response.status_code == 303
     goal = LearningStore(db).get_goal()
     assert goal.weekly_hours == 12.5
     assert goal.daily_minutes == 60
+    assert goal.concept_overrides == {
+        "sensor-time-sync": 1.6, "clock-drift": 1.3,
+    }
 
 
 def test_failed_confirm_leaves_stores_untouched(tmp_path: Path) -> None:
@@ -208,5 +216,20 @@ def test_failed_confirm_leaves_stores_untouched(tmp_path: Path) -> None:
     response = c.post("/target/confirm", data=data)
     assert response.status_code == 400
     db = tmp_path / "target.db"
-    assert LearningStore(db).get_goal().concept_overrides == {}
+    goal = LearningStore(db).get_goal()
+    assert goal.concept_overrides == {}
+    assert goal.target_role == ""
     assert TargetJdStore(db).get() is None
+
+
+def test_rationale_is_escaped(tmp_path: Path) -> None:
+    payload = json.dumps({
+        "target_role": "x",
+        "requirements": [{"text": "t", "importance": "must",
+                          "concepts": ["clock-drift"],
+                          "rationale": "<script>alert(1)</script>"}],
+    }, ensure_ascii=False)
+    c = make_app(tmp_path, llm=FakeClient(payload), config=CONFIG)
+    response = parse_form(c)
+    assert "&lt;script&gt;" in response.text
+    assert "<script>alert(1)</script>" not in response.text

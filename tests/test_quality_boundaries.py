@@ -1,3 +1,4 @@
+import ast
 import re
 from pathlib import Path
 
@@ -17,13 +18,28 @@ def test_quality_package_has_no_forbidden_imports() -> None:
 
 def test_engine_does_not_import_career() -> None:
     root = Path(__file__).parents[1] / "src" / "testbridge"
-    pattern = re.compile(r"testbridge\.career")
-    offenders = [
-        str(path.relative_to(root))
-        for path in sorted(root.rglob("*.py"))
-        if path.parts[-2] in {
-            "mastery", "schedule", "evidence", "contract", "learning"
-        }
-        and pattern.search(path.read_text(encoding="utf-8"))
-    ]
+    engine = {"mastery", "schedule", "evidence", "contract", "learning"}
+    offenders: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        relative = path.relative_to(root)
+        if not (set(relative.parts[:-1]) & engine):
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if module == "testbridge.career" or module.startswith(
+                    "testbridge.career."
+                ):
+                    offenders.append(str(relative))
+                elif node.level >= 1 and (
+                    module == "career" or module.startswith("career.")
+                ):
+                    offenders.append(str(relative))
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name == "testbridge.career" or alias.name.startswith(
+                        "testbridge.career."
+                    ):
+                        offenders.append(str(relative))
     assert offenders == []

@@ -16,7 +16,7 @@
 未提及概念保持 1.0，确认时整体替换且只存 `> 1.0`。匹配报告展示 JD 加权 readiness、
 按模块分、未达标概念、top 3 与内容缺口，复用引擎 `concept_weights` 与 readiness，
 引擎零改动；`mastery` / `schedule` / `evidence` / `contract` / `learning` 不 import
-`career`（边界测试覆盖）。完成时默认 `pytest` 705 passed、3 个 live 取消选择；
+`career`（AST 边界测试覆盖，含相对 import）。完成时默认 `pytest` 706 passed、3 个 live 取消选择；
 两个现有包 `tb validate` 0/0。设计见
 `docs/superpowers/specs/2026-10-26-p4.2-company-jd-design.md`。
 

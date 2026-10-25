@@ -415,15 +415,16 @@ quality: 100/100             # exit 0
 - [x] `/target` 展示 JD 加权 readiness、按模块分、未达标概念、top 3、内容缺口
       （`test_confirmed_target_shows_report`、`test_end_to_end_target_weights_reach_planner_inputs`：
       页面含“岗位匹配度”“未达标概念”）
-- [x] `/today` 按新权重排序；未提及概念仍可被安排（引擎 `concept_weights` 只乘 override，
-      未提及概念仍为 1.0；`test_end_to_end_target_weights_reach_planner_inputs` 确认
-      `sensor-time-sync` 权重高于 `timestamp-basics`）
+- [x] `/today` 按新权重排序；未提及概念仍可被安排（planner 复用 `concept_weights`，
+      目标权重写入 `Goal.concept_overrides` 后即进入计划打分的权重项，未提及概念保持 1.0；
+      `test_end_to_end_target_weights_reach_planner_inputs` 断言权重生效：
+      `sensor-time-sync` 1.6、`clock-drift` 0.65、`timestamp-basics` 0.5）
 - [x] 无 LLM 时可手动填权重并完成确认
       （`test_manual_mode_without_usable_llm`：解析失败显示“自动解析失败”，手动提交 303）
 - [x] 未知概念/非法权重被拒绝（400），JD 原文与理由正确转义
       （`test_confirm_rejects_out_of_range_weight`、`test_confirm_rejects_unknown_concept_in_requirements`、
-      `test_jd_text_is_escaped`、`test_failed_confirm_leaves_stores_untouched`）
-- [x] 全量测试通过，两个包 `tb validate` 0/0（705 passed，3 deselected；两包均 0 error / 0 warning）
+      `test_jd_text_is_escaped`、`test_rationale_is_escaped`、`test_failed_confirm_leaves_stores_untouched`）
+- [x] 全量测试通过，两个包 `tb validate` 0/0（706 passed，3 deselected；两包均 0 error / 0 warning）
 - [x] 引擎模块不 import `career`（`test_engine_does_not_import_career`：mastery / schedule /
       evidence / contract / learning 均无 `testbridge.career` 引用）
 
@@ -433,7 +434,7 @@ quality: 100/100             # exit 0
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-705 passed, 3 deselected in 40.18s
+706 passed, 3 deselected in 46.53s
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0
@@ -457,7 +458,7 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现。当前范围、�
 
 ### P4 应用整合
 
-P4.1、P4.2 已完成并合并；P4.3（求职管理）范围待定义。
+P4.1 已合并到 master；P4.2 已完成（分支 `p4.2-company-jd`，待合并）；P4.3（求职管理）范围待定义。
 
 - [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
 - [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：已完成。
