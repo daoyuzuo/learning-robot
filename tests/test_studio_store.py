@@ -120,12 +120,13 @@ def test_module_fields_default_and_validate(tmp_path: Path) -> None:
     assert draft["lessons_per_module"] == 3
     assert draft["lesson_count"] == 6
 
-    with pytest.raises(DraftError):
+    with pytest.raises(DraftError) as excinfo:
         store.create(
             draft_id="bad-modules", topic="t", level="L2",
             module_count=4, lessons_per_module=1, searches_per_lesson=5,
             model="m", prompt_version="studio/1",
         )
+    assert excinfo.value.code == "invalid_module_count"
 
 
 def test_legacy_lesson_count_still_works(tmp_path: Path) -> None:

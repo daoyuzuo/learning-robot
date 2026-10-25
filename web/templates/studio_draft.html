@@ -3,7 +3,7 @@
 {% block content %}
 <h1>{{ draft.id }}</h1>
 <p class="tb-meta">{{ draft.topic }} · {{ draft.level }} · {{ draft.get("module_count", 1) }} 模块 ·
-  {{ draft.get("lessons_per_module", draft.get("lesson_count", 1)) }} 课/模块 ·
+  {{ draft.get("lessons_per_module") or draft.get("lesson_count") or 1 }} 课/模块 ·
   每课检索 {{ draft.searches_per_lesson }} 次 · 检索源 {{ draft.get("search_backend", "auto") }}</p>
 {% if not enabled %}<p class="tb-warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
 <div id="studio" data-draft="{{ draft.id }}" data-enabled="{{ 'true' if enabled else 'false' }}">

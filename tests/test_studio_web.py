@@ -65,6 +65,22 @@ MULTI_OUTLINE_JSON = json.dumps({
     ],
 })
 
+LEGACY_TWO_LESSONS_JSON = json.dumps({
+    "module_title": "执行器",
+    "concepts": [
+        {"id": "executor-basics", "title": "执行器基础", "domain": "ros2",
+         "target_level": "L2", "prerequisites": [], "weight": 1.0,
+         "evidence_criteria": [{"id": "EV-1", "description": "能解释", "level": "L1"}]}],
+    "lessons": [
+        {"id": "L-EXEC-001", "title": "单线程执行器", "minutes": 20,
+         "objectives": ["说明调度顺序"], "exercise_intents": ["选择题"],
+         "research_queries": ["ROS 2 executors"]},
+        {"id": "L-EXEC-002", "title": "多线程执行器", "minutes": 25,
+         "objectives": ["区分执行器"], "exercise_intents": ["判断并发"],
+         "research_queries": ["ROS 2 multithreaded executor"]},
+    ],
+})
+
 LESSON_JSON = (
     '{"manifest": {"title": "单线程执行器", "minutes": 20, '
     '"objectives": ["说明调度顺序"]}, '
@@ -142,10 +158,11 @@ def create_draft(app: TestClient, draft_id: str = "demo") -> None:
 
 
 def seed_multi_draft(app: TestClient):
-    """Write a 2x2 outline directly; the web form gains module fields in Task 4."""
+    """Seed a 2-module draft and write its 2x2 outline directly."""
     store = app.app.state.studio_store
     store.create(
-        draft_id="multi", topic="t", level="L2", lesson_count=4,
+        draft_id="multi", topic="t", level="L2",
+        module_count=2, lessons_per_module=2,
         searches_per_lesson=5, model="m", prompt_version="studio/1",
     )
     parsed = parse_outline_json(MULTI_OUTLINE_JSON, 2, 2)
@@ -194,6 +211,27 @@ def test_create_draft_with_module_counts(tmp_path: Path) -> None:
     page = app.get("/studio/multi")
     assert "2 模块" in page.text
     assert "2 课/模块" in page.text
+
+
+def test_outline_uses_legacy_lesson_count_when_module_fields_missing(
+    tmp_path: Path,
+) -> None:
+    llm = FakeLlm(LEGACY_TWO_LESSONS_JSON)
+    app = make_app(tmp_path, llm)
+    store = app.app.state.studio_store
+    draft = store.create(
+        draft_id="legacy", topic="t", level="L2", lesson_count=2,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    draft.pop("module_count")
+    draft.pop("lessons_per_module")
+    store.save(draft)
+
+    response = app.post("/api/studio/legacy/outline")
+
+    assert response.status_code == 200, response.text
+    assert "模块数：1" in llm.outline_prompts[-1]
+    assert "每模块课数：2" in llm.outline_prompts[-1]
 
 
 def test_create_rejects_inconsistent_counts(tmp_path: Path) -> None:

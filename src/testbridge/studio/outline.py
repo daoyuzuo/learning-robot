@@ -11,11 +11,14 @@ from html.parser import HTMLParser
 import yaml
 
 from testbridge.contract.sanitize import sanitize_fragment
-from testbridge.studio.store import ID_RE, DraftStore
+from testbridge.studio.store import (
+    ID_RE,
+    MAX_LESSONS_PER_MODULE,
+    MAX_MODULES,
+    DraftStore,
+)
 
 MAX_CONCEPTS = 12
-MAX_MODULES = 3
-MAX_LESSONS_PER_MODULE = 5
 CONCEPT_FIELDS = (
     "id", "title", "domain", "target_level", "prerequisites", "related",
     "weight", "evidence_criteria", "resources",
