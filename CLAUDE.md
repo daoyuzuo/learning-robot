@@ -27,11 +27,11 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**P3.5 已完成（2026-10-26，分支 `p3.5-content-evolution`）。** `/studio/evolution` 可跨草稿
+**P3.5 已完成并合并到 master（2026-10-26）。** `/studio/evolution` 可跨草稿
 选课，按草稿分组顺序重生成；prompt 版本当前 `studio/2`，旧草稿按 `studio/1`，每课记录
 实际版本；每课重写前把旧 HTML/练习/资源快照到 `drafts/<id>/history/<lesson_id>/`，重写后
 对比练习数/题型/级别/资源/版本/HTML 与整包质量分前后；历史页只读展示“最近一次与当前
-内容不同的快照 vs 当前内容”。默认 `pytest` 559 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
+内容不同的快照 vs 当前内容”。默认 `pytest` 564 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
 `tb quality` 100/100。设计见
 `docs/superpowers/specs/2026-10-26-p3.5-content-evolution-design.md`。
 

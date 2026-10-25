@@ -4,7 +4,7 @@
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
 > **当前期：P4（应用整合）范围待定义**
-> 状态：P3.5 已完成，2026-10-26
+> 状态：P3.5 已完成并合并到 master，2026-10-26
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
@@ -337,13 +337,13 @@ quality: 100/100                # exit 0
       `test_evolution_page_lists_drafts_and_lessons`）
 - [x] 进化任务运行中第二个任务 409；同草稿批量/单课互斥
       （`test_evolution_returns_conflict_while_running`；`JobRunner` 既有互斥测试不回归）
-- [x] 默认 `pytest` 全绿；P3.4 的 518 个测试无回归，P3.5 完成时全量 559 passed、3 deselected
+- [x] 默认 `pytest` 全绿；P3.4 的 518 个测试无回归，P3.5 完成时全量 564 passed、3 deselected
 
 **验证命令（2026-10-26）：**
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-559 passed, 3 deselected     # exit 0
+564 passed, 3 deselected     # exit 0
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)     # exit 0
