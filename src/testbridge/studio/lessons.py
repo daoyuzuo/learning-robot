@@ -166,21 +166,32 @@ def _drop_old_lesson_ids(
 ) -> tuple[list, list]:
     """For a rewrite, drop IDs owned by the lesson's previous manifest.
 
-    Only IDs recorded in the old lesson file are removed; IDs claimed by other
-    lessons are untouched and still trigger the collision checks.
+    The old file is looked up in the lesson's current module first; when it is
+    absent (the outline moved the lesson), every module holding a lesson with
+    the same ID is scanned so the stale file's IDs are still released. The old
+    HTML file itself is left in place. Only IDs recorded in old manifests are
+    removed; IDs claimed by other lessons still trigger the collision checks.
     """
     old_path = (
         store.path(draft_id)
         / "modules" / module_id / "lessons" / f"{lesson_id}.html"
     )
-    if not old_path.is_file():
-        return existing_exercises, existing_resources
-    try:
-        old_manifest, _ = load_lesson_file(old_path)
-    except Exception:
-        return existing_exercises, existing_resources
-    old_exercises = set(old_manifest.exercises)
-    old_resources = set(old_manifest.resources)
+    if old_path.is_file():
+        old_paths = [old_path]
+    else:
+        modules_root = store.path(draft_id) / "modules"
+        old_paths = sorted(
+            modules_root.glob(f"*/lessons/{lesson_id}.html")
+        ) if modules_root.is_dir() else []
+    old_exercises: set[str] = set()
+    old_resources: set[str] = set()
+    for path in old_paths:
+        try:
+            old_manifest, _ = load_lesson_file(path)
+        except Exception:
+            continue
+        old_exercises.update(old_manifest.exercises)
+        old_resources.update(old_manifest.resources)
     return (
         [item for item in existing_exercises if item.get("id") not in old_exercises],
         [item for item in existing_resources if item.get("id") not in old_resources],
