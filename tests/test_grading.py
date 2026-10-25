@@ -1,7 +1,7 @@
 import pytest
 
 from testbridge.contract.models import Exercise, Hint, RubricItem, ShortAnswer
-from testbridge.exercise.grading import get_hint, grade, normalize
+from testbridge.exercise.grading import get_hint, grade, kind_for_exercise, normalize
 
 
 def choice() -> Exercise:
@@ -59,6 +59,18 @@ def test_artifact_requires_path() -> None:
     )
     assert grade(ex, {"path": "a.log"}).outcome == "submitted"
     assert grade(ex, {"notes": "no path"}).outcome == "incorrect"
+
+
+def test_kind_for_exercise_maps_all_types() -> None:
+    assert kind_for_exercise("single_choice") == "exercise_attempt"
+    assert kind_for_exercise("multi_choice") == "exercise_attempt"
+    assert kind_for_exercise("short_answer") == "exercise_attempt"
+    assert kind_for_exercise("self_assess") == "self_assess"
+    assert kind_for_exercise("artifact") == "artifact"
+
+
+def test_kind_for_exercise_defaults_to_exercise_attempt() -> None:
+    assert kind_for_exercise("unknown") == "exercise_attempt"
 
 
 def test_hint_levels() -> None:

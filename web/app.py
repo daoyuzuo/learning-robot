@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
-from testbridge.exercise.grading import grade
+from testbridge.exercise.grading import grade, kind_for_exercise
 from testbridge.lesson.renderer import render_lesson
 
 BASE = Path(__file__).resolve().parent
@@ -37,6 +37,8 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     store = EvidenceStore(database)
 
     app = FastAPI(title="TestBridge")
+    app.state.pack = pack
+    app.state.store = store
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -100,7 +102,7 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
             raise HTTPException(status_code=400, detail="exercise not in lesson")
         result = grade(exercise, payload.response)
         event = new_event(
-            kind="exercise_attempt",
+            kind=kind_for_exercise(exercise.type),
             lesson_id=payload.lesson_id,
             exercise_id=payload.exercise_id,
             concept_ids=exercise.concepts,

@@ -128,3 +128,37 @@ def test_unknown_lesson_evidence_is_404(tmp_path: Path) -> None:
     )
     assert response.status_code == 404
     assert "lesson not found" in response.text
+
+
+def test_self_assess_evidence_kind(tmp_path: Path) -> None:
+    app = create_app(SAMPLE, tmp_path / "test.db")
+    response = TestClient(app).post(
+        "/api/evidence",
+        json={
+            "lesson_id": "L-SYNC-001",
+            "exercise_id": "EX-SYNC-003",
+            "response": {"checked": ["机制"]},
+        },
+    )
+    assert response.status_code == 200
+    events = app.state.store.list(limit=10)
+    assert len(events) == 1
+    assert events[0].kind == "self_assess"
+    assert events[0].exercise_id == "EX-SYNC-003"
+
+
+def test_artifact_evidence_kind(tmp_path: Path) -> None:
+    app = create_app(SAMPLE, tmp_path / "test.db")
+    response = TestClient(app).post(
+        "/api/evidence",
+        json={
+            "lesson_id": "L-SYNC-003",
+            "exercise_id": "EX-SYNC-004",
+            "response": {"path": "run.log", "checked": ["可复现"]},
+        },
+    )
+    assert response.status_code == 200
+    events = app.state.store.list(limit=10)
+    assert len(events) == 1
+    assert events[0].kind == "artifact"
+    assert events[0].exercise_id == "EX-SYNC-004"

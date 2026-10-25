@@ -10,6 +10,17 @@ from testbridge.contract.models import Exercise, ShortAnswer
 
 Outcome = Literal["correct", "incorrect", "partial", "submitted"]
 PUNCTUATION_RE = re.compile(r"[\s,，。.!！?？;；:：、\"'“”‘’()（）\[\]【】]+")
+EVIDENCE_KINDS = {
+    "single_choice": "exercise_attempt",
+    "multi_choice": "exercise_attempt",
+    "short_answer": "exercise_attempt",
+    "self_assess": "self_assess",
+    "artifact": "artifact",
+}
+
+
+def kind_for_exercise(exercise_type: str) -> str:
+    return EVIDENCE_KINDS.get(exercise_type, "exercise_attempt")
 
 
 @dataclass(frozen=True)

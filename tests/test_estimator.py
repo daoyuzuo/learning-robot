@@ -36,6 +36,24 @@ def test_confidence_and_level() -> None:
     assert view.level in {"L1", "L2", "L3", "L4"}
 
 
+def test_non_exercise_kinds_stay_on_rule_score() -> None:
+    events = [
+        new_event(
+            kind="self_assess", concept_ids=["c-one"], outcome="submitted",
+            score=0.5, max_score=1.0,
+        ),
+        new_event(
+            kind="artifact", concept_ids=["c-one"], outcome="submitted",
+            score=0.7, max_score=1.0,
+        ),
+    ]
+    view = estimate("c-one", events, NOW)
+    assert view.exercise_observations == 0
+    assert view.other_observations == 2
+    assert view.estimate == view.rule_score
+    assert view.bkt_p == initial_state().p
+
+
 def test_explicit_bkt_state_is_used() -> None:
     state = initial_state()
     view = estimate("c-one", [], NOW, bkt_state=state)

@@ -75,10 +75,13 @@ function grade(ex, response) {
   return { outcome: "submitted", correct: null, score: score, max_score: 1, feedback: "已记录产出物。" };
 }
 function makeRow(lessonId, exerciseId, exercise, response, result, hintsUsed, durationMs) {
+  const kind = exercise.type === "self_assess" ? "self_assess"
+    : exercise.type === "artifact" ? "artifact"
+    : "exercise_attempt";
   return {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     learner_id: "local",
-    kind: "exercise_attempt",
+    kind: kind,
     concept_ids: exercise.concepts || [],
     payload: { response: response, hints_used: hintsUsed, duration_ms: durationMs },
     source: "standalone",

@@ -198,6 +198,27 @@ console.log(JSON.stringify(
     assert row["supersedes"] is None
 
 
+def test_standalone_row_kind_follows_exercise_type(tmp_path: Path) -> None:
+    rows = _run_core_js(
+        tmp_path,
+        """
+const selfAssess = { type: "self_assess", rubric: [{ dimension: "d", weight: 1 }] };
+const artifact = { type: "artifact", rubric: [{ dimension: "d", weight: 1 }] };
+console.log(JSON.stringify([
+  makeRow("L", "E1", selfAssess, { checked: ["d"] }, grade(selfAssess, { checked: ["d"] }), 0, 1),
+  makeRow("L", "E2", artifact, { path: "run.log" }, grade(artifact, { path: "run.log" }), 0, 1),
+  makeRow("L", "E3", { type: "short_answer", answer: { accepted: ["x"], min_hits: 1 } },
+    "x", grade({ type: "short_answer", answer: { accepted: ["x"], min_hits: 1 } }, "x"), 0, 1),
+]));
+""",
+    )
+
+    self_assess_row, artifact_row, short_answer_row = rows
+    assert self_assess_row["kind"] == "self_assess"
+    assert artifact_row["kind"] == "artifact"
+    assert short_answer_row["kind"] == "exercise_attempt"
+
+
 def test_build_escapes_script_breakout_in_exercise_json(tmp_path: Path) -> None:
     pack = tmp_path / "pack"
     shutil.copytree(FIXTURE, pack)
