@@ -8,9 +8,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from testbridge.build import build_pack
-from testbridge.content.repository import list_packs
+from testbridge.content.repository import list_packs, load_pack
 from testbridge.contract.validator import validate_pack
 from testbridge.evidence.store import EvidenceStore
+from testbridge.learning.rebuild import rebuild_state
+from testbridge.learning.service import LearningService
+from testbridge.learning.store import Goal, LearningStore
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -24,6 +27,13 @@ def _load_app(pack_dir: Path, db_path: Path) -> FastAPI:
     from web.app import create_app
 
     return create_app(pack_dir, db_path)
+
+
+def _load_learning(pack_path: str, db_path: str, learner_id: str = "local") -> LearningService:
+    pack = load_pack(Path(pack_path))
+    return LearningService(
+        pack, EvidenceStore(Path(db_path)), LearningStore(Path(db_path)), learner_id
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -54,6 +64,34 @@ def main(argv: list[str] | None = None) -> int:
     import_cmd = sub.add_parser("evidence-import")
     import_cmd.add_argument("db")
     import_cmd.add_argument("path")
+
+    rebuild = sub.add_parser("rebuild-state")
+    rebuild.add_argument("--pack", default="content-packs/sample-sensors")
+    rebuild.add_argument("--db", default="data/testbridge.db")
+    rebuild.add_argument("--learner-id", default="local")
+
+    goal = sub.add_parser("goal")
+    goal_sub = goal.add_subparsers(dest="goal_command", required=True)
+    goal_show = goal_sub.add_parser("show")
+    goal_show.add_argument("--db", default="data/testbridge.db")
+    goal_show.add_argument("--learner-id", default="local")
+    goal_set = goal_sub.add_parser("set")
+    goal_set.add_argument("--db", default="data/testbridge.db")
+    goal_set.add_argument("--learner-id", default="local")
+    goal_set.add_argument("--target-role", default="")
+    goal_set.add_argument("--weekly-hours", type=float, default=0.0)
+    goal_set.add_argument("--daily-minutes", type=int, default=45)
+    goal_set.add_argument("--override", action="append", default=[])
+
+    readiness = sub.add_parser("readiness")
+    readiness.add_argument("--pack", default="content-packs/sample-sensors")
+    readiness.add_argument("--db", default="data/testbridge.db")
+    readiness.add_argument("--learner-id", default="local")
+
+    today = sub.add_parser("today")
+    today.add_argument("--pack", default="content-packs/sample-sensors")
+    today.add_argument("--db", default="data/testbridge.db")
+    today.add_argument("--learner-id", default="local")
 
     args = parser.parse_args(argv)
 
@@ -92,6 +130,49 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "evidence-import":
         count = EvidenceStore(Path(args.db)).import_jsonl(Path(args.path))
         print(f"imported {count}")
+        return 0
+
+    if args.command == "rebuild-state":
+        service = _load_learning(args.pack, args.db, args.learner_id)
+        result = rebuild_state(service)
+        print(f"rebuilt {result.events} events, {result.concepts} concepts, {result.reviews} reviews")
+        return 0
+
+    if args.command == "goal":
+        if args.goal_command == "show":
+            goal = LearningStore(Path(args.db)).get_goal(args.learner_id)
+            print(goal)
+            return 0
+        overrides = {}
+        for item in args.override:
+            key, _, value = item.partition("=")
+            overrides[key] = float(value)
+        LearningStore(Path(args.db)).set_goal(Goal(
+            learner_id=args.learner_id, target_role=args.target_role,
+            weekly_hours=args.weekly_hours, daily_minutes=args.daily_minutes,
+            concept_overrides=overrides,
+        ))
+        print("goal updated")
+        return 0
+
+    if args.command == "readiness":
+        service = _load_learning(args.pack, args.db, args.learner_id)
+        view = service.readiness()
+        print(f"readiness: {view.total:.2f}")
+        for module_id, value in view.by_module.items():
+            print(f"  {module_id}: {value:.2f}")
+        for reason in view.gate_reasons:
+            print(f"  gate: {reason}")
+        return 0
+
+    if args.command == "today":
+        service = _load_learning(args.pack, args.db, args.learner_id)
+        plan = service.today_plan()
+        print(f"today: {len(plan.items)} items, {plan.total_minutes}/{plan.budget_minutes} minutes")
+        for item in plan.items:
+            print(f"  {item.type}: {item.reason} ({item.estimated_minutes}m)")
+        if plan.empty:
+            print(f"  {plan.suggestion or 'no mandatory work'}")
         return 0
 
     return 1
