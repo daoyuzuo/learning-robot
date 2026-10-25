@@ -101,6 +101,12 @@ def test_unknown_detail_is_404(tmp_path: Path) -> None:
     assert c.get("/applications/nope").status_code == 404
 
 
+def test_write_routes_404_for_unknown_id(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    assert c.post("/applications/nope", data=create_data()).status_code == 404
+    assert c.post("/applications/nope/withdraw").status_code == 404
+
+
 def test_update_status_and_notes(tmp_path: Path) -> None:
     c = make_app(tmp_path)
     app_id = create_one(c)
@@ -109,7 +115,7 @@ def test_update_status_and_notes(tmp_path: Path) -> None:
         follow_redirects=False)
     assert response.status_code == 303
     page = c.get(f"/applications/{app_id}").text
-    assert "interviewing" in page
+    assert "状态 面试中" in page
     assert "约了下周" in page
 
 
@@ -131,7 +137,8 @@ def test_withdraw(tmp_path: Path) -> None:
                       follow_redirects=False)
     assert response.status_code == 303
     page = c.get(f"/applications/{app_id}").text
-    assert "withdrawn" in page
+    assert "状态 已撤回" in page
+    assert "撤回这次投递" not in page
 
 
 def test_list_escapes_company(tmp_path: Path) -> None:
