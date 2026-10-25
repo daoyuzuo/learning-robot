@@ -15,6 +15,8 @@ from pydantic import BaseModel
 from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.exercise.grading import grade, kind_for_exercise
+from testbridge.learning.service import LearningService
+from testbridge.learning.store import LearningStore
 from testbridge.lesson.renderer import render_lesson
 
 BASE = Path(__file__).resolve().parent
@@ -35,10 +37,13 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     database = db_path or ROOT / "data" / "testbridge.db"
     pack = load_pack(pack_path)
     store = EvidenceStore(database)
+    learning_store = LearningStore(database)
+    learning = LearningService(pack, store, learning_store)
 
     app = FastAPI(title="TestBridge")
     app.state.pack = pack
     app.state.store = store
+    app.state.learning = learning
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -55,7 +60,7 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     def ctx(request: Request, **kwargs):
-        return {"request": request, "pack": pack, **kwargs}
+        return {"request": request, "pack": pack, "learning": learning, **kwargs}
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard(request: Request):
@@ -64,10 +69,20 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
             module.id: [pack.lessons[item] for item in module.lessons if item in pack.lessons]
             for module in modules
         }
+        views = learning.all_mastery()
+        weakest = sorted(views.values(), key=lambda item: item.estimate)[:3]
         return templates.TemplateResponse(
             request=request,
             name="dashboard.html",
-            context=ctx(request, modules=modules, lessons_by_module=lessons_by_module),
+            context=ctx(
+                request,
+                modules=modules,
+                lessons_by_module=lessons_by_module,
+                readiness=learning.readiness(),
+                plan=learning.today_plan(),
+                due_count=len(learning.due_reviews()),
+                weakest=weakest,
+            ),
         )
 
     @app.get("/lesson/{lesson_id}", response_class=HTMLResponse)
@@ -87,7 +102,58 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
-            context=ctx(request, events=events, total=store.count()),
+            context=ctx(
+                request,
+                events=events,
+                total=store.count(),
+                readiness=learning.readiness(),
+                views=learning.all_mastery(),
+            ),
+        )
+
+    @app.get("/today", response_class=HTMLResponse)
+    def today_page(request: Request):
+        plan = learning.today_plan()
+        return templates.TemplateResponse(
+            request=request, name="today.html", context=ctx(request, plan=plan)
+        )
+
+    @app.get("/concepts", response_class=HTMLResponse)
+    def concepts_page(request: Request):
+        views = learning.all_mastery()
+        due = learning.due_reviews()
+        due_counts: dict[str, int] = {}
+        for review in due:
+            for concept_id in review.concept_ids:
+                due_counts[concept_id] = due_counts.get(concept_id, 0) + 1
+        lesson_for_concept = {}
+        for lesson in pack.lessons_in_order():
+            for concept_id in lesson.manifest.concepts:
+                lesson_for_concept.setdefault(concept_id, lesson.manifest.id)
+        return templates.TemplateResponse(
+            request=request, name="concepts.html",
+            context=ctx(
+                request, views=views, due_counts=due_counts,
+                lesson_for_concept=lesson_for_concept,
+            ),
+        )
+
+    @app.get("/review", response_class=HTMLResponse)
+    def review_page(request: Request):
+        due = learning.due_reviews()
+        rows = []
+        for review in due:
+            lesson_id = next(
+                (
+                    lesson.manifest.id
+                    for lesson in pack.lessons_in_order()
+                    if review.exercise_id in lesson.manifest.exercises
+                ),
+                None,
+            )
+            rows.append({"review": review, "lesson_id": lesson_id})
+        return templates.TemplateResponse(
+            request=request, name="review.html", context=ctx(request, rows=rows)
         )
 
     @app.post("/api/evidence")
@@ -120,6 +186,7 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
             session_id=payload.session_id,
         )
         store.append(event)
+        learning.record(event)
         return {"evidence_id": event.id, "grade": asdict(result)}
 
     @app.get("/api/health")

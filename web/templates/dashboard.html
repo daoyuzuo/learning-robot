@@ -3,6 +3,11 @@
 {% block content %}
 <h1>{{ pack.meta.title }}</h1>
 <p>{{ pack.meta.description }}</p>
+<h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
+<p>到期复习 {{ due_count }} 张 · 今日计划 {{ plan.items|length }} 项</p>
+{% if readiness.gate_active %}<p>门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
+<h3>最弱概念</h3>
+<ul>{% for item in weakest %}<li>{{ item.concept_id }} · {{ "%.2f"|format(item.estimate) }} · {{ item.level }}</li>{% endfor %}</ul>
 {% for module in modules %}
 <section class="tb-module">
   <h2>{{ module.title }}</h2>

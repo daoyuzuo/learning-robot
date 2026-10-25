@@ -2,6 +2,8 @@
 {% block title %}进度 · TestBridge{% endblock %}
 {% block content %}
 <h1>进度</h1>
+<h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
+{% if readiness.gate_active %}<p>门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
 <p>共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
 <table>
 <tr><th>时间</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th></tr>
