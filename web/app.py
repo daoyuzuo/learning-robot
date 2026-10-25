@@ -17,7 +17,7 @@ from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.exercise.grading import grade, kind_for_exercise
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import LearningStore
-from testbridge.lesson.renderer import render_lesson
+from testbridge.lesson.renderer import render_exercise_form, render_lesson
 from testbridge.tutor.client import (
     OpenAICompatibleClient,
     TutorTimeoutError,
@@ -247,6 +247,41 @@ def create_app(
         store.append(event)
         learning.record(event)
         return {"evidence_id": event.id, "grade": asdict(result)}
+
+    @app.get("/review/session", response_class=HTMLResponse)
+    def review_session(request: Request):
+        lessons = pack.lessons_in_order()
+        cards = []
+        skipped = 0
+        for review in learning.due_reviews():
+            exercise = pack.exercises.get(review.exercise_id)
+            lesson_id = next(
+                (
+                    lesson.manifest.id
+                    for lesson in lessons
+                    if review.exercise_id in lesson.manifest.exercises
+                ),
+                None,
+            )
+            if exercise is None or lesson_id is None:
+                skipped += 1
+                continue
+            cards.append({
+                "exercise_id": exercise.id,
+                "lesson_id": lesson_id,
+                "lesson_title": pack.lessons[lesson_id].manifest.title,
+                "concept_titles": [
+                    pack.concepts[item].title
+                    for item in review.concept_ids
+                    if item in pack.concepts
+                ],
+                "form": render_exercise_form(exercise, lesson_id),
+            })
+        return templates.TemplateResponse(
+            request=request,
+            name="review_session.html",
+            context=ctx(request, cards=cards, skipped=skipped),
+        )
 
     @app.post("/api/review")
     def review_evidence(payload: ReviewRequest):

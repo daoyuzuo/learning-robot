@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}复习会话 · TestBridge{% endblock %}
+{% block content %}
+<h1>复习会话</h1>
+{% if skipped %}<p class="tb-session-skipped">{{ skipped }} 张卡对应的练习已不存在，已跳过。</p>{% endif %}
+{% if not cards %}
+  <p>今天没有到期卡。</p>
+  <p><a href="/today">回到今日计划</a></p>
+{% else %}
+  <p class="tb-session-meta">共 {{ cards|length }} 张 · 约 {{ cards|length * 5 }} 分钟</p>
+  <div class="tb-session" data-session="true">
+    {% for card in cards %}
+    <section class="tb-session-card" data-index="{{ loop.index0 }}" {% if not loop.first %}hidden{% endif %}>
+      <p class="tb-session-source">{{ card.lesson_title }} · {{ card.concept_titles|join("、") }}</p>
+      {{ card.form | safe }}
+      <p class="tb-session-next" hidden><button type="button">下一张</button></p>
+    </section>
+    {% endfor %}
+    <div class="tb-session-done" hidden>
+      <p>本次复习 {{ cards|length }} 张，答对 <span class="tb-session-correct">0</span> 张。</p>
+      <p><a href="/today">回到今日计划</a> · <a href="/review">查看剩余到期卡</a></p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="/static/tb-runtime.js"></script>
+{% endblock %}

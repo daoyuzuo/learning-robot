@@ -3,6 +3,7 @@
 {% block content %}
 <h1>到期复习</h1>
 {% if not rows %}<p>今天没有到期卡。</p>{% else %}
+<p><a href="/review/session">开始复习</a></p>
 <table>
 <tr><th>练习</th><th>概念</th><th>到期</th><th>课程</th></tr>
 {% for row in rows %}

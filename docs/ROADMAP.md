@@ -159,8 +159,8 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ### 仍未做
 
+- [x] 独立复习播放器：`/review/session` 一次一张卡，跨课程表单各带 `data-lesson-id`。
 - 概念页图形化（Mermaid/SVG）；P2 用表格 + 先修关系文本。
-- 独立复习播放器；P2 的 `/review` 列表跳转课程页复用已有表单。
 - BKT 参数校准（P3 用真实数据）。
 - 概念级 FSRS 卡与复习后手动自评。
 - Artifact 仍只记录路径；产出物评分（`accept` / `max_size_mb`、`data/artifacts/<evidence-id>/`）顺延。

@@ -70,7 +70,7 @@ def _find_widget_ids(body: str) -> list[str]:
     return list(dict.fromkeys(parser.widget_ids))
 
 
-def render_exercise_form(exercise: Exercise) -> str:
+def render_exercise_form(exercise: Exercise, lesson_id: str | None = None) -> str:
     if exercise.type == "single_choice":
         fields = "".join(
             f'<label><input type="radio" name="answer" value="{_esc(option.id)}"> {_esc(option.text)}</label>'
@@ -106,7 +106,8 @@ def render_exercise_form(exercise: Exercise) -> str:
         f'<p class="tb-hint" data-level="{hint.level}" hidden>{_esc(hint.text)}</p>'
         for hint in exercise.hints
     )
-    return f"""<form class="tb-exercise" data-exercise-id="{_esc(exercise.id)}" data-exercise-type="{exercise.type}">
+    lesson_attr = f' data-lesson-id="{_esc(lesson_id)}"' if lesson_id else ""
+    return f"""<form class="tb-exercise" data-exercise-id="{_esc(exercise.id)}" data-exercise-type="{exercise.type}"{lesson_attr}>
   <p class="tb-prompt">{_esc(exercise.prompt)}</p>
   <div class="tb-fields">{fields}</div>
   <div class="tb-actions"><button type="submit">提交</button><button type="button" class="tb-hint-button">提示</button></div>

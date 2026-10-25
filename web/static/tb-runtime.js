@@ -25,6 +25,39 @@
     return null;
   }
 
+  let sessionCorrect = 0;
+
+  function markSessionProgress(form, correct) {
+    const card = form.closest(".tb-session-card");
+    if (!card) return;
+    if (correct) sessionCorrect += 1;
+    const score = document.querySelector(".tb-session-correct");
+    if (score) score.textContent = String(sessionCorrect);
+    const next = card.querySelector(".tb-session-next");
+    if (next) next.hidden = false;
+  }
+
+  function wireSession() {
+    const session = document.querySelector(".tb-session");
+    if (!session) return;
+    const cards = Array.from(session.querySelectorAll(".tb-session-card"));
+    const done = session.querySelector(".tb-session-done");
+    cards.forEach((card, index) => {
+      const button = card.querySelector(".tb-session-next button");
+      if (!button) return;
+      button.addEventListener("click", () => {
+        card.hidden = true;
+        const following = cards[index + 1];
+        if (following) {
+          following.hidden = false;
+          following.scrollIntoView({ block: "start" });
+        } else if (done) {
+          done.hidden = false;
+        }
+      });
+    });
+  }
+
   function tutorEnabled() {
     const panel = document.querySelector(".tb-tutor");
     return panel && panel.dataset.tutorEnabled === "true";
@@ -143,7 +176,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            lesson_id: lessonId,
+            lesson_id: form.dataset.lessonId || lessonId,
             exercise_id: form.dataset.exerciseId,
             response,
             hints_used: hintsUsed,
@@ -156,6 +189,7 @@
         feedback.dataset.outcome = payload.grade.outcome;
         feedback.textContent = payload.grade.feedback;
         maybeAddReviewButton(form, payload.evidence_id);
+        markSessionProgress(form, payload.grade.correct);
       } catch (err) {
         feedback.hidden = false;
         feedback.textContent = "提交失败：" + err.message;
@@ -255,4 +289,6 @@
       }
     });
   }
+
+  wireSession();
 })();
