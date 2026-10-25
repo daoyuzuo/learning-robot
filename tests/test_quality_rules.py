@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from testbridge.content.repository import load_pack
+from testbridge.quality.evaluate import QualityUnavailable, evaluate_draft, evaluate_pack
 from testbridge.quality.provenance import (
     evaluate_provenance, load_dossiers, normalize_url,
 )
@@ -381,3 +383,66 @@ def test_load_dossiers_reports_malformed(tmp_path: Path) -> None:
     assert dossiers == {}
     assert malformed == {"L-ONE"}
     assert issues[0].code == "quality.research_malformed"
+
+
+def test_clean_pack_scores_100_with_research(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    report = evaluate_pack(pack, research_dir=research, budget=2)
+
+    assert report.ok is True
+    assert report.score == 100
+    assert report.possible == 100
+    assert report.provenance_evaluated is True
+
+
+def test_structural_only_report_is_normalized(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+
+    report = evaluate_pack(pack)
+
+    assert report.score == 100
+    assert report.earned == 60
+    assert report.possible == 60
+    assert report.provenance_evaluated is False
+    assert all(
+        not metric.key.startswith("provenance.") for metric in report.metrics
+    )
+
+
+def test_research_without_budget_omits_query_metric(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    report = evaluate_pack(pack, research_dir=research)
+
+    assert report.possible == 95
+    assert report.score == 100
+    assert all(metric.key != "research.queries" for metric in report.metrics)
+
+
+def test_invalid_pack_raises_quality_unavailable(tmp_path: Path) -> None:
+    with pytest.raises(QualityUnavailable):
+        evaluate_pack(tmp_path / "missing")
+
+
+def test_evaluate_draft_matches_evaluate_pack(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    direct = evaluate_pack(pack, research_dir=research, budget=2)
+    draft = evaluate_draft(pack, research_dir=research, budget=2)
+
+    assert draft.as_dict() == direct.as_dict()
+
+
+def test_warning_only_report_is_ok(tmp_path: Path) -> None:
+    resource = {**default_resource(), "license": "", "why": ""}
+    pack = build_pack(tmp_path / "pack", resources=[resource])
+    research = write_research(tmp_path / "pack")
+
+    report = evaluate_pack(pack, research_dir=research, budget=2)
+
+    assert report.ok is True
+    assert report.warnings
