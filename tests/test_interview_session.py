@@ -54,8 +54,10 @@ def test_save_and_reset_draft(tmp_path: Path) -> None:
     answer = service.save_draft(session.id, question_id, "我的回答")
     assert answer.answer == "我的回答"
     assert answer.status == "answered"
+    assert service.answers(session.id)[question_id].answer == "我的回答"
     reset = service.reset_answer(session.id, question_id)
     assert reset.answer == ""
+    assert service.answers(session.id)[question_id].answer == ""
 
 
 def test_draft_too_long_is_rejected(tmp_path: Path) -> None:
@@ -70,3 +72,11 @@ def test_unknown_question_is_rejected(tmp_path: Path) -> None:
     session = service.start(3)
     with pytest.raises(SessionError):
         service.save_draft(session.id, "q-nope", "x")
+
+
+def test_reset_rejects_foreign_question(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    session = service.start(3)
+    with pytest.raises(SessionError):
+        service.reset_answer(session.id, "q-nope")
+    assert service.answers(session.id) == {}

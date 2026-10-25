@@ -129,7 +129,8 @@ class InterviewService:
         return saved
 
     def reset_answer(self, session_id: str, question_id: str) -> InterviewAnswer:
-        self._running(session_id)
+        session = self._running(session_id)
+        self._question(session, question_id)
         existing = self.store.get_answer(session_id, question_id)
         if existing and existing.status == "confirmed":
             raise SessionError("该题已确认，不能重新作答")
