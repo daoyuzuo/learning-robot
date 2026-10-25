@@ -42,9 +42,9 @@ def render_outline_prompt(topic: str, level: str, lesson_count: int) -> str:
 def render_lesson_prompt(
     lesson_html: str, concepts_text: str, research_text: str
 ) -> str:
-    return "\n".join([
-        "<outline>", lesson_html, "</outline>",
-        "<concepts>", concepts_text, "</concepts>",
-        "<research>", research_text, "</research>",
-        "请输出这一节课的 JSON。",
-    ])
+    return (
+        f"<outline>\n{lesson_html}\n</outline>\n"
+        f"<concepts>\n{concepts_text}\n</concepts>\n"
+        f"<research>\n{research_text}\n</research>\n"
+        "请输出这一节课的 JSON。"
+    )

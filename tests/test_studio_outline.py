@@ -5,8 +5,12 @@ import pytest
 import yaml
 
 from testbridge.studio.outline import (
-    LessonPlan, OutlineError, parse_outline_html, parse_outline_json,
-    render_outline_html, write_outline,
+    LessonPlan,
+    OutlineError,
+    parse_outline_html,
+    parse_outline_json,
+    render_outline_html,
+    write_outline,
 )
 from testbridge.studio.store import DraftStore
 

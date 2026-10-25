@@ -2,7 +2,11 @@ from pathlib import Path
 
 from testbridge.studio.outline import LessonPlan
 from testbridge.studio.research import (
-    ResearchResult, build_queries, render_research_html, run_research, write_research,
+    ResearchResult,
+    build_queries,
+    render_research_html,
+    run_research,
+    write_research,
 )
 from testbridge.studio.search import SearchHit
 from testbridge.studio.store import DraftStore

@@ -40,7 +40,7 @@ def test_lesson_job_uses_lesson_key(tmp_path: Path) -> None:
 
 
 def test_busy_job_is_rejected(tmp_path: Path) -> None:
-    store, runner = make(tmp_path)
+    _store, runner = make(tmp_path)
     started = {"done": False}
 
     def slow() -> None:
