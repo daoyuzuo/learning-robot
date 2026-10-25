@@ -2,17 +2,17 @@
 
 > 修改任何代码前，先读：
 > 1. `docs/ROADMAP.md`（当前期、硬规则、退出标准）
-> 2. `docs/superpowers/specs/2026-10-24-teaching-engine-design.md`（总设计）
+> 2. `docs/superpowers/specs/2026-10-24-teaching-engine-design.md`（P1 总设计）
+> 3. `docs/superpowers/specs/2026-10-25-p2-learning-loop-design.md`（P2 学习闭环）
 >
 > 这两份是权威。`docs/research/` 只作参考，不是实现依据。
 
 ## 当前阶段
 
-**P1：内容契约 + 运行时。** 只做契约、加载、渲染、练习、证据。
+**P2：学习闭环。** 做 P1 遗留、规则 + BKT 掌握度、FSRS 复习、Readiness、Planner、Dashboard、CLI。
 
 **不要提前实现：**
 
-- P2：BKT / FSRS / 掌握度 / 推荐 / Dashboard
 - P3：AI 内容生成 / 资源抓取
 - P4：面试 / 公司情报 / 求职管理
 
@@ -65,10 +65,12 @@
 - 每个模块单一职责，边界见 spec 第 6.1 节。
 - 测试放 `tests/`，覆盖 contract / sanitizer / exercise / evidence / web / build。
 
-## 完成定义（P1）
+## 完成定义（P2）
 
-- `tb validate content-packs/sample-sensors` 通过
-- `pytest` 全绿
-- 样例课可打开、可做题、证据可写可导出
-- `tb build` 产出离线单文件 HTML
-- 新增最小 content pack 不需要改引擎代码
+- `pytest` 全绿，P1 的 118 个测试不回归
+- `tb rebuild-state` 可重复执行，增量与重建结果一致
+- `/today` 给出带理由和预计时长的计划
+- `/concepts` 显示掌握度、等级、目标、到期数
+- `/review` 列出到期卡
+- readiness 有总分、模块分、P0 门控原因
+- 前端不再返回练习答案；跨课程 evidence 被拒绝

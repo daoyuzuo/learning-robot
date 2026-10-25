@@ -1,6 +1,6 @@
 # TestBridge P2 学习闭环设计
 
-- 状态：Draft，待评审
+- 状态：Approved，2026-10-25
 - 日期：2026-10-25
 - 范围：Mastery（规则 + BKT）、FSRS 复习、Readiness、Recommender、Dashboard
 - 上游：[P1 教学引擎设计](2026-10-24-teaching-engine-design.md)
