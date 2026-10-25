@@ -127,3 +127,8 @@ def test_concepts_link_to_evidence(tmp_path: Path) -> None:
     c = client(tmp_path)
     text = c.get("/concepts").text
     assert 'href="/progress?concept=sensor-time-sync"' in text
+
+
+def test_progress_has_evidence_type_column(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    assert "<th>类型</th>" in c.get("/progress").text

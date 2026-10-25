@@ -197,6 +197,49 @@ def mount_interview(
             "gaps": suggestion.gaps,
         }
 
+    @router.post("/api/interview/session/{session_id}/confirm")
+    def confirm_answer(session_id: str, payload: dict):
+        session_or_404(session_id)
+        scores = payload.get("scores")
+        if not isinstance(scores, list):
+            raise HTTPException(status_code=400, detail="scores 必须是数组")
+        try:
+            evidence_id = service.confirm(
+                session_id,
+                str(payload.get("question_id") or ""),
+                scores,
+                duration_ms=int(payload.get("duration_ms") or 0),
+            )
+        except (SessionError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        session = service.get(session_id)
+        return {
+            "evidence_id": evidence_id,
+            "status": session.status,
+            "current_index": session.current_index,
+        }
+
+    @router.get(
+        "/interview/session/{session_id}/summary", response_class=HTMLResponse
+    )
+    def interview_summary(request: Request, session_id: str):
+        session = session_or_404(session_id)
+        summary = service.summary(session_id)
+        questions = {
+            question_id: bank.by_id(question_id)
+            for question_id in session.question_ids
+        }
+        return templates.TemplateResponse(
+            request=request,
+            name="interview_summary.html",
+            context=ctx(
+                request,
+                session=session,
+                summary=summary,
+                questions=questions,
+            ),
+        )
+
     @router.post("/api/interview/session/{session_id}/reset")
     def reset_answer(session_id: str, payload: dict):
         session_or_404(session_id)

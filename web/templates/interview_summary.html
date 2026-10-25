@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}面试汇总 · TestBridge{% endblock %}
+{% block content %}
+<h1>面试汇总</h1>
+<p class="tb-meta">{{ session.created_at }} · {{ session.status }} · {{ session.question_ids|length }} 题</p>
+{% if session.status != "completed" %}
+  <p class="tb-meta">本次尚未完成，以下只统计已确认的题目。</p>
+{% endif %}
+<h2>总分 {{ "%.2f"|format(summary.total) }}</h2>
+<table>
+  <tr><th>题目</th><th>概念</th><th>分数</th><th>证据</th></tr>
+  {% for answer in summary.answers %}
+  <tr>
+    <td>{{ questions[answer.question_id].title }}</td>
+    <td>{{ questions[answer.question_id].concepts|join("、") }}</td>
+    <td>{% if answer.question_id in summary.question_totals %}{{ "%.2f"|format(summary.question_totals[answer.question_id]) }}{% else %}—{% endif %}</td>
+    <td>
+      {% if answer.evidence_id %}
+        <a href="/progress?concept={{ questions[answer.question_id].concepts[0] }}">下钻</a>
+      {% else %}
+        未确认
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>维度均分</h2>
+<table>
+  <tr><th>维度</th><th>均分</th></tr>
+  {% for dimension, value in summary.dimension_averages.items() %}
+  <tr><td>{{ dimension }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
+  {% endfor %}
+</table>
+{% if summary.weakest_concepts %}
+<p>最低分概念：{{ summary.weakest_concepts|join("、") }}</p>
+{% endif %}
+<p><a href="/interview">再来一次</a> · <a href="/today">回到今日</a></p>
+{% endblock %}

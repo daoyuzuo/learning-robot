@@ -194,3 +194,61 @@ def test_stale_session_returns_503_when_bank_missing(tmp_path: Path) -> None:
         SAMPLE, db, interview_banks=tmp_path / "nope",
     ))
     assert second.get(f"/interview/session/{session_id}").status_code == 503
+
+
+def confirm_payload(question_id: str, graded: dict, score: float = 0.6) -> dict:
+    return {
+        "question_id": question_id,
+        "scores": [
+            {"dimension": item["dimension"], "score": score}
+            for item in graded["scores"]
+        ],
+        "duration_ms": 1000,
+    }
+
+
+def test_confirm_writes_evidence_and_summary(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "我的回答"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    payload = confirm_payload(question_id, graded)
+    confirmed = c.post(
+        f"/api/interview/session/{session_id}/confirm", json=payload
+    )
+    assert confirmed.status_code == 200
+    evidence_id = confirmed.json()["evidence_id"]
+    assert evidence_id
+    repeated = c.post(
+        f"/api/interview/session/{session_id}/confirm", json=payload
+    )
+    assert repeated.json()["evidence_id"] == evidence_id
+    summary = c.get(f"/interview/session/{session_id}/summary")
+    assert summary.status_code == 200
+    assert "0.60" in summary.text
+
+
+def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    c.post(
+        f"/api/interview/session/{session_id}/confirm",
+        json=confirm_payload(question_id, graded),
+    )
+    text = c.get("/progress").text
+    assert "面试" in text
+    assert f"/interview/session/{session_id}/summary" in text
