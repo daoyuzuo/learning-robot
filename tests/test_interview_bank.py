@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from testbridge.content.repository import load_pack
 from testbridge.interview.bank import (
     InterviewBankError,
     load_bank,
@@ -77,7 +78,7 @@ def test_rejects_duplicate_ids(tmp_path: Path) -> None:
 
 def test_rejects_bad_weight_sum(tmp_path: Path) -> None:
     text = VALID.replace("weight: 0.4", "weight: 0.5")
-    with pytest.raises(InterviewBankError):
+    with pytest.raises(InterviewBankError, match="weights must sum"):
         load_bank(write(tmp_path, text), pack_id="sample-sensors",
                   concept_ids={"timestamp-basics"})
 
@@ -116,3 +117,70 @@ def test_resolve_falls_back_to_app_layer(tmp_path: Path) -> None:
     target.write_text(VALID, encoding="utf-8")
     assert resolve_bank_path(pack_root, "sample-sensors", banks_root) == target
     assert resolve_bank_path(pack_root, "missing", banks_root) is None
+
+
+ROOT = Path(__file__).parents[1]
+
+
+def test_sample_bank_matches_pack() -> None:
+    pack = load_pack(ROOT / "content-packs" / "sample-sensors")
+    path = resolve_bank_path(
+        pack.root, pack.meta.id, ROOT / "interview-banks"
+    )
+    assert path is not None
+    bank = load_bank(path, pack_id=pack.meta.id, concept_ids=set(pack.concepts))
+    assert len(bank.questions) == 3
+    assert {cid for q in bank.questions for cid in q.concepts} == set(pack.concepts)
+
+
+def test_ros2_bank_matches_pack() -> None:
+    pack = load_pack(ROOT / "content-packs" / "ros2-qos")
+    path = resolve_bank_path(
+        pack.root, pack.meta.id, ROOT / "interview-banks"
+    )
+    assert path is not None
+    bank = load_bank(path, pack_id=pack.meta.id, concept_ids=set(pack.concepts))
+    assert len(bank.questions) == 15
+    assert {cid for q in bank.questions for cid in q.concepts} == set(pack.concepts)
+
+
+NO_RUBRIC = """\
+schema: tb-interview/1
+pack: sample-sensors
+questions:
+  - id: q-no-rubric
+    title: 无 rubric
+    prompt: 题目
+    concepts: [timestamp-basics]
+    level: L1
+    rubric: []
+"""
+
+
+def test_rejects_wrong_schema(tmp_path: Path) -> None:
+    text = VALID.replace("schema: tb-interview/1", "schema: tb-interview/2")
+    with pytest.raises(InterviewBankError):
+        load_bank(write(tmp_path, text), pack_id="sample-sensors",
+                  concept_ids={"timestamp-basics"})
+
+
+def test_rejects_empty_bank(tmp_path: Path) -> None:
+    text = "schema: tb-interview/1\npack: sample-sensors\nquestions: []\n"
+    with pytest.raises(InterviewBankError):
+        load_bank(write(tmp_path, text), pack_id="sample-sensors",
+                  concept_ids={"timestamp-basics"})
+
+
+def test_rejects_empty_rubric(tmp_path: Path) -> None:
+    with pytest.raises(InterviewBankError, match="rubric must not be empty"):
+        load_bank(write(tmp_path, NO_RUBRIC), pack_id="sample-sensors",
+                  concept_ids={"timestamp-basics"})
+
+
+def test_by_id_and_concepts_with_questions(tmp_path: Path) -> None:
+    bank = load_bank(write(tmp_path, VALID), pack_id="sample-sensors",
+                     concept_ids={"timestamp-basics"})
+    assert bank.by_id("q-one").title == "时间戳含义"
+    with pytest.raises(KeyError):
+        bank.by_id("missing")
+    assert bank.concepts_with_questions() == ["timestamp-basics"]

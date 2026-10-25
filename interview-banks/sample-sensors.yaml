@@ -1,0 +1,35 @@
+schema: tb-interview/1
+pack: sample-sensors
+questions:
+  - id: q-sync-ts-01
+    title: 时间戳表示哪个时刻
+    prompt: 传感器驱动上报的时间戳应该代表哪个时刻？如果打在数据拷贝之后，会引入什么问题？
+    concepts: [timestamp-basics]
+    level: L1
+    minutes: 5
+    reference_points: [事件发生时刻, 拷贝延迟, 与采集时刻的偏差]
+    rubric:
+      - {dimension: 定义准确性, weight: 0.6, criteria: 说明时间戳表示事件发生时刻}
+      - {dimension: 影响分析, weight: 0.4, criteria: 说明打点位置带来的偏差}
+  - id: q-sync-drift-01
+    title: 时钟漂移如何影响同步
+    prompt: 两个传感器各自用自己的时钟打时间戳，运行一小时后你发现融合结果变差。请分析可能原因和验证方法。
+    concepts: [clock-drift]
+    level: L2
+    minutes: 8
+    reference_points: [时钟频率偏差, 累积漂移, 共同时间基准, 对比实验]
+    rubric:
+      - {dimension: 原因定位, weight: 0.5, criteria: 指出时钟漂移与累积误差}
+      - {dimension: 验证方法, weight: 0.3, criteria: 给出可执行的对比实验}
+      - {dimension: 修复方案, weight: 0.2, criteria: 提到统一时钟源或补偿}
+  - id: q-sync-sync-01
+    title: 端到端时间同步怎么测
+    prompt: 你要为一个多传感器采集系统设计时间同步验收测试，请给出指标、方法和通过标准。
+    concepts: [sensor-time-sync]
+    level: L3
+    minutes: 10
+    reference_points: [同步误差指标, 激励源, 静态与动态场景, 通过阈值]
+    rubric:
+      - {dimension: 指标定义, weight: 0.4, criteria: 给出可量化的同步误差}
+      - {dimension: 测试方法, weight: 0.4, criteria: 说明激励、采集与对齐方法}
+      - {dimension: 验收标准, weight: 0.2, criteria: 给出阈值与边界条件}
