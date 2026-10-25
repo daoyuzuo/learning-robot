@@ -9,7 +9,7 @@
 
 ## 当前阶段
 
-**P2：学习闭环。** 做 P1 遗留、规则 + BKT 掌握度、FSRS 复习、Readiness、Planner、Dashboard、CLI。
+**P2.1：P2 收尾，已完成并合并到 `master`。** 下一步二选一：内容试点（ROS2 通信/QoS 或 EtherCAT）或 P3 内容生产流水线；先做内容试点，再定 P3 范围。
 
 **不要提前实现：**
 
