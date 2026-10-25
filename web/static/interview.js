@@ -30,24 +30,29 @@
 
   async function saveDraft() {
     if (!textarea || textarea.readOnly) return;
-    try {
-      await fetch(`/api/interview/session/${sessionId}/answer`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question_id: questionId, answer: textarea.value }),
-      });
-      if (saveStatus) saveStatus.textContent = "已保存";
-    } catch (error) {
-      showError("保存失败，请稍后重试");
+    clearTimeout(timer);
+    const response = await fetch(`/api/interview/session/${sessionId}/answer`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_id: questionId, answer: textarea.value }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || "保存失败，请稍后重试");
     }
+    if (saveStatus) saveStatus.textContent = "已保存";
   }
 
   if (textarea && !textarea.readOnly) {
     textarea.addEventListener("input", () => {
       clearTimeout(timer);
-      timer = setTimeout(saveDraft, 1000);
+      timer = setTimeout(() => {
+        saveDraft().catch((error) => showError(error.message));
+      }, 1000);
     });
-    textarea.addEventListener("blur", saveDraft);
+    textarea.addEventListener("blur", () => {
+      saveDraft().catch((error) => showError(error.message));
+    });
   }
 
   root.addEventListener("click", async (event) => {

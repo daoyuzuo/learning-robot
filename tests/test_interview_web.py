@@ -11,6 +11,7 @@ warnings.filterwarnings(
 
 from fastapi.testclient import TestClient
 
+from testbridge.tutor.client import TutorUpstreamError
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
@@ -144,3 +145,52 @@ def test_bank_malformed_shows_error(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "题库结构无效" in response.text
     assert c.post("/interview", data={"question_count": "3"}).status_code == 503
+
+
+class ErrorClient:
+    def complete(self, system: str, user: str) -> str:
+        raise TutorUpstreamError("boom")
+
+
+def test_grade_maps_upstream_error_to_502(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=ErrorClient(), config=CONFIG)
+    session_id = start_session(c)
+    question_id = c.get(f"/interview/session/{session_id}").text.split(
+        'data-question-id="'
+    )[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    response = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    )
+    assert response.status_code == 502
+    assert "模型服务不可用" in response.text
+
+
+def test_session_page_shows_grading_card(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    question_id = c.get(f"/interview/session/{session_id}").text.split(
+        'data-question-id="'
+    )[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    c.post(f"/api/interview/session/{session_id}/grade",
+           json={"question_id": question_id})
+    page = c.get(f"/interview/session/{session_id}").text
+    assert "评分建议" in page
+    assert 'data-dimension="' in page
+
+
+def test_stale_session_returns_503_when_bank_missing(tmp_path: Path) -> None:
+    db = tmp_path / "i.db"
+    first = TestClient(create_app(
+        SAMPLE, db, interview_banks=BANKS,
+        interview_llm=FakeClient(), interview_config=CONFIG,
+    ))
+    session_id = start_session(first)
+    second = TestClient(create_app(
+        SAMPLE, db, interview_banks=tmp_path / "nope",
+    ))
+    assert second.get(f"/interview/session/{session_id}").status_code == 503

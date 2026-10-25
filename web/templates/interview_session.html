@@ -4,11 +4,11 @@
 <div class="tb-interview-session"
      data-interview-session="{{ session.id }}"
      data-question-id="{{ question.id }}">
-  <p class="tb-meta">{{ index + 1 }} / {{ total }} · 建议 {{ question.minutes }} 分钟</p>
   {% if status == "abandoned" %}
     <p class="tb-interview-error">会话已结束。</p>
     <p><a href="/interview">回到面试首页</a></p>
   {% else %}
+  <p class="tb-meta">{{ index + 1 }} / {{ total }} · 建议 {{ question.minutes }} 分钟</p>
   <h1>{{ question.title }}</h1>
   <p>{{ question.prompt }}</p>
   <p class="tb-meta">概念：{{ question.concepts|join("、") }}</p>
