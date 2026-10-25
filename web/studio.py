@@ -6,6 +6,7 @@ or evidence. Model output and search results are untrusted input.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,7 @@ from testbridge.studio.prompts import (
 from testbridge.studio.search import SearchProvider
 from testbridge.studio.search_router import SearchRoute, SearchRouter
 from testbridge.studio.store import DraftError, DraftStore
+from testbridge.studio.version import PROMPT_VERSION
 from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
 
@@ -236,6 +238,13 @@ def mount_studio(
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
         )
         lesson_writer.write_lesson(store, draft_id, plan, output, replace=replace)
+        store.set_step(
+            draft_id, "lessons", lesson_id=lesson_id,
+            extra={
+                "prompt_version": PROMPT_VERSION,
+                "written_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
     @router.get("/studio", response_class=HTMLResponse)
     def studio_list(request: Request):
@@ -269,7 +278,7 @@ def mount_studio(
                 lesson_count=lesson_count,
                 searches_per_lesson=searches_per_lesson,
                 model=config.model if config else "unconfigured",
-                prompt_version="studio/1",
+                prompt_version=PROMPT_VERSION,
                 search_backend=search_backend,
             )
         except DraftError as exc:

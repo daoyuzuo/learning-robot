@@ -485,7 +485,10 @@ def _rekey_steps(
         "status": "pending", "error": None, "at": None,
         "queries": 0, "hits": 0, "backend": "",
     }
-    lesson_defaults = {"status": "pending", "error": None, "at": None}
+    lesson_defaults = {
+        "status": "pending", "error": None, "at": None,
+        "prompt_version": "", "written_at": None,
+    }
 
     def rekey(draft: dict) -> None:
         # Re-check under the store lock: a batch may have started after the
