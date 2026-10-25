@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,13 @@ from testbridge.evidence.store import EvidenceStore
 from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import Goal, LearningStore
+from testbridge.tutor.client import (
+    LlmClient,
+    OpenAICompatibleClient,
+    TutorTimeoutError,
+    TutorUpstreamError,
+)
+from testbridge.tutor.config import TutorConfig, load_config, missing_vars
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -28,6 +36,10 @@ def _load_app(pack_dir: Path, db_path: Path) -> FastAPI:
     from web.app import create_app
 
     return create_app(pack_dir, db_path)
+
+
+def build_tutor_client(config: TutorConfig) -> LlmClient:
+    return OpenAICompatibleClient(config)
 
 
 def _load_learning(pack_path: str, db_path: str, learner_id: str = "local") -> LearningService:
@@ -93,6 +105,10 @@ def main(argv: list[str] | None = None) -> int:
     today.add_argument("--pack", default="content-packs/sample-sensors")
     today.add_argument("--db", default="data/testbridge.db")
     today.add_argument("--learner-id", default="local")
+
+    tutor = sub.add_parser("tutor", help="AI tutor utilities")
+    tutor_sub = tutor.add_subparsers(dest="tutor_command", required=True)
+    tutor_sub.add_parser("check", help="verify the configured LLM endpoint")
 
     args = parser.parse_args(argv)
 
@@ -218,6 +234,31 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {item.type}: {item.reason} ({item.estimated_minutes}m)")
         if plan.empty:
             print(f"  {plan.suggestion or 'no mandatory work'}")
+        return 0
+
+    if args.command == "tutor":
+        config = load_config()
+        if config is None:
+            print(
+                "ERROR tutor: missing environment variables: "
+                + ", ".join(missing_vars()),
+                file=sys.stderr,
+            )
+            return 2
+        client = build_tutor_client(config)
+        started = time.perf_counter()
+        try:
+            reply = client.complete("你是连通性测试，请只回复 ok。", "ok")
+        except TutorTimeoutError:
+            print("ERROR tutor: upstream timed out", file=sys.stderr)
+            return 2
+        except TutorUpstreamError as exc:
+            print(f"ERROR tutor: {exc}", file=sys.stderr)
+            return 2
+        elapsed = (time.perf_counter() - started) * 1000
+        print(f"model: {config.model}")
+        print(f"latency: {elapsed:.0f} ms")
+        print(f"reply: {reply.strip()[:40]}")
         return 0
 
     return 1

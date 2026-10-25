@@ -11,14 +11,28 @@
 
 ## 当前阶段
 
-**P2：学习闭环。**
+内容试点已完成（`content-packs/ros2-qos`）；P2.2 增加可选的 AI 追问面板。
 
-P1 已完成；P2 在追加式证据之上增加掌握度（规则 + BKT）、FSRS 复习、readiness、每日计划与 Dashboard。
+## AI 追问（可选）
+
+课程页的追问面板需要一个 OpenAI 兼容端点。未配置时功能自动禁用，不影响其它页面。
+
+```bash
+export TESTBRIDGE_LLM_BASE_URL=https://api.deepseek.com/v1
+export TESTBRIDGE_LLM_API_KEY=sk-...
+export TESTBRIDGE_LLM_MODEL=deepseek-chat
+# 可选：export TESTBRIDGE_LLM_TIMEOUT=30
+.venv/Scripts/python -m testbridge.cli tutor check
+```
+
+回答会标注依据：本课内容 / 包内资源 / 通用知识。追问记录只存在 `tutor_message` 表，不写入学习证据。
 
 ## 文档
 
 - [总设计](docs/superpowers/specs/2026-10-24-teaching-engine-design.md)
 - [P2 学习闭环设计](docs/superpowers/specs/2026-10-25-p2-learning-loop-design.md)
+- [P2.2 AI 追问设计](docs/superpowers/specs/2026-10-25-p2.2-tutor-design.md)
+- [ROS2 QoS 内容试点](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)

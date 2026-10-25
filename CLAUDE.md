@@ -9,7 +9,7 @@
 
 ## 当前阶段
 
-**内容试点已完成并合并到 `master`。** 产出 `content-packs/ros2-qos`（3 课 / 6 题 / 5 资源 / 1 交互图），契约缺口见[试点设计](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)第 10 节。下一步据此定义 P3 范围。
+**P2.2 已完成并合并到 `master`。** 课程页有可选的 AI 追问面板；追问是纯旁路，不写 evidence、不影响掌握度与计划。下一步：定义 P3 范围。
 
 **不要提前实现：**
 

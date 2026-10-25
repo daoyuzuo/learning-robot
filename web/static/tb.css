@@ -25,3 +25,12 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 .tb-pager a { color: var(--accent); text-decoration: none; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem; }
+.tb-tutor { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; }
+.tb-tutor textarea { width: 100%; font: inherit; padding: .5rem; margin: .5rem 0; }
+.tb-tutor-anchor-label { display: block; margin-bottom: .4rem; }
+.tb-tutor-message { border-top: 1px solid var(--line); padding-top: .6rem; margin-top: .6rem; }
+.tb-tutor-message[data-role="user"] p { color: #374151; }
+.tb-tutor-basis { display: inline-block; font-size: .8rem; padding: .1rem .4rem; border-radius: 4px; background: #eef2ff; }
+.tb-tutor-basis[data-basis="general"] { background: #fef3c7; }
+.tb-tutor-citations { font-size: .85rem; color: #6b7280; }
+.tb-tutor-error { color: #b91c1c; }
