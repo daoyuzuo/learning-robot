@@ -3,7 +3,6 @@ import pytest
 from testbridge.studio.search import SearchError, SearchHit
 from testbridge.studio.search_router import (
     FallbackSearch,
-    SearchRoute,
     SearchRouter,
     is_academic,
 )

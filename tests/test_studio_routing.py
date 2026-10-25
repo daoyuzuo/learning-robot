@@ -1,3 +1,4 @@
+import html
 import warnings
 from pathlib import Path
 
@@ -47,7 +48,8 @@ class FakeSearch:
 
 
 class RecordingRouter:
-    def __init__(self) -> None:
+    def __init__(self, route_name: str = "openalex") -> None:
+        self.route_name = route_name
         self.calls: list[dict] = []
 
     def route(self, backend, *, topic, concept_titles, concept_domains):
@@ -55,7 +57,7 @@ class RecordingRouter:
             "backend": backend, "topic": topic,
             "titles": list(concept_titles), "domains": list(concept_domains),
         })
-        return SearchRoute("openalex", FakeSearch())
+        return SearchRoute(self.route_name, FakeSearch())
 
 
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
@@ -123,3 +125,35 @@ def test_invalid_search_backend_is_rejected(tmp_path: Path) -> None:
     }, follow_redirects=False)
 
     assert response.status_code == 400
+
+
+def test_old_draft_without_backend_routes_auto(tmp_path: Path) -> None:
+    router = RecordingRouter()
+    app = make_app(tmp_path, router)
+    create_draft(app)
+
+    store = app.app.state.studio_store
+    draft = store.load("demo")
+    del draft["search_backend"]
+    store.save(draft)
+
+    response = app.post(
+        "/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    assert response.status_code == 200
+    assert router.calls[0]["backend"] == "auto"
+
+
+def test_research_row_shows_route_name(tmp_path: Path) -> None:
+    router = RecordingRouter(route_name="auto:openalex->deepseek")
+    app = make_app(tmp_path, router)
+    create_draft(app, backend="auto")
+
+    response = app.post(
+        "/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"}
+    )
+    assert response.status_code == 200
+
+    page = html.unescape(app.get("/studio/demo").text)
+    assert "auto:openalex->deepseek" in page

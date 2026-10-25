@@ -59,6 +59,8 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
    - 所有内容文件带 `schema: tb/1`。
    - 破坏性变更升 `tb/2` + 迁移脚本；不得静默改语义。
 
+**边界例外（P3.3 裁决）：** `src/testbridge/studio/` 是作者层，可以包含确定性的检索路由词表（学术关键词 / domain）与来源站点提示；核心引擎（`mastery`、`schedule`、`evidence`、`contract`、`learning`）必须保持内容无关。路由词表不写入内容包，也不参与判分。
+
 ## 内容契约速查
 
 - 课程是 **HTML 片段 + 内嵌 JSON manifest**（`<script id="tb-manifest">`）。
