@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from datetime import date
 from pathlib import Path
 
@@ -10,6 +12,8 @@ import pytest
 import yaml
 
 from testbridge.studio.evolution import (
+    EvolutionBusy,
+    EvolutionJob,
     compare_snapshots,
     draft_quality,
     latest_snapshot,
@@ -17,6 +21,7 @@ from testbridge.studio.evolution import (
     save_snapshot,
     snapshot_lesson,
 )
+from testbridge.studio.jobs import JobRunner
 from testbridge.studio.outline import LessonPlan
 from testbridge.studio.store import DraftStore
 
@@ -278,3 +283,141 @@ def test_draft_quality_reports_seeded_pack(tmp_path: Path) -> None:
     assert quality["ok"] is True
     assert quality["possible"] > 0
     assert 0 <= quality["score"] <= quality["possible"]
+
+
+def _draft_report(
+    draft_id: str, lessons: list[str], *, ok: bool = True
+) -> dict:
+    return {
+        "draft_id": draft_id,
+        "error": None,
+        "lessons": [{"lesson_id": item, "ok": ok} for item in lessons],
+    }
+
+
+def _wait_status(
+    job: EvolutionJob, wanted: str, timeout: float = 5.0
+) -> dict:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        state = job.status()
+        if state["status"] == wanted:
+            return state
+        time.sleep(0.01)
+    raise AssertionError(f"job did not reach {wanted}: {job.status()}")
+
+
+def test_evolution_job_status_starts_idle(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+
+    assert job.status() == {
+        "status": "idle", "total": 0, "done": 0,
+        "current": None, "results": [], "error": None,
+    }
+
+
+def test_evolution_job_runs_drafts_in_order(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    runner = JobRunner(store, inline=True)
+    job = EvolutionJob(store, runner)
+    seen = []
+
+    def process(draft_id, lessons):
+        seen.append((draft_id, list(lessons)))
+        return {"draft_id": draft_id, "error": None,
+                "lessons": [{"lesson_id": item, "ok": True} for item in lessons]}
+
+    job.start([("demo", ["L-1"])], process, inline=True)
+    state = job.status()
+    assert state["status"] == "done"
+    assert seen == [("demo", ["L-1"])]
+    assert state["done"] == 1
+
+
+def test_evolution_job_counts_failed_lessons(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+
+    def process(draft_id, lessons):
+        return _draft_report(draft_id, lessons, ok=False)
+
+    job.start([("demo", ["L-1", "L-2"])], process, inline=True)
+
+    state = job.status()
+    assert state["status"] == "failed"
+    assert state["total"] == 2
+    assert state["done"] == 2
+    assert state["error"] == "1 个草稿失败"
+    assert state["results"][0]["lessons"][1]["ok"] is False
+
+
+def test_evolution_job_rejects_second_start(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+    entered = threading.Event()
+    release = threading.Event()
+
+    def process(draft_id, lessons):
+        entered.set()
+        release.wait(timeout=5)
+        return _draft_report(draft_id, lessons)
+
+    job.start([("demo", ["L-1"])], process)
+    assert entered.wait(timeout=5)
+    with pytest.raises(EvolutionBusy):
+        job.start([("demo", ["L-1"])], process)
+    release.set()
+
+    state = _wait_status(job, "done")
+    assert state["done"] == 1
+    assert state["results"] == [_draft_report("demo", ["L-1"])]
+
+
+def test_evolution_job_continues_after_busy_draft(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    store.create(draft_id="other", topic="t", level="L2", lesson_count=1,
+                 searches_per_lesson=5, model="m")
+    runner = JobRunner(store, inline=False)
+    entered = threading.Event()
+    release = threading.Event()
+
+    def slow() -> None:
+        entered.set()
+        release.wait(timeout=5)
+
+    runner.start("demo", "outline", slow)
+    assert entered.wait(timeout=5)
+
+    job = EvolutionJob(store, runner)
+    seen = []
+
+    def process(draft_id, lessons):
+        seen.append(draft_id)
+        return _draft_report(draft_id, lessons)
+
+    try:
+        job.start([("demo", ["L-1"]), ("other", ["L-2"])], process, inline=True)
+    finally:
+        release.set()
+
+    state = job.status()
+    assert seen == ["other"]
+    assert state["status"] == "failed"
+    assert state["done"] == 2
+    assert state["error"] == "1 个草稿失败"
+    assert state["results"][0]["draft_id"] == "demo"
+    assert "running" in state["results"][0]["error"]
+    assert state["results"][1] == _draft_report("other", ["L-2"])
+
+
+def test_evolution_job_status_is_a_copy(tmp_path: Path) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+
+    state = job.status()
+    state["results"].append("injected")
+    state["status"] = "failed"
+
+    assert job.status()["results"] == []
+    assert job.status()["status"] == "idle"

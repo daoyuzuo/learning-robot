@@ -8,9 +8,13 @@ imports.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
+import threading
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -19,6 +23,9 @@ from testbridge.contract.models import LEVEL_ORDER
 from testbridge.quality.evaluate import QualityUnavailable, evaluate_draft
 from testbridge.studio.outline import LessonPlan
 from testbridge.studio.store import ID_RE, DraftStore
+
+if TYPE_CHECKING:
+    from testbridge.studio.jobs import JobRunner
 
 SNAPSHOT_SCHEMA = "studio-snapshot/1"
 EMPTY_METRICS: dict = {
@@ -223,3 +230,90 @@ def draft_quality(store: DraftStore, draft_id: str) -> dict | None:
     except QualityUnavailable:
         return None
     return {"score": report.score, "possible": report.possible, "ok": report.ok}
+
+
+class EvolutionBusy(Exception):
+    """An evolution job is already running."""
+
+
+class EvolutionJob:
+    """Process several drafts under their batch locks and track progress.
+
+    The callback owns per-draft work (snapshots, rewrites, reports). This class
+    only sequences drafts, remembers the in-memory progress the UI polls, and
+    keeps a busy or failing draft from stopping the remaining ones.
+    """
+
+    def __init__(self, store: DraftStore, runner: JobRunner) -> None:
+        self.store = store
+        self.runner = runner
+        self._lock = threading.Lock()
+        self._state: dict = {
+            "status": "idle", "total": 0, "done": 0,
+            "current": None, "results": [], "error": None,
+        }
+
+    def start(
+        self,
+        groups: Iterable[tuple[str, list[str]]],
+        process_draft: Callable[[str, list[str]], dict],
+        inline: bool = False,
+    ) -> None:
+        """Process ``(draft_id, lesson_ids)`` groups in order."""
+        groups = [(draft_id, list(lessons)) for draft_id, lessons in groups]
+        with self._lock:
+            if self._state["status"] == "running":
+                raise EvolutionBusy("evolution is already running")
+            total = sum(len(lessons) for _, lessons in groups)
+            self._state = {
+                "status": "running", "total": total, "done": 0,
+                "current": None, "results": [], "error": None,
+            }
+
+        def run() -> None:
+            failures = 0
+            for draft_id, lessons in groups:
+                with self._lock:
+                    self._state["current"] = {
+                        "draft_id": draft_id, "lesson_id": None,
+                    }
+                try:
+                    result = self.runner.run_batch_now(
+                        draft_id,
+                        lambda draft_id=draft_id, lessons=lessons: (
+                            process_draft(draft_id, lessons)
+                        ),
+                    )
+                except Exception as exc:  # noqa: BLE001 - other drafts continue
+                    result = {
+                        "draft_id": draft_id, "error": str(exc), "lessons": [],
+                    }
+                if not isinstance(result, dict):
+                    result = {
+                        "draft_id": draft_id,
+                        "error": "草稿结果格式无效",
+                        "lessons": [],
+                    }
+                with self._lock:
+                    self._state["results"].append(result)
+                    self._state["done"] += len(lessons)
+                    self._state["current"] = None
+                if result.get("error") or any(
+                    not item.get("ok") for item in result.get("lessons", [])
+                ):
+                    failures += 1
+            with self._lock:
+                self._state["status"] = "failed" if failures else "done"
+                self._state["error"] = (
+                    f"{failures} 个草稿失败" if failures else None
+                )
+
+        if inline:
+            run()
+        else:
+            threading.Thread(target=run, daemon=True).start()
+
+    def status(self) -> dict:
+        """Return a copy of the in-memory job state."""
+        with self._lock:
+            return copy.deepcopy(self._state)

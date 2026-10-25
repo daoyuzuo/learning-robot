@@ -79,12 +79,8 @@ class JobRunner:
         else:
             threading.Thread(target=run, daemon=True).start()
 
-    def start_batch(self, draft_id: str, fn: Callable[[], None]) -> None:
-        """Run ``fn`` as the only job of ``draft_id``.
-
-        The callback owns per-lesson status and may mark the batch failed; the
-        wrapper only fills in ``done`` when the callback left it running.
-        """
+    def _acquire_batch(self, draft_id: str) -> None:
+        """Claim the batch slot of ``draft_id`` and mark the step running."""
         with self._lock:
             if draft_id in self._batch_running:
                 raise JobBusy("batch is already running")
@@ -99,24 +95,63 @@ class JobRunner:
                 self._batch_running.discard(draft_id)
             raise
 
+    def _release_batch(self, draft_id: str) -> None:
+        with self._lock:
+            self._batch_running.discard(draft_id)
+
+    def _execute_batch(
+        self, draft_id: str, fn: Callable[[], object]
+    ) -> object:
+        """Run ``fn`` and keep the batch step in sync.
+
+        The callback owns per-lesson status and may mark the batch failed; the
+        wrapper only fills in ``done`` when the callback left it running. The
+        callback's return value is passed through so callers can capture a
+        report; a callback error is recorded on the step and re-raised.
+        """
+        try:
+            result = fn()
+        except Exception as exc:
+            self.store.set_step(
+                draft_id, "batch", status="failed", error=str(exc)
+            )
+            raise
+        if (
+            self.store.load(draft_id)["steps"]["batch"].get("status")
+            == "running"
+        ):
+            self.store.set_step(draft_id, "batch", status="done")
+        return result
+
+    def start_batch(
+        self, draft_id: str, fn: Callable[[], object]
+    ) -> None:
+        """Run ``fn`` as the only job of ``draft_id``."""
+        self._acquire_batch(draft_id)
+
         def run() -> None:
             try:
-                fn()
-            except Exception as exc:  # noqa: BLE001 - status carries the error
-                self.store.set_step(
-                    draft_id, "batch", status="failed", error=str(exc)
-                )
-            else:
-                if (
-                    self.store.load(draft_id)["steps"]["batch"].get("status")
-                    == "running"
-                ):
-                    self.store.set_step(draft_id, "batch", status="done")
+                self._execute_batch(draft_id, fn)
+            except Exception:  # noqa: BLE001, S110 - the step records the error
+                pass
             finally:
-                with self._lock:
-                    self._batch_running.discard(draft_id)
+                self._release_batch(draft_id)
 
         if self.inline:
             run()
         else:
             threading.Thread(target=run, daemon=True).start()
+
+    def run_batch_now(
+        self, draft_id: str, fn: Callable[[], object]
+    ) -> object:
+        """Run ``fn`` under the batch lock and return its result.
+
+        Unlike :meth:`start_batch`, errors are not swallowed, so the caller can
+        report them and continue with other drafts.
+        """
+        self._acquire_batch(draft_id)
+        try:
+            return self._execute_batch(draft_id, fn)
+        finally:
+            self._release_batch(draft_id)
