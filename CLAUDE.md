@@ -9,11 +9,13 @@
 
 ## 当前阶段
 
+**当前：P3.5 已完成（2026-10-26）；下一期是 P4（应用整合），范围待定义。**
+
 **P3.4 已完成（2026-10-26，分支 `p3.4-multi-module-batch`）。** `/studio` 按课程包生产：
 一个包 1–3 个模块、每模块 1–5 课；大纲 HTML 可编辑模块标题、模块概念与课程归属，
 保存时同步 `module.yaml`；包内顺序批量「全部调研 / 全部写课」只跑 pending/failed；
 已完成的课可「重写这一课」替换旧输出。旧草稿（单模块、扁平 outline）按 `M01` 兼容。
-默认 `pytest` 518 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
+P3.4 完成时默认 `pytest` 518 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
 `tb quality` 100/100。设计见
 `docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md`。
 
@@ -25,20 +27,25 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**当前 P3.5（内容演进）设计已批准，待实现。** 跨草稿选课重生成；prompt 版本
-`studio/2`（旧草稿 `studio/1`）；每课重写前快照旧内容，重写后对比练习/资源/
-级别/版本与整包质量分；历史页可下钻。设计见
+**P3.5 已完成（2026-10-26，分支 `p3.5-content-evolution`）。** `/studio/evolution` 可跨草稿
+选课，按草稿分组顺序重生成；prompt 版本当前 `studio/2`，旧草稿按 `studio/1`，每课记录
+实际版本；每课重写前把旧 HTML/练习/资源快照到 `drafts/<id>/history/<lesson_id>/`，重写后
+对比练习数/题型/级别/资源/版本/HTML 与整包质量分前后；历史页只读展示“上一版快照 vs
+当前”。默认 `pytest` 559 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
+`tb quality` 100/100。设计见
 `docs/superpowers/specs/2026-10-26-p3.5-content-evolution-design.md`。
+
+**下一期是 P4（应用整合）。** 范围尚未定义；开始前先写 P4 spec 并更新 ROADMAP。
 
 **不要提前实现：**
 
-- P3.5 未列入的 `tb migrate`、完整行级 diff、快照回滚
+- `tb migrate`、完整行级 diff、快照回滚（P3.5 明确不做）
 - SearXNG / Firecrawl / arXiv 适配器
 - P4：面试 / 公司情报 / 求职管理
 
 除非用户明确要求并先更新 ROADMAP。
 
-**P3.5 附加边界：**
+**P3.5 已实现约束（继续有效）：**
 
 - 只处理 `drafts/`，不重生成已发布 `content-packs/`。
 - 快照写入 `drafts/<id>/history/`；失败必须保留旧快照。

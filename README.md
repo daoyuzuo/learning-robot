@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由；P3.4 支持一个包 1–3 个模块、每模块 1–5 课的模块化大纲、顺序批量与单课重写（默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`）。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由；P3.4 支持一个包 1–3 个模块、每模块 1–5 课的模块化大纲、顺序批量与单课重写；P3.5 增加跨草稿内容演进（`/studio/evolution`、prompt 版本、旧/新快照对比）。默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`。
 
 ## AI 追问（可选）
 
@@ -74,6 +74,30 @@ export TESTBRIDGE_OPENALEX_MAILTO=you@example.com   # polite pool
 OpenAlex 可信度：期刊/会议/书籍章节/review 记 A，预印本记 B，其他记 C，撤稿记 D。
 当存在调研档案时，资源必须来自 A/B 命中才能通过质量门禁。
 
+## 内容演进（P3.5）
+
+改了提示词之后，用 http://127.0.0.1:8000/studio/evolution 判断已有草稿要不要重写、重写后是否更好：
+
+1. 页面按草稿分组列出模块/课程、课程状态与当前 prompt 版本；可跨草稿勾选课程。
+2. 「开始重生成」把选中课程放进一个后台任务：按草稿分组、组内按大纲顺序串行重写。
+3. 每课重写前把旧的 HTML / 练习 / 资源存为快照：
+   `drafts/<id>/history/<lesson_id>/<UTC 时间戳>.json`（目录已 gitignore）。
+4. 重写后对比练习数、题型、级别、资源数、资源可信度、HTML 与 prompt 版本变化。
+5. 页面显示每个草稿的整包质量分**前后与 delta**，以及逐课变化、失败原因。
+6. 每课有历史页 `/studio/<id>/history/<lesson_id>`：只读展示“上一版快照 vs 当前内容”的摘要，
+   不渲染完整 HTML，不提供恢复按钮。
+
+版本记录：新生成的课程写 `studio/2`；没有该字段的旧草稿按 `studio/1` 处理。版本随课程记录在
+`draft.json` 的 `steps.lessons[<id>].prompt_version`，因此同一草稿可能混有不同版本。
+升级只做记录与对比，不自动迁移、不自动重写旧草稿。
+
+失败与并发：单课失败不影响其它课/草稿；目标草稿有运行中的批量或单课任务时，该草稿整组失败；
+进化任务运行中再启动会返回 409。报告写入 `drafts/<id>/history/evolution-<时间戳>.json`；
+任务状态只在内存，重启后历史快照与报告仍在，但任务需重跑。
+
+**不做：** `tb migrate`、完整行级 HTML/YAML diff、快照回滚、重生成已发布 `content-packs/`、
+取消运行中的进化任务。
+
 ## 质量门禁（P3.2）
 
 ```bash
@@ -99,6 +123,7 @@ tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 - [P3.2 质量门禁设计](docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - [P3.3 检索后端设计](docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - [P3.4 多模块与批量设计](docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
+- [P3.5 内容演进设计](docs/superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)
