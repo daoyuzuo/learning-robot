@@ -27,7 +27,7 @@ from testbridge.tutor.client import (
     TutorTimeoutError,
     TutorUpstreamError,
 )
-from testbridge.tutor.config import load_config, missing_vars
+from testbridge.tutor.config import TutorConfig, load_config, missing_vars
 from testbridge.tutor.context import build_context
 from testbridge.tutor.review_service import (
     EvidenceNotFoundError,
@@ -41,6 +41,7 @@ from testbridge.tutor.service import (
     TutorService,
 )
 from testbridge.tutor.store import TutorStore
+from web.studio import mount_studio
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
@@ -72,6 +73,12 @@ def create_app(
     tutor: TutorService | None = None,
     reviewer: ReviewService | None = None,
     artifacts_dir: Path | None = None,
+    studio_drafts: Path | None = None,
+    studio_packs: Path | None = None,
+    studio_llm=None,
+    studio_search=None,
+    studio_config: TutorConfig | None = None,
+    studio_inline: bool = True,
 ) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
@@ -112,6 +119,24 @@ def create_app(
     assets_dir = pack.root / "assets"
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    studio_cfg = studio_config if studio_config is not None else load_config()
+    if studio_cfg is not None and studio_llm is None:
+        studio_llm = OpenAICompatibleClient(studio_cfg)
+    if studio_cfg is not None and studio_search is None:
+        from testbridge.studio.search import DeepSeekSearch
+
+        studio_search = DeepSeekSearch(studio_cfg)
+    mount_studio(
+        app,
+        templates,
+        drafts_root=studio_drafts or ROOT / "drafts",
+        packs_root=studio_packs or ROOT / "content-packs",
+        config=studio_cfg,
+        llm=studio_llm,
+        search=studio_search,
+        inline=studio_inline,
+    )
 
     def ctx(request: Request, **kwargs):
         return {"request": request, "pack": pack, "learning": learning, **kwargs}

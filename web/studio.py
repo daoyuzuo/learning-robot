@@ -1,0 +1,368 @@
+"""Content studio routes.
+
+The studio is an authoring surface only: it never touches mastery, scheduling,
+or evidence. Model output and search results are untrusted input.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from pydantic import BaseModel
+
+from testbridge.contract.sanitize import sanitize_fragment
+from testbridge.studio import lessons as lesson_writer
+from testbridge.studio import outline as outline_writer
+from testbridge.studio import research as research_runner
+from testbridge.studio.gates import (
+    PromoteError,
+    promote,
+    validate_draft,
+    verify_resources,
+)
+from testbridge.studio.jobs import JobBusy, JobRunner
+from testbridge.studio.lessons import LessonError
+from testbridge.studio.outline import OutlineError, parse_outline_html, write_outline
+from testbridge.studio.prompts import (
+    LESSON_SYSTEM,
+    OUTLINE_SYSTEM,
+    render_lesson_prompt,
+    render_outline_prompt,
+)
+from testbridge.studio.search import SearchProvider
+from testbridge.studio.store import DraftError, DraftStore
+from testbridge.tutor.client import LlmClient
+from testbridge.tutor.config import TutorConfig, missing_vars
+
+LEVELS = {"L1", "L2", "L3", "L4"}
+
+
+class OutlineBody(BaseModel):
+    html: str
+
+
+def mount_studio(
+    app,
+    templates,
+    *,
+    drafts_root: Path,
+    packs_root: Path,
+    config: TutorConfig | None,
+    llm: LlmClient | None,
+    search: SearchProvider | None,
+    inline: bool = False,
+) -> None:
+    store = DraftStore(drafts_root)
+    store.mark_interrupted()
+    runner = JobRunner(store, inline=inline)
+    app.state.studio_store = store
+    router = APIRouter()
+
+    def ctx(request: Request, **kwargs):
+        return {
+            "request": request,
+            "missing": missing_vars(),
+            "enabled": config is not None and llm is not None and search is not None,
+            **kwargs,
+        }
+
+    def require_enabled() -> None:
+        if config is None or llm is None or search is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "tutor_disabled", "message": "未配置模型服务"},
+            )
+
+    def draft_or_404(draft_id: str) -> dict:
+        if not store.exists(draft_id):
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "draft_not_found", "message": "草稿不存在"},
+            )
+        return store.load(draft_id)
+
+    def _yaml(draft_id: str, relative: str) -> dict:
+        try:
+            data = yaml.safe_load(store.read(draft_id, relative))
+        except FileNotFoundError:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def concepts(draft_id: str) -> list[dict]:
+        return list(_yaml(draft_id, "concepts.yaml").get("concepts") or [])
+
+    def concepts_text(draft_id: str) -> str:
+        return "\n".join(
+            f"- {item.get('id')} {item.get('title', '')}"
+            for item in concepts(draft_id)
+        )
+
+    def outline_plans(draft_id: str) -> list:
+        try:
+            return parse_outline_html(store.read(draft_id, "outline.html"))
+        except (FileNotFoundError, OutlineError):
+            return []
+
+    def add_usage(draft_id: str, *, searches: int = 0, llm_calls: int = 0) -> None:
+        draft = store.load(draft_id)
+        usage = draft.setdefault("usage", {"searches": 0, "llm_calls": 0})
+        usage["searches"] = int(usage.get("searches") or 0) + searches
+        usage["llm_calls"] = int(usage.get("llm_calls") or 0) + llm_calls
+        store.save(draft)
+
+    def generate(draft_id: str, system: str, prompt: str, parse):
+        """Call the model, retrying once with the validation error attached."""
+        calls = 0
+        for attempt in range(2):
+            calls += 1
+            raw = llm.complete(system, prompt)
+            try:
+                result = parse(raw)
+            except (OutlineError, LessonError) as exc:
+                if attempt == 1:
+                    add_usage(draft_id, llm_calls=calls)
+                    raise
+                prompt = (
+                    prompt
+                    + f"\n上一次输出不可用：{exc.message}\n请只输出一个合法 JSON 对象。"
+                )
+                continue
+            add_usage(draft_id, llm_calls=calls)
+            return result
+        raise OutlineError("模型没有返回可用的内容")
+
+    def generate_outline(draft_id: str) -> None:
+        draft = store.load(draft_id)
+        parsed = generate(
+            draft_id,
+            OUTLINE_SYSTEM,
+            render_outline_prompt(
+                draft["topic"], draft["level"], draft["lesson_count"]
+            ),
+            lambda raw: outline_writer.parse_outline_json(raw, draft["lesson_count"]),
+        )
+        write_outline(store, draft_id, parsed)
+
+    def lesson_plan(draft_id: str, lesson_id: str):
+        plans = outline_plans(draft_id)
+        plan = next((item for item in plans if item.lesson_id == lesson_id), None)
+        if plan is None:
+            raise OutlineError(f"课程不存在：{lesson_id}")
+        return plan
+
+    def generate_research(draft_id: str, lesson_id: str) -> None:
+        draft = store.load(draft_id)
+        plan = lesson_plan(draft_id, lesson_id)
+        titles = [str(item.get("title", "")) for item in concepts(draft_id)]
+
+        def progress(done: int, total: int, hits: int) -> None:
+            store.set_step(
+                draft_id, "research", lesson_id=lesson_id,
+                extra={"queries": done, "total": total, "hits": hits},
+            )
+
+        result = research_runner.run_research(
+            plan, titles, search, draft["searches_per_lesson"], progress=progress
+        )
+        research_runner.write_research(store, draft_id, plan, result)
+        add_usage(draft_id, searches=result.searches)
+        store.set_step(
+            draft_id, "research", lesson_id=lesson_id,
+            extra={"queries": result.searches, "hits": len(result.hits)},
+        )
+
+    def research_text(draft_id: str, lesson_id: str) -> str:
+        path = store.path(draft_id) / f"research/{lesson_id}.json"
+        return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+    def generate_lesson(draft_id: str, lesson_id: str) -> None:
+        plan = lesson_plan(draft_id, lesson_id)
+        concept_ids = {item["id"] for item in concepts(draft_id)}
+        output = generate(
+            draft_id,
+            LESSON_SYSTEM,
+            render_lesson_prompt(
+                store.read(draft_id, "outline.html"),
+                concepts_text(draft_id),
+                research_text(draft_id, lesson_id),
+            ),
+            lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
+        )
+        lesson_writer.write_lesson(store, draft_id, plan, output)
+
+    @router.get("/studio", response_class=HTMLResponse)
+    def studio_list(request: Request):
+        return templates.TemplateResponse(
+            request=request, name="studio_list.html",
+            context=ctx(request, drafts=store.list()),
+        )
+
+    @router.post("/studio")
+    def studio_create(
+        request: Request,
+        draft_id: str = Form(...),
+        topic: str = Form(...),
+        level: str = Form("L2"),
+        lesson_count: int = Form(3),
+        searches_per_lesson: int = Form(20),
+    ):
+        if level not in LEVELS:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_level", "message": "级别必须是 L1–L4"},
+            )
+        try:
+            store.create(
+                draft_id=draft_id, topic=topic, level=level,
+                lesson_count=lesson_count, searches_per_lesson=searches_per_lesson,
+                model=config.model if config else "unconfigured",
+                prompt_version="studio/1",
+            )
+        except DraftError as exc:
+            raise HTTPException(
+                status_code=400, detail={"code": exc.code, "message": exc.message}
+            ) from None
+        if config is not None and llm is not None:
+            runner.start(draft_id, "outline", lambda: generate_outline(draft_id))
+        return RedirectResponse(url=f"/studio/{draft_id}", status_code=303)
+
+    @router.get("/studio/{draft_id}", response_class=HTMLResponse)
+    def studio_draft(request: Request, draft_id: str):
+        draft = draft_or_404(draft_id)
+        outline_path = store.path(draft_id) / "outline.html"
+        return templates.TemplateResponse(
+            request=request, name="studio_draft.html",
+            context=ctx(
+                request, draft=draft,
+                outline_html=(
+                    outline_path.read_text(encoding="utf-8")
+                    if outline_path.is_file() else ""
+                ),
+                lessons=[plan.lesson_id for plan in outline_plans(draft_id)],
+            ),
+        )
+
+    @router.get("/api/studio/{draft_id}")
+    def studio_status(draft_id: str):
+        draft = draft_or_404(draft_id)
+        return {
+            "id": draft["id"], "steps": draft["steps"], "usage": draft["usage"],
+        }
+
+    @router.post("/api/studio/{draft_id}/outline")
+    def regenerate_outline(draft_id: str):
+        draft_or_404(draft_id)
+        require_enabled()
+        try:
+            runner.start(draft_id, "outline", lambda: generate_outline(draft_id))
+        except JobBusy:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "step_running", "message": "任务进行中"},
+            ) from None
+        return {"started": True}
+
+    @router.put("/api/studio/{draft_id}/outline")
+    def save_outline(draft_id: str, body: OutlineBody):
+        draft_or_404(draft_id)
+        clean = sanitize_fragment(body.html)
+        try:
+            plans = parse_outline_html(clean)
+        except OutlineError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_outline", "message": exc.message},
+            ) from None
+        store.write(draft_id, "outline.html", clean)
+        draft = store.load(draft_id)
+        for step in ("research", "lessons"):
+            container = draft["steps"][step]
+            draft["steps"][step] = {
+                plan.lesson_id: container.get(
+                    plan.lesson_id,
+                    (
+                        {"status": "pending", "error": None, "at": None,
+                         "queries": 0, "hits": 0}
+                        if step == "research"
+                        else {"status": "pending", "error": None, "at": None}
+                    ),
+                )
+                for plan in plans
+            }
+        store.save(draft)
+        return {"lessons": [plan.lesson_id for plan in plans]}
+
+    def start_lessons(draft_id: str, kind: str, body: dict | None, handler) -> list[str]:
+        draft_or_404(draft_id)
+        require_enabled()
+        lesson_id = (body or {}).get("lesson_id")
+        if lesson_id:
+            targets = [str(lesson_id)]
+        else:
+            targets = list(store.load(draft_id)["steps"][kind])
+        try:
+            for target in targets:
+                runner.start(
+                    draft_id, kind,
+                    lambda target=target: handler(draft_id, target),
+                    lesson_id=target,
+                )
+        except JobBusy:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "step_running", "message": "任务进行中"},
+            ) from None
+        return targets
+
+    @router.post("/api/studio/{draft_id}/research")
+    def start_research(draft_id: str, body: dict | None = None):
+        targets = start_lessons(draft_id, "research", body, generate_research)
+        return {"started": targets}
+
+    @router.post("/api/studio/{draft_id}/lessons")
+    def start_lesson_writing(draft_id: str, body: dict | None = None):
+        targets = start_lessons(draft_id, "lessons", body, generate_lesson)
+        return {"started": targets}
+
+    @router.post("/api/studio/{draft_id}/validate")
+    def run_validation(draft_id: str, body: dict | None = None):
+        draft_or_404(draft_id)
+        summary = validate_draft(store, draft_id)
+        verify_errors: list[str] = []
+        if not (body or {}).get("skip_verify"):
+            resources = _yaml(draft_id, "resources.yaml").get("resources") or []
+            if resources:
+                verify_errors = verify_resources(resources)
+        errors = summary.errors + verify_errors
+        store.set_step(
+            draft_id, "validation", status="done" if not errors else "failed",
+            error=errors[0] if errors else None,
+            extra={"issues": errors + summary.warnings},
+        )
+        return {
+            "ok": not errors, "errors": errors, "warnings": summary.warnings,
+        }
+
+    @router.post("/api/studio/{draft_id}/promote")
+    def run_promote(draft_id: str, body: dict | None = None):
+        draft_or_404(draft_id)
+        payload: dict[str, Any] = body or {}
+        try:
+            target = promote(
+                store, draft_id, packs_root,
+                force=bool(payload.get("force")),
+                skip_verify=bool(payload.get("skip_verify")),
+            )
+        except PromoteError as exc:
+            store.set_step(draft_id, "promote", status="failed", error=exc.message)
+            raise HTTPException(
+                status_code=400, detail={"code": exc.code, "message": exc.message}
+            ) from None
+        store.set_step(draft_id, "promote", status="done", extra={"path": str(target)})
+        return {"path": str(target)}
+
+    app.include_router(router)

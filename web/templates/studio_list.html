@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}内容工作台 · TestBridge{% endblock %}
+{% block content %}
+<h1>内容工作台</h1>
+{% if not enabled %}<p class="tb-warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
+<form method="post" action="/studio">
+  <label>草稿 ID <input name="draft_id" required pattern="[A-Za-z][A-Za-z0-9-]*"></label>
+  <label>主题 <input name="topic" required></label>
+  <label>级别 <select name="level"><option>L2</option><option>L3</option><option>L4</option></select></label>
+  <label>课数 <input name="lesson_count" type="number" min="1" max="5" value="3"></label>
+  <label>每课检索 <input name="searches_per_lesson" type="number" min="1" max="50" value="20"></label>
+  <button type="submit" {% if not enabled %}disabled{% endif %}>新建草稿</button>
+</form>
+<ul class="tb-drafts">
+{% for draft in drafts %}
+  <li><a href="/studio/{{ draft.id }}">{{ draft.id }}</a> · {{ draft.topic }} ·
+    <span class="tb-status">{{ draft.steps.outline.status }}</span></li>
+{% endfor %}
+</ul>
+{% endblock %}

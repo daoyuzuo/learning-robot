@@ -47,3 +47,11 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-session-done { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; }
 .tb-graph-wrap { margin: 1rem 0 1.5rem; overflow-x: auto; }
 .tb-graph { width: 100%; min-width: 480px; height: auto; }
+
+.tb-step { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.tb-outline-editor { border: 1px dashed var(--line); padding: .6rem; min-height: 120px; }
+.tb-status { font-size: .8rem; color: #6b7280; }
+.tb-progress { font-size: .8rem; color: #2563eb; margin-left: .4rem; }
+.tb-issues { white-space: pre-wrap; background: #f8fafc; padding: .6rem; }
+.tb-error { color: #b91c1c; }
+.tb-warn { color: #b45309; }

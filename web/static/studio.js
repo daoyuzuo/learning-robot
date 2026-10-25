@@ -1,0 +1,132 @@
+(function () {
+  const root = document.getElementById("studio");
+  if (!root) return;
+  const draftId = root.dataset.draft;
+  const enabled = root.dataset.enabled === "true";
+  const error = root.querySelector(".tb-error");
+  let timer = null;
+
+  function showError(message) {
+    error.hidden = false;
+    error.textContent = message;
+  }
+
+  async function call(url, options) {
+    const response = await fetch(url, options);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail ? (payload.detail.message || payload.detail) : "请求失败");
+    }
+    return payload;
+  }
+
+  function paintLesson(step, lesson, entry) {
+    const status = root.querySelector(`[data-step-status="${step}:${lesson}"]`);
+    if (status) status.textContent = entry.status || "pending";
+    const progress = root.querySelector(`[data-progress-for="${step}:${lesson}"]`);
+    if (!progress) return;
+    const done = entry.queries || 0;
+    const total = entry.total || 0;
+    if (step === "research" && entry.status === "running") {
+      progress.textContent = total ? `检索 ${done}/${total}` : `检索 ${done}`;
+    } else if (step === "research" && done) {
+      progress.textContent = `检索 ${done} 次，命中 ${entry.hits || 0} 条`;
+    } else {
+      progress.textContent = "";
+    }
+  }
+
+  function paint(payload) {
+    document.querySelectorAll("[data-status-for]").forEach((node) => {
+      const entry = payload.steps[node.dataset.statusFor] || {};
+      node.textContent = entry.status || "pending";
+    });
+    ["research", "lessons"].forEach((step) => {
+      Object.entries(payload.steps[step] || {}).forEach(([lesson, entry]) => {
+        paintLesson(step, lesson, entry);
+      });
+    });
+    const issues = payload.steps.validation && payload.steps.validation.issues;
+    if (Array.isArray(issues)) {
+      root.querySelector('[data-step="validation"] .tb-issues').textContent =
+        issues.join("\n") || "校验通过";
+    }
+  }
+
+  async function poll() {
+    try {
+      const payload = await call("/api/studio/" + draftId);
+      paint(payload);
+      const busy = JSON.stringify(payload.steps).includes('"running"');
+      if (!busy && timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function startPolling() {
+    if (!timer) timer = setInterval(poll, 2000);
+  }
+
+  root.querySelectorAll("[data-action]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!enabled) return;
+      error.hidden = true;
+      const action = button.dataset.action;
+      const lesson = button.dataset.lesson || null;
+      try {
+        if (action === "save-outline") {
+          const editor = root.querySelector(".tb-outline-editor");
+          await call("/api/studio/" + draftId + "/outline", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ html: editor.innerHTML }),
+          });
+          location.reload();
+          return;
+        }
+        if (action === "regen-outline") {
+          await call("/api/studio/" + draftId + "/outline", { method: "POST" });
+        } else if (action === "research") {
+          await call("/api/studio/" + draftId + "/research", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lesson_id: lesson }),
+          });
+        } else if (action === "lesson") {
+          await call("/api/studio/" + draftId + "/lessons", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lesson_id: lesson }),
+          });
+        } else if (action === "validate") {
+          const skipVerify = root.querySelector(".tb-skip-verify").checked;
+          const payload = await call("/api/studio/" + draftId + "/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ skip_verify: skipVerify }),
+          });
+          root.querySelector('[data-step="validation"] .tb-issues').textContent =
+            [...payload.errors, ...payload.warnings].join("\n") ||
+            (payload.ok ? "校验通过" : "");
+        } else if (action === "promote") {
+          const force = root.querySelector(".tb-force").checked;
+          const skipVerify = root.querySelector(".tb-skip-verify-promote").checked;
+          const payload = await call("/api/studio/" + draftId + "/promote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ force: force, skip_verify: skipVerify }),
+          });
+          root.querySelector(".tb-promote-path").textContent = "已写入 " + payload.path;
+        }
+        startPolling();
+        poll();
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+  });
+})();
