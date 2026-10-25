@@ -220,6 +220,31 @@ def test_weak_concept_without_lesson_falls_back_to_exercise() -> None:
     assert item.reason.startswith("掌握度偏低：orphan-concept")
 
 
+def test_interview_only_concept_is_weak_not_new() -> None:
+    mastery = {
+        "timestamp-basics": MasteryView(
+            concept_id="timestamp-basics", rule_score=0.3, bkt_p=0.3,
+            estimate=0.3, confidence=0.0, level="L1",
+            exercise_observations=0, other_observations=0,
+            interview_observations=2,
+        ),
+        "clock-drift": view("clock-drift", 1.0, 3),
+        "sensor-time-sync": view("sensor-time-sync", 0.2),
+    }
+    planner = Planner(
+        PACK, Goal(learner_id="local", daily_minutes=45), mastery, [],
+        {"timestamp-basics": 0.5, "clock-drift": 0.5, "sensor-time-sync": 1.0},
+    )
+    plan = planner.plan(NOW)
+    weak = [item for item in plan.items if item.type == "weak"]
+    assert weak
+    assert any("面试失分" in item.reason for item in weak)
+    assert not any(
+        item.type == "new" and "timestamp-basics" in item.concept_ids
+        for item in plan.items
+    )
+
+
 def test_plan_is_deterministic() -> None:
     mastery = {
         "timestamp-basics": view("timestamp-basics", 0.2, 2),

@@ -23,6 +23,7 @@ class MasteryView:
     level: str
     exercise_observations: int
     other_observations: int
+    interview_observations: int = 0
 
 
 def replay_bkt(
@@ -59,4 +60,5 @@ def estimate(
         level=level_for(estimate_value),
         exercise_observations=rule.exercise_observations,
         other_observations=rule.other_observations,
+        interview_observations=rule.interview_observations,
     )
