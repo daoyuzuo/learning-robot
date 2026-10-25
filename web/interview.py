@@ -18,7 +18,7 @@ from testbridge.interview.bank import (
 from testbridge.interview.session import InterviewService, SessionError
 from testbridge.interview.store import InterviewStore
 from testbridge.learning.service import LearningService
-from testbridge.tutor.client import LlmClient
+from testbridge.tutor.client import LlmClient, TutorTimeoutError, TutorUpstreamError
 from testbridge.tutor.config import TutorConfig
 
 
@@ -120,5 +120,98 @@ def mount_interview(
         return RedirectResponse(
             f"/interview/session/{session.id}", status_code=303
         )
+
+    def session_or_404(session_id: str):
+        if service is None:
+            raise HTTPException(status_code=503, detail="面试题库不可用")
+        try:
+            return service.get(session_id)
+        except SessionError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @router.get("/interview/session/{session_id}", response_class=HTMLResponse)
+    def interview_session(request: Request, session_id: str):
+        session = session_or_404(session_id)
+        if session.status == "completed":
+            return RedirectResponse(
+                f"/interview/session/{session_id}/summary", status_code=303
+            )
+        answers = service.answers(session_id)
+        index = min(session.current_index, len(session.question_ids) - 1)
+        question_id = session.question_ids[index]
+        question = bank.by_id(question_id)
+        answer = answers.get(question_id)
+        return templates.TemplateResponse(
+            request=request,
+            name="interview_session.html",
+            context=ctx(
+                request,
+                session=session,
+                index=index,
+                total=len(session.question_ids),
+                question=question,
+                answer=answer,
+                status=session.status,
+            ),
+        )
+
+    @router.put("/api/interview/session/{session_id}/answer")
+    def save_answer(session_id: str, payload: dict):
+        session_or_404(session_id)
+        try:
+            service.save_draft(
+                session_id,
+                str(payload.get("question_id") or ""),
+                str(payload.get("answer") or ""),
+            )
+        except SessionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True}
+
+    @router.post("/api/interview/session/{session_id}/grade")
+    def grade_answer(session_id: str, payload: dict):
+        session_or_404(session_id)
+        try:
+            suggestion = service.grade(
+                session_id, str(payload.get("question_id") or "")
+            )
+        except SessionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except (TutorTimeoutError, TutorUpstreamError) as exc:
+            raise HTTPException(
+                status_code=502, detail="模型服务不可用，请重试"
+            ) from exc
+        return {
+            "mode": suggestion.mode,
+            "scores": [
+                {
+                    "dimension": item.dimension,
+                    "weight": item.weight,
+                    "score": item.score,
+                    "rationale": item.rationale,
+                }
+                for item in suggestion.scores
+            ],
+            "summary": suggestion.summary,
+            "strengths": suggestion.strengths,
+            "gaps": suggestion.gaps,
+        }
+
+    @router.post("/api/interview/session/{session_id}/reset")
+    def reset_answer(session_id: str, payload: dict):
+        session_or_404(session_id)
+        try:
+            service.reset_answer(
+                session_id, str(payload.get("question_id") or "")
+            )
+        except SessionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True}
+
+    @router.post("/api/interview/session/{session_id}/abandon")
+    def abandon_session(session_id: str, payload: dict | None = None):
+        session_or_404(session_id)
+        service.abandon(session_id)
+        return {"ok": True}
 
     app.include_router(router)

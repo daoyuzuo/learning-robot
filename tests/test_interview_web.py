@@ -1,3 +1,5 @@
+import json
+import re
 import warnings
 from pathlib import Path
 
@@ -9,6 +11,7 @@ warnings.filterwarnings(
 
 from fastapi.testclient import TestClient
 
+from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
 ROOT = Path(__file__).parents[1]
@@ -23,6 +26,33 @@ def make_app(tmp_path: Path, llm=None, config=None) -> TestClient:
         interview_llm=llm,
         interview_config=config,
     ))
+
+
+CONFIG = TutorConfig(base_url="http://x", api_key="k", model="fake")
+
+
+class FakeClient:
+    """Reply with one valid dimension per rubric line in the prompt."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, system: str, user: str) -> str:
+        self.calls += 1
+        dimensions = re.findall(r"^- (.+?)（权重", user, flags=re.MULTILINE)
+        return json.dumps({
+            "scores": [
+                {"dimension": dimension, "score": 0.6, "rationale": "ok"}
+                for dimension in dimensions
+            ],
+            "summary": "继续", "strengths": [], "gaps": [],
+        }, ensure_ascii=False)
+
+
+def start_session(c: TestClient) -> str:
+    response = c.post("/interview", data={"question_count": "3"},
+                      follow_redirects=False)
+    return response.headers["location"].rsplit("/", 1)[-1]
 
 
 def test_interview_page_lists_weak_concepts(tmp_path: Path) -> None:
@@ -44,3 +74,73 @@ def test_start_redirects_to_session(tmp_path: Path) -> None:
 def test_nav_shows_interview(tmp_path: Path) -> None:
     c = make_app(tmp_path)
     assert 'href="/interview"' in c.get("/").text
+
+
+def test_session_page_renders_question(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient())
+    session_id = start_session(c)
+    response = c.get(f"/interview/session/{session_id}")
+    assert response.status_code == 200
+    assert "1 / 3" in response.text
+    assert "提交评分" in response.text
+
+
+def test_draft_and_grade_api(tmp_path: Path) -> None:
+    client = FakeClient()
+    c = make_app(tmp_path, llm=client, config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    saved = c.put(
+        f"/api/interview/session/{session_id}/answer",
+        json={"question_id": question_id, "answer": "我的回答"},
+    )
+    assert saved.status_code == 200
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    )
+    assert graded.status_code == 200
+    assert graded.json()["mode"] == "llm"
+    assert graded.json()["scores"]
+
+
+def test_reset_and_abandon(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient())
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "x"})
+    assert c.post(f"/api/interview/session/{session_id}/reset",
+                  json={"question_id": question_id}).status_code == 200
+    assert c.post(f"/api/interview/session/{session_id}/abandon",
+                  json={}).status_code == 200
+    assert "会话已结束" in c.get(f"/interview/session/{session_id}").text
+
+
+def test_bank_missing_disables_interview(tmp_path: Path) -> None:
+    c = TestClient(create_app(
+        SAMPLE, tmp_path / "i.db", interview_banks=tmp_path / "nope",
+    ))
+    page = c.get("/interview")
+    assert page.status_code == 200
+    assert "题库不可用" in page.text
+    assert 'href="/interview"' not in c.get("/").text
+    assert c.post("/interview", data={"question_count": "3"}).status_code == 503
+
+
+def test_bank_malformed_shows_error(tmp_path: Path) -> None:
+    banks = tmp_path / "banks"
+    banks.mkdir()
+    (banks / "sample-sensors.yaml").write_text(
+        "schema: tb-interview/1\npack: sample-sensors\nquestions: []\n",
+        encoding="utf-8",
+    )
+    c = TestClient(create_app(
+        SAMPLE, tmp_path / "i.db", interview_banks=banks,
+    ))
+    response = c.get("/interview")
+    assert response.status_code == 200
+    assert "题库结构无效" in response.text
+    assert c.post("/interview", data={"question_count": "3"}).status_code == 503
