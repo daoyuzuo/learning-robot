@@ -60,3 +60,18 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-quality-flags { font-size: .9rem; color: #6b7280; margin-left: .6rem; }
 .tb-quality-note { font-size: .85rem; color: #b45309; margin-left: .6rem; }
 .tb-quality-metrics { font-size: .9rem; color: #374151; }
+.tb-evo-draft { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+.tb-evo-lessons li { margin: .25rem 0; }
+.tb-evo-lessons label { margin-right: .5rem; }
+.tb-evo-progress { font-weight: 600; margin-left: .6rem; }
+.tb-evo-current { color: var(--muted); font-size: .9rem; margin-left: .6rem; }
+.tb-evo-results { margin: 1rem 0; }
+.tb-evo-result { border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+.tb-evo-result h3 { margin-top: 0; }
+.tb-evo-result li { margin: .3rem 0; }
+.tb-evo-result a { margin-left: .5rem; color: var(--accent); }
+.tb-history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.tb-history-col { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
+.tb-history-metrics { margin: .4rem 0; }
+.tb-history-items { font-size: .9rem; color: #374151; }
+@media (max-width: 700px) { .tb-history-grid { grid-template-columns: 1fr; } }

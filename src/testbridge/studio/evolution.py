@@ -137,6 +137,11 @@ def snapshot_lesson(
     }
 
 
+def timestamp_now() -> str:
+    """Return the Windows-safe UTC timestamp used in history filenames."""
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+
+
 def _stamp(created_at: str) -> str:
     if not isinstance(created_at, str):
         raise TypeError(f"created_at 必须是字符串：{created_at!r}")

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}内容演进 · TestBridge{% endblock %}
+{% block content %}
+<h1>内容演进</h1>
+<p class="tb-meta">跨草稿勾选课程后，按草稿顺序重写。每课重写前会保存快照，重写后可下钻历史页对比。</p>
+{% if not enabled %}<p class="tb-warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
+<div id="evolution" data-enabled="{{ 'true' if enabled else 'false' }}">
+  <p>
+    <button type="button" data-action="start" {% if not enabled %}disabled{% endif %}>开始重生成</button>
+    <span class="tb-evo-progress" data-role="progress"></span>
+    <span class="tb-evo-current" data-role="current"></span>
+  </p>
+  <p class="tb-error" data-role="error" hidden></p>
+  <div class="tb-evo-results" data-role="results"></div>
+
+  {% for item in drafts %}
+  {% set draft = item.draft %}
+  <section class="tb-evo-draft">
+    <h2>{{ draft.id }} <span class="tb-meta">{{ draft.get("topic", "") }}</span></h2>
+    <p class="tb-meta">草稿版本 {{ draft.get("prompt_version") or "studio/1" }}</p>
+    {% if not item.modules %}
+    <p class="tb-meta">还没有大纲。</p>
+    {% endif %}
+    {% for module in item.modules %}
+    <h3>{{ module.module_id }} · {{ module.title }}</h3>
+    <ul class="tb-evo-lessons">
+      {% for plan in module.lessons %}
+      {% set entry = draft.steps.lessons.get(plan.lesson_id, {}) %}
+      <li>
+        <label>
+          <input type="checkbox" class="tb-evo-check"
+                 data-target="{{ draft.id }}:{{ plan.lesson_id }}"
+                 data-draft="{{ draft.id }}" data-lesson="{{ plan.lesson_id }}">
+          {{ plan.lesson_id }} {{ plan.title }}
+        </label>
+        <span class="tb-status">{{ entry.get("status", "pending") }}</span>
+        <span class="tb-status">{{ entry.get("prompt_version") or draft.get("prompt_version") or "studio/1" }}</span>
+        {% if entry.get("written_at") %}<span class="tb-meta">{{ entry.get("written_at") }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </section>
+  {% else %}
+  <p class="tb-meta">还没有草稿。</p>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/evolution.js"></script>
+{% endblock %}
