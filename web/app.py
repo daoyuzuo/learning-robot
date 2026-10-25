@@ -93,11 +93,11 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         lesson = pack.lessons.get(payload.lesson_id)
         if lesson is None:
             raise HTTPException(status_code=404, detail="lesson not found")
-        if payload.exercise_id not in lesson.manifest.exercises:
-            raise HTTPException(status_code=400, detail="exercise not in lesson")
         exercise = pack.exercises.get(payload.exercise_id)
         if exercise is None:
             raise HTTPException(status_code=404, detail="exercise not found")
+        if payload.exercise_id not in lesson.manifest.exercises:
+            raise HTTPException(status_code=400, detail="exercise not in lesson")
         result = grade(exercise, payload.response)
         event = new_event(
             kind="exercise_attempt",

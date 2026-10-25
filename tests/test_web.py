@@ -108,3 +108,23 @@ def test_cross_lesson_exercise_is_rejected(tmp_path: Path) -> None:
     )
     assert response.status_code == 400
     assert "exercise not in lesson" in response.text
+
+
+def test_unknown_exercise_is_404(tmp_path: Path) -> None:
+    c = TestClient(create_app(SAMPLE, tmp_path / "test.db"))
+    response = c.post(
+        "/api/evidence",
+        json={"lesson_id": "L-SYNC-001", "exercise_id": "EX-NOPE", "response": "a"},
+    )
+    assert response.status_code == 404
+    assert "exercise not found" in response.text
+
+
+def test_unknown_lesson_evidence_is_404(tmp_path: Path) -> None:
+    c = TestClient(create_app(SAMPLE, tmp_path / "test.db"))
+    response = c.post(
+        "/api/evidence",
+        json={"lesson_id": "L-NOPE", "exercise_id": "EX-SYNC-001", "response": "a"},
+    )
+    assert response.status_code == 404
+    assert "lesson not found" in response.text
