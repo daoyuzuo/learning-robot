@@ -8,9 +8,14 @@ from typing import Literal
 
 from testbridge.content.repository import ContentPack
 from testbridge.learning.store import Goal, ReviewState
+from testbridge.learning.timeutil import iso, parse_iso
 from testbridge.mastery.estimator import MasteryView
+from testbridge.readiness import LEVEL_ORDER
 
 PlanType = Literal["review", "new", "weak"]
+
+REVIEW_MINUTES = 5
+DEFAULT_LESSON_MINUTES = 20
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,10 @@ class DailyPlan:
     suggestion: str | None = None
 
 
+def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
+    return max(low, min(high, value))
+
+
 class Planner:
     def __init__(
         self,
@@ -48,6 +57,9 @@ class Planner:
         self.due = due
         self.weights = weights
         self.lessons = pack.lessons_in_order()
+        self.lesson_index: dict[str, int] = {
+            lesson.manifest.id: index for index, lesson in enumerate(self.lessons)
+        }
         self.lessons_for_concept: dict[str, list[str]] = {}
         self.lesson_for_exercise: dict[str, str] = {}
         for lesson in self.lessons:
@@ -56,16 +68,25 @@ class Planner:
             for exercise_id in lesson.manifest.exercises:
                 self.lesson_for_exercise.setdefault(exercise_id, lesson.manifest.id)
 
+    def _priority(self, concept_id: str, estimate: float) -> float:
+        return _clamp(self.weights.get(concept_id, 0.0) * (1 - estimate))
+
     def plan(self, now: datetime) -> DailyPlan:
-        budget = max(1, self.goal.daily_minutes)
+        budget = self.goal.daily_minutes
+        fill_limit = max(1, budget)
+        now_utc = parse_iso(iso(now))
         items: list[PlanItem] = []
         used_lessons: set[str] = set()
         total = 0
 
         review_budget = budget * 0.5
         review_minutes = 0
-        for review in sorted(self.due, key=lambda item: (item.due, item.exercise_id)):
-            if review_minutes + 5 > review_budget:
+        due_reviews = sorted(
+            (review for review in self.due if parse_iso(review.due) <= now_utc),
+            key=lambda item: (item.due, item.exercise_id),
+        )
+        for review in due_reviews:
+            if review_minutes + REVIEW_MINUTES > review_budget:
                 break
             lesson_id = self.lesson_for_exercise.get(review.exercise_id)
             items.append(
@@ -75,19 +96,22 @@ class Planner:
                     lesson_id=lesson_id,
                     exercise_id=review.exercise_id,
                     reason=f"到期复习：{review.exercise_id}",
-                    estimated_minutes=5,
+                    estimated_minutes=REVIEW_MINUTES,
                     priority=1.0,
                 )
             )
-            review_minutes += 5
-            total += 5
+            review_minutes += REVIEW_MINUTES
+            total += REVIEW_MINUTES
 
-        new_candidates = []
+        new_candidates: list[tuple[float, int, str]] = []
         for concept_id, view in self.mastery.items():
-            concept = self.pack.concepts[concept_id]
-            if view.exercise_observations + view.other_observations > 0:
+            concept = self.pack.concepts.get(concept_id)
+            if concept is None:
                 continue
-            if concept_id not in self.lessons_for_concept:
+            lessons = self.lessons_for_concept.get(concept_id)
+            if not lessons:
+                continue
+            if view.exercise_observations + view.other_observations > 0:
                 continue
             if any(
                 self.mastery.get(prereq) is None
@@ -95,8 +119,13 @@ class Planner:
                 for prereq in concept.prerequisites
             ):
                 continue
-            new_candidates.append((self.weights.get(concept_id, 0.0) * (1 - view.estimate), concept_id))
-        for _, concept_id in sorted(new_candidates, reverse=True):
+            if LEVEL_ORDER.get(view.level, 0) >= LEVEL_ORDER[concept.target_level]:
+                continue
+            priority = self._priority(concept_id, view.estimate)
+            new_candidates.append((priority, self.lesson_index[lessons[0]], concept_id))
+        for priority, _, concept_id in sorted(
+            new_candidates, key=lambda item: (-item[0], item[1], item[2])
+        ):
             lesson_id = next(
                 (lid for lid in self.lessons_for_concept[concept_id] if lid not in used_lessons),
                 None,
@@ -104,28 +133,34 @@ class Planner:
             if lesson_id is None:
                 continue
             lesson = self.pack.lessons[lesson_id]
-            minutes = lesson.manifest.minutes or 20
-            if total + minutes > budget:
+            minutes = lesson.manifest.minutes or DEFAULT_LESSON_MINUTES
+            if total + minutes > fill_limit:
                 continue
             items.append(PlanItem(
                 type="new", concept_ids=[concept_id], lesson_id=lesson_id,
                 exercise_id=None, reason=f"先修已满足，下一个概念：{concept_id}",
-                estimated_minutes=minutes,
-                priority=self.weights.get(concept_id, 0.0) * (1 - self.mastery[concept_id].estimate),
+                estimated_minutes=minutes, priority=priority,
             ))
             used_lessons.add(lesson_id)
             total += minutes
 
-        weak_candidates = []
+        weak_candidates: list[tuple[float, int, str]] = []
         for concept_id, view in self.mastery.items():
+            concept = self.pack.concepts.get(concept_id)
+            if concept is None:
+                continue
+            lessons = self.lessons_for_concept.get(concept_id)
+            if not lessons:
+                continue
             if view.exercise_observations + view.other_observations == 0:
                 continue
             if view.estimate >= 0.5:
                 continue
-            if concept_id not in self.lessons_for_concept:
-                continue
-            weak_candidates.append((self.weights.get(concept_id, 0.0) * (1 - view.estimate), concept_id))
-        for _, concept_id in sorted(weak_candidates, reverse=True):
+            priority = self._priority(concept_id, view.estimate)
+            weak_candidates.append((priority, self.lesson_index[lessons[0]], concept_id))
+        for priority, _, concept_id in sorted(
+            weak_candidates, key=lambda item: (-item[0], item[1], item[2])
+        ):
             lesson_id = next(
                 (lid for lid in self.lessons_for_concept[concept_id] if lid not in used_lessons),
                 None,
@@ -133,14 +168,13 @@ class Planner:
             if lesson_id is None:
                 continue
             lesson = self.pack.lessons[lesson_id]
-            minutes = lesson.manifest.minutes or 20
-            if total + minutes > budget:
+            minutes = lesson.manifest.minutes or DEFAULT_LESSON_MINUTES
+            if total + minutes > fill_limit:
                 continue
             items.append(PlanItem(
                 type="weak", concept_ids=[concept_id], lesson_id=lesson_id,
                 exercise_id=None, reason=f"掌握度偏低：{concept_id}（{self.mastery[concept_id].estimate:.2f}）",
-                estimated_minutes=minutes,
-                priority=self.weights.get(concept_id, 0.0) * (1 - self.mastery[concept_id].estimate),
+                estimated_minutes=minutes, priority=priority,
             ))
             used_lessons.add(lesson_id)
             total += minutes
@@ -148,12 +182,15 @@ class Planner:
         empty = not items
         suggestion = None
         if empty:
-            below = [
-                cid for cid, view in self.mastery.items()
-                if view.level < self.pack.concepts[cid].target_level
-            ]
+            below: list[str] = []
+            for concept_id, view in self.mastery.items():
+                concept = self.pack.concepts.get(concept_id)
+                if concept is None:
+                    continue
+                if LEVEL_ORDER.get(view.level, 0) < LEVEL_ORDER[concept.target_level]:
+                    below.append(concept_id)
             if below:
-                best = max(below, key=lambda cid: self.weights.get(cid, 0.0))
+                best = max(below, key=lambda cid: (self.weights.get(cid, 0.0), cid))
                 suggestion = f"可选深挖：{best}"
         return DailyPlan(
             items=items, total_minutes=total, budget_minutes=budget,
