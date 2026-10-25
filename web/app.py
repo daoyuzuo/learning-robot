@@ -25,6 +25,12 @@ from testbridge.tutor.client import (
 )
 from testbridge.tutor.config import load_config, missing_vars
 from testbridge.tutor.context import build_context
+from testbridge.tutor.review_service import (
+    EvidenceNotFoundError,
+    ReviewService,
+    UnsupportedEvidenceError,
+)
+from testbridge.tutor.review_store import ExerciseReviewStore
 from testbridge.tutor.service import (
     InvalidQuestionError,
     LessonNotFoundError,
@@ -51,10 +57,16 @@ class TutorRequest(BaseModel):
     question: str
 
 
+class ReviewRequest(BaseModel):
+    evidence_id: str
+    refresh: bool = False
+
+
 def create_app(
     pack_dir: Path | None = None,
     db_path: Path | None = None,
     tutor: TutorService | None = None,
+    reviewer: ReviewService | None = None,
 ) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
@@ -63,18 +75,23 @@ def create_app(
     learning_store = LearningStore(database)
     learning = LearningService(pack, store, learning_store)
 
-    if tutor is None:
+    if tutor is None or reviewer is None:
         config = load_config()
         if config is not None:
-            tutor = TutorService(
-                pack, TutorStore(database), OpenAICompatibleClient(config), config
-            )
+            client = OpenAICompatibleClient(config)
+            if tutor is None:
+                tutor = TutorService(pack, TutorStore(database), client, config)
+            if reviewer is None:
+                reviewer = ReviewService(
+                    pack, store, ExerciseReviewStore(database), client, config
+                )
 
     app = FastAPI(title="TestBridge")
     app.state.pack = pack
     app.state.store = store
     app.state.learning = learning
     app.state.tutor = tutor
+    app.state.reviewer = reviewer
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -230,6 +247,57 @@ def create_app(
         store.append(event)
         learning.record(event)
         return {"evidence_id": event.id, "grade": asdict(result)}
+
+    @app.post("/api/review")
+    def review_evidence(payload: ReviewRequest):
+        if reviewer is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "tutor_disabled", "message": "未配置模型服务"},
+            )
+        try:
+            reply = reviewer.review(payload.evidence_id, payload.refresh)
+        except EvidenceNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "evidence_not_found", "message": "作答不存在"},
+            ) from None
+        except UnsupportedEvidenceError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "unsupported_evidence", "message": str(exc)},
+            ) from None
+        except TutorTimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail={"code": "tutor_timeout", "message": "模型服务超时"},
+            ) from None
+        except TutorUpstreamError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"code": "tutor_upstream", "message": str(exc)},
+            ) from None
+
+        if reply.evidence_event is not None:
+            store.append(reply.evidence_event)
+            learning.record(reply.evidence_event)
+
+        review = reply.review
+        return {
+            "verdict": review.verdict,
+            "explanation": review.explanation,
+            "strengths": review.strengths,
+            "gaps": review.gaps,
+            "rubric": [
+                {"dimension": item.dimension, "met": item.met,
+                 "comment": item.comment}
+                for item in review.rubric
+            ],
+            "suggested_score": review.suggested_score,
+            "model": reviewer.config.model,
+            "cached": reply.cached,
+            "saved": reply.saved,
+        }
 
     @app.post("/api/tutor")
     def ask_tutor(payload: TutorRequest):
