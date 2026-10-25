@@ -50,6 +50,18 @@ def test_override_concepts_come_first() -> None:
     assert picked[0].concepts == ["c-c"]
 
 
+def test_override_fills_remainder_weakest_first() -> None:
+    picked = draw_questions(
+        BANK,
+        concept_weights={"c-a": 1.0, "c-b": 1.0, "c-c": 1.0},
+        mastery={"c-a": 0.9, "c-b": 0.1, "c-c": 0.5},
+        count=3,
+        concept_ids=["c-c"],
+        seed="override",
+    )
+    assert [question.concepts[0] for question in picked] == ["c-c", "c-b", "c-a"]
+
+
 def test_unknown_override_raises() -> None:
     with pytest.raises(ValueError, match="没有面试题"):
         draw_questions(
@@ -87,3 +99,29 @@ def test_same_seed_is_reproducible() -> None:
 def test_count_must_be_positive() -> None:
     with pytest.raises(ValueError):
         draw_questions(BANK, concept_weights={}, mastery={}, count=0)
+
+
+SHARED_BANK = InterviewBank.model_validate({
+    "schema": "tb-interview/1",
+    "pack": "p",
+    "questions": [
+        {"id": "q-shared", "title": "s", "prompt": "p",
+         "concepts": ["c-a", "c-b"], "level": "L2",
+         "rubric": [{"dimension": "d", "weight": 1.0, "criteria": "c"}]},
+        {"id": "q-a", "title": "a", "prompt": "p",
+         "concepts": ["c-a"], "level": "L2",
+         "rubric": [{"dimension": "d", "weight": 1.0, "criteria": "c"}]},
+    ],
+})
+
+
+def test_multi_concept_question_is_not_repeated() -> None:
+    picked = draw_questions(
+        SHARED_BANK,
+        concept_weights={"c-a": 1.0, "c-b": 1.0},
+        mastery={"c-a": 0.1, "c-b": 0.2},
+        count=2,
+        seed="shared",
+    )
+    assert len(picked) == 2
+    assert len({question.id for question in picked}) == 2
