@@ -15,7 +15,9 @@ from testbridge.readiness import LEVEL_ORDER
 PlanType = Literal["review", "new", "weak"]
 
 REVIEW_MINUTES = 5
+EXERCISE_MINUTES = 10
 DEFAULT_LESSON_MINUTES = 20
+REASON_PROMPT_LIMIT = 30
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,13 @@ class DailyPlan:
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, value))
+
+
+def _excerpt(text: str, limit: int = REASON_PROMPT_LIMIT) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[:limit] + "…"
 
 
 class Planner:
@@ -67,9 +76,20 @@ class Planner:
                 self.lessons_for_concept.setdefault(concept_id, []).append(lesson.manifest.id)
             for exercise_id in lesson.manifest.exercises:
                 self.lesson_for_exercise.setdefault(exercise_id, lesson.manifest.id)
+        self.exercises_for_concept: dict[str, list[str]] = {}
+        for exercise_id in sorted(pack.exercises):
+            for concept_id in pack.exercises[exercise_id].concepts:
+                self.exercises_for_concept.setdefault(concept_id, []).append(exercise_id)
+
+    def _raw_priority(self, concept_id: str, estimate: float) -> float:
+        return self.weights.get(concept_id, 0.0) * (1 - estimate)
 
     def _priority(self, concept_id: str, estimate: float) -> float:
-        return _clamp(self.weights.get(concept_id, 0.0) * (1 - estimate))
+        return _clamp(self._raw_priority(concept_id, estimate))
+
+    def _order(self, concept_id: str) -> int:
+        lessons = self.lessons_for_concept.get(concept_id)
+        return self.lesson_index[lessons[0]] if lessons else len(self.lessons)
 
     def plan(self, now: datetime) -> DailyPlan:
         budget = self.goal.daily_minutes
@@ -77,6 +97,7 @@ class Planner:
         now_utc = parse_iso(iso(now))
         items: list[PlanItem] = []
         used_lessons: set[str] = set()
+        used_exercises: set[str] = set()
         total = 0
 
         review_budget = budget * 0.5
@@ -89,13 +110,15 @@ class Planner:
             if review_minutes + REVIEW_MINUTES > review_budget:
                 break
             lesson_id = self.lesson_for_exercise.get(review.exercise_id)
+            exercise = self.pack.exercises.get(review.exercise_id)
+            label = _excerpt(exercise.prompt) if exercise else review.exercise_id
             items.append(
                 PlanItem(
                     type="review",
                     concept_ids=review.concept_ids,
                     lesson_id=lesson_id,
                     exercise_id=review.exercise_id,
-                    reason=f"到期复习：{review.exercise_id}",
+                    reason=f"到期复习：{label}",
                     estimated_minutes=REVIEW_MINUTES,
                     priority=1.0,
                 )
@@ -121,9 +144,9 @@ class Planner:
                 continue
             if LEVEL_ORDER.get(view.level, 0) >= LEVEL_ORDER[concept.target_level]:
                 continue
-            priority = self._priority(concept_id, view.estimate)
-            new_candidates.append((priority, self.lesson_index[lessons[0]], concept_id))
-        for priority, _, concept_id in sorted(
+            raw = self._raw_priority(concept_id, view.estimate)
+            new_candidates.append((raw, self.lesson_index[lessons[0]], concept_id))
+        for raw, _, concept_id in sorted(
             new_candidates, key=lambda item: (-item[0], item[1], item[2])
         ):
             lesson_id = next(
@@ -139,7 +162,7 @@ class Planner:
             items.append(PlanItem(
                 type="new", concept_ids=[concept_id], lesson_id=lesson_id,
                 exercise_id=None, reason=f"先修已满足，下一个概念：{concept_id}",
-                estimated_minutes=minutes, priority=priority,
+                estimated_minutes=minutes, priority=_clamp(raw),
             ))
             used_lessons.add(lesson_id)
             total += minutes
@@ -149,34 +172,50 @@ class Planner:
             concept = self.pack.concepts.get(concept_id)
             if concept is None:
                 continue
-            lessons = self.lessons_for_concept.get(concept_id)
-            if not lessons:
-                continue
             if view.exercise_observations + view.other_observations == 0:
                 continue
             if view.estimate >= 0.5:
                 continue
-            priority = self._priority(concept_id, view.estimate)
-            weak_candidates.append((priority, self.lesson_index[lessons[0]], concept_id))
-        for priority, _, concept_id in sorted(
+            raw = self._raw_priority(concept_id, view.estimate)
+            weak_candidates.append((raw, self._order(concept_id), concept_id))
+        for raw, _, concept_id in sorted(
             weak_candidates, key=lambda item: (-item[0], item[1], item[2])
         ):
             lesson_id = next(
-                (lid for lid in self.lessons_for_concept[concept_id] if lid not in used_lessons),
+                (
+                    lid
+                    for lid in self.lessons_for_concept.get(concept_id, [])
+                    if lid not in used_lessons
+                ),
                 None,
             )
+            exercise_id = None
             if lesson_id is None:
-                continue
-            lesson = self.pack.lessons[lesson_id]
-            minutes = lesson.manifest.minutes or DEFAULT_LESSON_MINUTES
+                exercise_id = next(
+                    (
+                        eid
+                        for eid in self.exercises_for_concept.get(concept_id, [])
+                        if eid not in used_exercises
+                    ),
+                    None,
+                )
+                if exercise_id is None:
+                    continue
+                minutes = EXERCISE_MINUTES
+            else:
+                minutes = self.pack.lessons[lesson_id].manifest.minutes or DEFAULT_LESSON_MINUTES
             if total + minutes > fill_limit:
                 continue
             items.append(PlanItem(
                 type="weak", concept_ids=[concept_id], lesson_id=lesson_id,
-                exercise_id=None, reason=f"掌握度偏低：{concept_id}（{self.mastery[concept_id].estimate:.2f}）",
-                estimated_minutes=minutes, priority=priority,
+                exercise_id=exercise_id,
+                reason=f"掌握度偏低：{concept_id}（{self.mastery[concept_id].estimate:.2f}）",
+                estimated_minutes=minutes, priority=_clamp(raw),
             ))
-            used_lessons.add(lesson_id)
+            if lesson_id is None:
+                used_exercises.add(exercise_id)
+            else:
+                used_lessons.add(lesson_id)
             total += minutes
 
         empty = not items
