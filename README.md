@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由（默认只联网于 live 测试）。
 
 ## AI 追问（可选）
 
@@ -38,7 +38,7 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 
 1. 新建草稿（主题 / 级别 / 课数 / 每课检索次数）
 2. 直接编辑大纲（HTML）
-3. 按课调研（DeepSeek Search）
+3. 按课调研（OpenAlex / DeepSeek Search，可自动路由）
 4. 按课写课
 5. 校验（离线 validate + 资源可达性）
 6. 定稿到 `content-packs/`
@@ -49,6 +49,25 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 ```bash
 TESTBRIDGE_LIVE=1 .venv/Scripts/python -m pytest -m live
 ```
+
+## 检索后端（P3.3）
+
+新建草稿时可选择检索源：
+
+- `auto`（默认）：学术主题走 OpenAlex，文档主题走 DeepSeek Search；首选无命中或失败时回退。
+- `deepseek`：只查 DeepSeek，不回退。
+- `openalex`：只查 OpenAlex，不回退。
+
+OpenAlex 无需 API key；可选环境变量：
+
+```bash
+export TESTBRIDGE_OPENALEX_MAILTO=you@example.com   # polite pool
+# export TESTBRIDGE_OPENALEX_BASE_URL=https://api.openalex.org
+# export TESTBRIDGE_OPENALEX_TIMEOUT=10
+```
+
+OpenAlex 可信度：期刊/会议/书籍章节/review 记 A，预印本记 B，其他记 C，撤稿记 D。
+资源必须来自 A/B 命中才能通过质量门禁。
 
 ## 质量门禁（P3.2）
 
@@ -73,6 +92,7 @@ tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 - [P2.2 AI 追问设计](docs/superpowers/specs/2026-10-25-p2.2-tutor-design.md)
 - [ROS2 QoS 内容试点](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)
 - [P3.2 质量门禁设计](docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
+- [P3.3 检索后端设计](docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)

@@ -3,13 +3,14 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.3（检索后端）设计已批准，待实现**
-> 状态：设计完成，2026-10-25
+> **当前期：P3.3（检索后端）已完成**
+> 状态：实现并验收，2026-10-25
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2 均已完成。P3.3 增加
 > OpenAlex 后端、插件化 `SearchRouter`、按主题自动路由与回退、草稿级手动
 > 选择，并收紧溯源信任（资源必须来自 A/B 命中）。设计见
 > [P3.3 检索后端](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)。
+> 下一步：P3.4（批量/多模块内容演进）。
 
 ---
 
@@ -232,7 +233,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
-## P3.3 检索后端（设计已批准，待实现）
+## P3.3 检索后端（已完成，2026-10-25）
 
 **范围：**
 
@@ -246,14 +247,16 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 **不做：** SearXNG / Firecrawl / arXiv 适配器、网页抓取、结果缓存、跨后端扇出。
 
-**退出标准：**
+**退出标准（实测，2026-10-25）：**
 
-- [ ] 学术主题自动走 OpenAlex，文档主题自动走 DeepSeek；auto 无命中或失败时回退
-- [ ] 手动选择严格生效，不静默回退
-- [ ] C/D-only 来源被质量门禁阻断；A/B 不受影响
-- [ ] 旧草稿缺字段按 auto
-- [ ] 默认 `pytest` 全绿且离线；现有两个包 `tb validate` 仍 0/0
-- [ ] `TESTBRIDGE_LIVE=1` 时 OpenAlex 真实调用通过
+- [x] 学术主题自动走 OpenAlex，文档主题自动走 DeepSeek；auto 无命中或失败时回退
+- [x] 手动选择严格生效，不静默回退
+- [x] C/D-only 来源被质量门禁阻断；A/B 不受影响
+- [x] 旧草稿缺字段按 auto
+- [x] 默认 `pytest` 全绿且离线：456 passed，3 deselected（live）
+- [x] 两个现有包 `tb validate` 仍 0/0（ros2-qos、sample-sensors）
+- [x] `tb quality content-packs/sample-sensors` 100/100，退出码 0
+- [x] `TESTBRIDGE_LIVE=1 pytest -m live`：3 passed（含 OpenAlex 真实检索）
 
 ---
 
