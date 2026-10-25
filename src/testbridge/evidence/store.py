@@ -153,6 +153,7 @@ class EvidenceStore:
         self,
         lesson_id: str | None = None,
         concept_id: str | None = None,
+        kind: str | None = None,
         limit: int = 100,
     ) -> list[EvidenceEvent]:
         sql = "SELECT * FROM evidence WHERE 1=1"
@@ -163,12 +164,23 @@ class EvidenceStore:
         if concept_id:
             sql += " AND instr(concept_ids, ?) > 0"
             params.append(json.dumps(concept_id, ensure_ascii=False))
+        if kind:
+            sql += " AND kind = ?"
+            params.append(kind)
         sql += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         with sqlite3.connect(self.path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(sql, params).fetchall()
         return [self._row_to_event(row) for row in rows]
+
+    def get(self, event_id: str) -> EvidenceEvent | None:
+        with sqlite3.connect(self.path) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT * FROM evidence WHERE id = ?", (event_id,)
+            ).fetchone()
+        return self._row_to_event(row) if row else None
 
     def count(
         self,
