@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+import json
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from testbridge.artifact import ArtifactError, save_artifact
+from testbridge.concept_graph import prerequisite_svg
 from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.exercise.grading import grade, kind_for_exercise
@@ -67,9 +71,11 @@ def create_app(
     db_path: Path | None = None,
     tutor: TutorService | None = None,
     reviewer: ReviewService | None = None,
+    artifacts_dir: Path | None = None,
 ) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
+    uploads = artifacts_dir or ROOT / "data" / "artifacts"
     pack = load_pack(pack_path)
     store = EvidenceStore(database)
     learning_store = LearningStore(database)
@@ -194,6 +200,7 @@ def create_app(
             context=ctx(
                 request, views=views, due_counts=due_counts,
                 lesson_for_concept=lesson_for_concept,
+                graph=prerequisite_svg(pack, views),
             ),
         )
 
@@ -373,6 +380,86 @@ def create_app(
             "citations": reply.answer.citations,
             "followups": reply.answer.followups,
             "saved": reply.saved,
+        }
+
+    @app.post("/api/artifact")
+    def upload_artifact(
+        lesson_id: str = Form(...),
+        exercise_id: str = Form(...),
+        notes: str = Form(""),
+        checked: str = Form("[]"),
+        hints_used: int = Form(0),
+        duration_ms: int = Form(0),
+        file: UploadFile = File(...),  # noqa: B008 - FastAPI requires the call here
+    ):
+        lesson = pack.lessons.get(lesson_id)
+        if lesson is None:
+            raise HTTPException(status_code=404, detail="lesson not found")
+        exercise = pack.exercises.get(exercise_id)
+        if exercise is None:
+            raise HTTPException(status_code=404, detail="exercise not found")
+        if exercise_id not in lesson.manifest.exercises:
+            raise HTTPException(status_code=400, detail="exercise not in lesson")
+        if exercise.type != "artifact" or exercise.artifact is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "not_artifact", "message": "该练习不需要上传文件"},
+            )
+
+        try:
+            selected = json.loads(checked) if checked else []
+        except ValueError:
+            selected = []
+        if not isinstance(selected, list):
+            selected = []
+
+        evidence_id = uuid4().hex
+        try:
+            stored = save_artifact(
+                uploads, evidence_id, file.filename or "", file.file.read(),
+                exercise.artifact,
+            )
+        except ArtifactError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": exc.code, "message": exc.message},
+            ) from None
+
+        try:
+            display_path = stored.path.relative_to(ROOT).as_posix()
+        except ValueError:
+            display_path = stored.path.as_posix()
+
+        response = {"path": display_path, "notes": notes, "checked": selected}
+        result = grade(exercise, response)
+        event = replace(
+            new_event(
+                kind=kind_for_exercise(exercise.type),
+                lesson_id=lesson_id,
+                exercise_id=exercise_id,
+                concept_ids=exercise.concepts,
+                outcome=result.outcome,
+                score=result.score,
+                max_score=result.max_score,
+                payload={
+                    "response": response,
+                    "filename": stored.filename,
+                    "size": stored.size,
+                    "hints_used": hints_used,
+                    "duration_ms": duration_ms,
+                    "feedback": result.feedback,
+                    "details": result.details,
+                },
+                source="web",
+            ),
+            id=evidence_id,
+        )
+        store.append(event)
+        learning.record(event)
+        return {
+            "evidence_id": event.id,
+            "grade": asdict(result),
+            "artifact_path": display_path,
         }
 
     @app.get("/api/health")

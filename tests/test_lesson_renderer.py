@@ -187,7 +187,7 @@ def test_render_artifact_form() -> None:
     )
     form = render_exercise_form(exercise)
     assert 'data-exercise-type="artifact"' in form
-    assert 'name="path"' in form
+    assert '<input type="file" name="file" accept=".log">' in form
     assert 'name="notes"' in form
     assert 'type="checkbox" name="checked"' in form
     assert ESCAPED_PROMPT in form

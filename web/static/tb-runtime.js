@@ -17,7 +17,6 @@
     }
     if (type === "artifact") {
       return {
-        path: form.querySelector('input[name="path"]').value,
         notes: form.querySelector('textarea[name="notes"]').value,
         checked: Array.from(form.querySelectorAll('input[name="checked"]:checked')).map((el) => el.value),
       };
@@ -170,9 +169,27 @@
       const response = collect(form, type);
       const feedback = form.querySelector(".tb-feedback");
       const button = form.querySelector('button[type="submit"]');
-      button.disabled = true;
-      try {
-        const res = await fetch("/api/evidence", {
+      let endpoint = "/api/evidence";
+      let request = null;
+      if (type === "artifact") {
+        const fileInput = form.querySelector('input[name="file"]');
+        if (!fileInput || !fileInput.files.length) {
+          feedback.hidden = false;
+          feedback.textContent = "请先选择文件。";
+          return;
+        }
+        const formData = new FormData();
+        formData.append("lesson_id", form.dataset.lessonId || lessonId);
+        formData.append("exercise_id", form.dataset.exerciseId);
+        formData.append("notes", response.notes || "");
+        formData.append("checked", JSON.stringify(response.checked || []));
+        formData.append("hints_used", String(hintsUsed));
+        formData.append("duration_ms", String(Date.now() - startedAt));
+        formData.append("file", fileInput.files[0]);
+        endpoint = "/api/artifact";
+        request = { method: "POST", body: formData };
+      } else {
+        request = {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -182,7 +199,11 @@
             hints_used: hintsUsed,
             duration_ms: Date.now() - startedAt,
           }),
-        });
+        };
+      }
+      button.disabled = true;
+      try {
+        const res = await fetch(endpoint, request);
         if (!res.ok) throw new Error(await res.text());
         const payload = await res.json();
         feedback.hidden = false;

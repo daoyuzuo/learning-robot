@@ -90,8 +90,13 @@ def render_exercise_form(exercise: Exercise, lesson_id: str | None = None) -> st
             for item in exercise.rubric
         )
     else:
+        accept = (
+            ",".join(f".{item.lstrip('.')}" for item in exercise.artifact.accept)
+            if exercise.artifact
+            else ""
+        )
         fields = (
-            '<input type="text" name="path" placeholder="附件路径，例如 data/artifacts/run.log">'
+            f'<input type="file" name="file" accept="{_esc(accept)}">'
             '<textarea name="notes" rows="3" placeholder="观察与结论"></textarea>'
             '<div class="tb-self-check">'
             + "".join(

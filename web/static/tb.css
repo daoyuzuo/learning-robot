@@ -45,3 +45,5 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-session-source { font-size: .9rem; color: #6b7280; margin-bottom: .2rem; }
 .tb-session-next { margin-top: .6rem; }
 .tb-session-done { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; }
+.tb-graph-wrap { margin: 1rem 0 1.5rem; overflow-x: auto; }
+.tb-graph { width: 100%; min-width: 480px; height: auto; }
