@@ -50,6 +50,22 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 TESTBRIDGE_LIVE=1 .venv/Scripts/python -m pytest -m live
 ```
 
+## 质量门禁（P3.2）
+
+```bash
+# 已发布包：结构类检查（无调研档案，分数按结构项归一）
+tb quality content-packs/sample-sensors
+
+# 草稿：自动读取 draft.json 与 research/，做完整检查
+tb quality drafts/<id>
+
+# 输出 JSON；显式指定档案与预算
+tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
+```
+
+有硬错误退出码 1；内容包结构无效退出码 2；只有警告退出码 0。
+`force` 与 `skip_verify` 都不能绕过质量门禁。
+
 ## 文档
 
 - [总设计](docs/superpowers/specs/2026-10-24-teaching-engine-design.md)
