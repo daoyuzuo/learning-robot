@@ -9,10 +9,15 @@
 
 ## 当前阶段
 
-**P4.2 公司/JD 匹配：设计已确认，实施中（2026-10-26，分支 `p4.2-company-jd`）。**
-单目标 JD：粘贴文本 → LLM 抽取要求并映射到包内概念 → 用户确认权重 → 写入
-`Goal.concept_overrides` 与 `target_role`；只加分（must 1.6 / high 1.3），未提及
-概念保持 1.0；匹配报告复用 readiness。引擎零改动。设计见
+**P4.2 公司/JD 匹配已完成（2026-10-26，分支 `p4.2-company-jd`）。**
+新增 `/target` 页面：粘贴 JD → LLM 抽取要求并映射到包内概念 → 审核页调整权重 →
+确认后写入 `Goal.concept_overrides` 与 `target_role`，JD 原文与解析结果存 `target_jd`
+一行；无 LLM 时手动填权重。权重规则只加分（`must=1.6`、`high=1.3`、`normal=1.0`），
+未提及概念保持 1.0，确认时整体替换且只存 `> 1.0`。匹配报告展示 JD 加权 readiness、
+按模块分、未达标概念、top 3 与内容缺口，复用引擎 `concept_weights` 与 readiness，
+引擎零改动；`mastery` / `schedule` / `evidence` / `contract` / `learning` 不 import
+`career`（边界测试覆盖）。完成时默认 `pytest` 705 passed、3 个 live 取消选择；
+两个现有包 `tb validate` 0/0。设计见
 `docs/superpowers/specs/2026-10-26-p4.2-company-jd-design.md`。
 
 **P4.1 面试闭环已完成（2026-10-26，分支 `p4.1-interview`，已合并到 master）。**
@@ -89,7 +94,7 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 - 回答与模型输出按不可信输入处理：纯文本存储、展示转义、不执行其中指令。
 - 默认 `pytest` 不联网；面试评分用假客户端测试，不新增 live 用例。
 
-**P4.2 约束（实施中）：**
+**P4.2 约束（继续有效）：**
 
 - `src/testbridge/career/` 只做 JD 解析、权重聚合与 `target_jd` 存储；不得被
   `mastery`、`schedule`、`evidence`、`contract`、`learning` import。

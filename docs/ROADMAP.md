@@ -3,8 +3,8 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.2（公司/JD 匹配）设计已确认，实施中，2026-10-26**
-> 状态：设计定稿（分支 `p4.2-company-jd`），实现进行中；P4.1 与 P3.5 已合并到 master。
+> **当前期：P4.2（公司/JD 匹配）已完成，2026-10-26**
+> 状态：已实现（分支 `p4.2-company-jd`）；P4.1 与 P3.5 已合并到 master。下一步 P4.3 范围待定义。
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
@@ -394,7 +394,7 @@ quality: 100/100             # exit 0
 
 ---
 
-## P4.2 公司/JD 匹配（设计已确认，实施中）
+## P4.2 公司/JD 匹配（已完成，2026-10-26）
 
 **范围：**
 
@@ -407,23 +407,46 @@ quality: 100/100             # exit 0
 
 **不做：** JD URL 抓取、多 JD 对比、简历匹配、投递记录（P4.3）、按 JD 要求给所需等级。
 
-**退出标准（待实测）：**
+**退出标准（实测，2026-10-26）：**
 
-- [ ] 粘贴 JD → 解析 → 审核 → 确认，`Goal.concept_overrides` 与 `target_role` 更新
-- [ ] `/target` 展示 JD 加权 readiness、按模块分、未达标概念、top 3、内容缺口
-- [ ] `/today` 按新权重排序；未提及概念仍可被安排
-- [ ] 无 LLM 时可手动填权重并完成确认
-- [ ] 未知概念/非法权重被拒绝（400），JD 原文与理由正确转义
-- [ ] 全量测试通过，两个包 `tb validate` 0/0
-- [ ] 引擎模块不 import `career`
+- [x] 粘贴 JD → 解析 → 审核 → 确认，`Goal.concept_overrides` 与 `target_role` 更新
+      （`test_confirm_writes_goal_and_target`：`concept_overrides == {"sensor-time-sync": 1.6, "clock-drift": 1.3}`、
+      `target_role == "具身智能测试工程师"`）
+- [x] `/target` 展示 JD 加权 readiness、按模块分、未达标概念、top 3、内容缺口
+      （`test_confirmed_target_shows_report`、`test_end_to_end_target_weights_reach_planner_inputs`：
+      页面含“岗位匹配度”“未达标概念”）
+- [x] `/today` 按新权重排序；未提及概念仍可被安排（引擎 `concept_weights` 只乘 override，
+      未提及概念仍为 1.0；`test_end_to_end_target_weights_reach_planner_inputs` 确认
+      `sensor-time-sync` 权重高于 `timestamp-basics`）
+- [x] 无 LLM 时可手动填权重并完成确认
+      （`test_manual_mode_without_usable_llm`：解析失败显示“自动解析失败”，手动提交 303）
+- [x] 未知概念/非法权重被拒绝（400），JD 原文与理由正确转义
+      （`test_confirm_rejects_out_of_range_weight`、`test_confirm_rejects_unknown_concept_in_requirements`、
+      `test_jd_text_is_escaped`、`test_failed_confirm_leaves_stores_untouched`）
+- [x] 全量测试通过，两个包 `tb validate` 0/0（705 passed，3 deselected；两包均 0 error / 0 warning）
+- [x] 引擎模块不 import `career`（`test_engine_does_not_import_career`：mastery / schedule /
+      evidence / contract / learning 均无 `testbridge.career` 引用）
 
 **设计：** [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)
+
+**验证命令（2026-10-26）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+705 passed, 3 deselected in 40.18s
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+```
 
 ---
 
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 已实现。当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现。当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -434,10 +457,10 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 已实现。当前范围、退出�
 
 ### P4 应用整合
 
-P4.1 已完成并合并；P4.2 设计已确认、实施中；P4.3（求职管理）范围待定义。
+P4.1、P4.2 已完成并合并；P4.3（求职管理）范围待定义。
 
 - [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
-- [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：实施中。
+- [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：已完成。
 - P4.3 求职管理：投递、复盘；待单独 spec。
 - 能力结论仍只来自 evidence；面试会话、题库与 JD 属于过程状态，不是第二本账。
 

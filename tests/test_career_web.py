@@ -38,7 +38,9 @@ def test_nav_shows_target(tmp_path: Path) -> None:
 import json
 
 from testbridge.career.store import TargetJdStore
-from testbridge.learning.store import LearningStore
+from testbridge.content.repository import load_pack
+from testbridge.learning.store import Goal, LearningStore
+from testbridge.learning.weights import concept_weights
 from testbridge.tutor.config import TutorConfig
 
 CONFIG = TutorConfig(base_url="http://x", api_key="k", model="fake")
@@ -169,3 +171,42 @@ def test_jd_text_is_escaped(tmp_path: Path) -> None:
     response = parse_form(c, "<b>JD</b>")
     assert "&lt;b&gt;JD&lt;/b&gt;" in response.text
     assert "<b>JD</b>" not in response.text
+
+
+def test_end_to_end_target_weights_reach_planner_inputs(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    parse_form(c)
+    c.post("/target/confirm", data=confirm_data())
+    db = tmp_path / "target.db"
+    goal = LearningStore(db).get_goal()
+    pack = load_pack(SAMPLE)
+    weights = concept_weights(pack, goal)
+    assert weights["sensor-time-sync"] > weights["timestamp-basics"]
+    page = c.get("/target").text
+    assert "岗位匹配度" in page
+    assert "未达标概念" in page
+
+
+def test_confirm_preserves_goal_time_budget(tmp_path: Path) -> None:
+    db = tmp_path / "target.db"
+    LearningStore(db).set_goal(
+        Goal(learner_id="local", weekly_hours=12.5, daily_minutes=60)
+    )
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    parse_form(c)
+    c.post("/target/confirm", data=confirm_data())
+    goal = LearningStore(db).get_goal()
+    assert goal.weekly_hours == 12.5
+    assert goal.daily_minutes == 60
+
+
+def test_failed_confirm_leaves_stores_untouched(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    parse_form(c)
+    data = confirm_data()
+    data["weight_clock-drift"] = "9"
+    response = c.post("/target/confirm", data=data)
+    assert response.status_code == 400
+    db = tmp_path / "target.db"
+    assert LearningStore(db).get_goal().concept_overrides == {}
+    assert TargetJdStore(db).get() is None
