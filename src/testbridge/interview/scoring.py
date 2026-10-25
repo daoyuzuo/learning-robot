@@ -67,7 +67,7 @@ def build_user_prompt(
     lines += [
         "",
         "<candidate_answer>",
-        answer,
+        answer.replace("</candidate_answer>", ""),
         "</candidate_answer>",
         "",
         '输出 JSON：{"scores": [{"dimension": "...", "score": 0.7, '
@@ -101,7 +101,7 @@ def parse_suggestion(
         if not isinstance(item, dict):
             raise ScoringError("scores 项不是对象")
         dimension = item.get("dimension")
-        if dimension not in expected:
+        if not isinstance(dimension, str) or dimension not in expected:
             raise ScoringError(f"维度不在 rubric 中：{dimension}")
         if dimension in seen:
             raise ScoringError(f"维度重复：{dimension}")
@@ -185,13 +185,15 @@ def validate_confirmed_scores(
     question: InterviewQuestion,
     payload: list[dict],
 ) -> list[DimensionScore]:
+    if not isinstance(payload, list):
+        raise ValueError("分数项格式错误")
     expected = {item.dimension: item.weight for item in question.rubric}
     seen: dict[str, float] = {}
     for item in payload:
         if not isinstance(item, dict):
             raise ValueError("分数项格式错误")
         dimension = item.get("dimension")
-        if dimension not in expected:
+        if not isinstance(dimension, str) or dimension not in expected:
             raise ValueError(f"维度不在 rubric 中：{dimension}")
         if dimension in seen:
             raise ValueError(f"维度重复：{dimension}")
