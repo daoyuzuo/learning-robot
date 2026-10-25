@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -78,10 +79,10 @@ def main(argv: list[str] | None = None) -> int:
     goal_set = goal_sub.add_parser("set")
     goal_set.add_argument("--db", default="data/testbridge.db")
     goal_set.add_argument("--learner-id", default="local")
-    goal_set.add_argument("--target-role", default="")
-    goal_set.add_argument("--weekly-hours", type=float, default=0.0)
-    goal_set.add_argument("--daily-minutes", type=int, default=45)
-    goal_set.add_argument("--override", action="append", default=[])
+    goal_set.add_argument("--target-role", default=None)
+    goal_set.add_argument("--weekly-hours", type=float, default=None)
+    goal_set.add_argument("--daily-minutes", type=int, default=None)
+    goal_set.add_argument("--override", action="append", default=None)
 
     readiness = sub.add_parser("readiness")
     readiness.add_argument("--pack", default="content-packs/sample-sensors")
@@ -135,7 +136,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "rebuild-state":
         service = _load_learning(args.pack, args.db, args.learner_id)
         result = rebuild_state(service)
-        print(f"rebuilt {result.events} events, {result.concepts} concepts, {result.reviews} reviews")
+        print(
+            f"rebuilt {result.events} events, {result.concepts} concepts, "
+            f"{result.reviews} reviews"
+        )
+        if result.skipped_concepts:
+            print(
+                f"WARN skipped concepts: {', '.join(result.skipped_concepts)}",
+                file=sys.stderr,
+            )
+        if result.skipped_exercises:
+            print(
+                f"WARN skipped exercises: {', '.join(result.skipped_exercises)}",
+                file=sys.stderr,
+            )
         return 0
 
     if args.command == "goal":
@@ -143,13 +157,37 @@ def main(argv: list[str] | None = None) -> int:
             goal = LearningStore(Path(args.db)).get_goal(args.learner_id)
             print(goal)
             return 0
-        overrides = {}
-        for item in args.override:
-            key, _, value = item.partition("=")
-            overrides[key] = float(value)
-        LearningStore(Path(args.db)).set_goal(Goal(
-            learner_id=args.learner_id, target_role=args.target_role,
-            weekly_hours=args.weekly_hours, daily_minutes=args.daily_minutes,
+        store = LearningStore(Path(args.db))
+        existing = store.get_goal(args.learner_id)
+        try:
+            overrides = dict(existing.concept_overrides)
+            for item in args.override or []:
+                key, sep, value = item.partition("=")
+                if not sep or not key:
+                    raise ValueError(f"invalid override {item!r}")
+                multiplier = float(value)
+                if not math.isfinite(multiplier) or multiplier < 0:
+                    raise ValueError(f"invalid override {item!r}")
+                overrides[key] = multiplier
+            target_role = (
+                args.target_role if args.target_role is not None else existing.target_role
+            )
+            weekly_hours = (
+                args.weekly_hours if args.weekly_hours is not None else existing.weekly_hours
+            )
+            daily_minutes = (
+                args.daily_minutes if args.daily_minutes is not None else existing.daily_minutes
+            )
+            if daily_minutes <= 0:
+                raise ValueError("daily minutes must be > 0")
+            if weekly_hours < 0:
+                raise ValueError("weekly hours must be >= 0")
+        except ValueError as exc:
+            print(f"ERROR goal: {exc}", file=sys.stderr)
+            return 2
+        store.set_goal(Goal(
+            learner_id=args.learner_id, target_role=target_role,
+            weekly_hours=weekly_hours, daily_minutes=daily_minutes,
             concept_overrides=overrides,
         ))
         print("goal updated")
