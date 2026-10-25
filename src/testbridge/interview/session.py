@@ -161,6 +161,8 @@ class InterviewService:
         answer = self.store.get_answer(session_id, question_id)
         if answer is None or not answer.answer.strip():
             raise SessionError("请先作答")
+        if answer.status == "confirmed":
+            raise SessionError("该题已确认，不能重新评分")
         suggestion = grade_with_llm(
             self.llm, self.config, question, answer.answer, self.pack.concepts
         )
@@ -192,13 +194,15 @@ class InterviewService:
         scores: list[dict],
         duration_ms: int = 0,
     ) -> str:
-        session = self._running(session_id)
+        session = self.get(session_id)
         question = self._question(session, question_id)
         answer = self.store.get_answer(session_id, question_id)
         if answer is None:
             raise SessionError("请先作答")
         if answer.evidence_id:
             return answer.evidence_id
+        if session.status != "running":
+            raise SessionError("会话已结束")
         if answer.status != "graded":
             raise SessionError("请先完成评分")
 
@@ -292,7 +296,7 @@ class InterviewService:
 
     def abandon(self, session_id: str) -> None:
         session = self.get(session_id)
-        if session.status == "abandoned":
+        if session.status in {"abandoned", "completed"}:
             return
         self.store.update_session(
             InterviewSession(

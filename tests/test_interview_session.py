@@ -145,7 +145,7 @@ def test_confirm_is_idempotent(tmp_path: Path) -> None:
     suggestion = service.grade(session.id, question_id)
     scores = confirm_scores(suggestion, 0.6)
     first = service.confirm(session.id, question_id, scores)
-    second = service.confirm(session.id, question_id, scores)
+    second = service.confirm(session.id, question_id, [])
     assert first == second
     assert service.evidence_store.count() == 1
 
@@ -211,3 +211,64 @@ def test_summary_uses_confirmed_answers(tmp_path: Path) -> None:
     assert summary.weakest_concepts == list(
         service.bank.by_id(question_id).concepts
     )
+
+
+def test_regrade_confirmed_is_rejected(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    service.llm = FakeClient()
+    service.config = CONFIG
+    session = service.start(3)
+    question_id = session.question_ids[0]
+    service.save_draft(session.id, question_id, "答案")
+    suggestion = service.grade(session.id, question_id)
+    service.confirm(session.id, question_id, confirm_scores(suggestion, 0.6))
+    with pytest.raises(SessionError, match="已确认"):
+        service.grade(session.id, question_id)
+    assert service.evidence_store.count() == 1
+    assert service.answers(session.id)[question_id].status == "confirmed"
+
+
+def test_confirm_retry_after_completion_returns_same_id(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    service.llm = FakeClient()
+    service.config = CONFIG
+    session = service.start(3)
+    last_id = ""
+    for question_id in session.question_ids:
+        service.save_draft(session.id, question_id, "答案")
+        suggestion = service.grade(session.id, question_id)
+        last_id = service.confirm(
+            session.id, question_id, confirm_scores(suggestion, 0.6)
+        )
+    assert service.get(session.id).status == "completed"
+    assert service.confirm(session.id, session.question_ids[-1], []) == last_id
+    assert service.evidence_store.count() == 3
+
+
+def test_confirm_preserves_llm_fields(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    service.llm = FakeClient()
+    service.config = CONFIG
+    session = service.start(3)
+    question_id = session.question_ids[0]
+    service.save_draft(session.id, question_id, "答案")
+    suggestion = service.grade(session.id, question_id)
+    service.confirm(session.id, question_id, confirm_scores(suggestion, 0.6))
+    answer = service.answers(session.id)[question_id]
+    assert answer.answer == "答案"
+    assert answer.llm_model == "fake"
+    assert answer.llm_summary == "继续"
+    assert answer.llm_scores
+
+
+def test_abandon_does_not_demote_completed(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    service.llm = FakeClient()
+    service.config = CONFIG
+    session = service.start(3)
+    for question_id in session.question_ids:
+        service.save_draft(session.id, question_id, "答案")
+        suggestion = service.grade(session.id, question_id)
+        service.confirm(session.id, question_id, confirm_scores(suggestion, 0.6))
+    service.abandon(session.id)
+    assert service.get(session.id).status == "completed"
