@@ -5,7 +5,7 @@
 > 2. `docs/superpowers/specs/2026-10-24-teaching-engine-design.md`（P1 总设计）
 > 3. `docs/superpowers/specs/2026-10-25-p2-learning-loop-design.md`（P2 学习闭环）
 >
-> 这两份是权威。`docs/research/` 只作参考，不是实现依据。
+> 这三份是权威。`docs/research/` 只作参考，不是实现依据。
 
 ## 当前阶段
 
