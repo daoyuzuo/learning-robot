@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由（默认只联网于 live 测试）。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由（默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`）。
 
 ## AI 追问（可选）
 
@@ -36,7 +36,7 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 
 启动 Web 后打开 http://127.0.0.1:8000/studio ：
 
-1. 新建草稿（主题 / 级别 / 课数 / 每课检索次数）
+1. 新建草稿（主题 / 级别 / 课数 / 每课检索次数 / 检索源）
 2. 直接编辑大纲（HTML）
 3. 按课调研（OpenAlex / DeepSeek Search，可自动路由）
 4. 按课写课
@@ -58,7 +58,7 @@ TESTBRIDGE_LIVE=1 .venv/Scripts/python -m pytest -m live
 - `deepseek`：只查 DeepSeek，不回退。
 - `openalex`：只查 OpenAlex，不回退。
 
-OpenAlex 无需 API key；可选环境变量：
+OpenAlex 本身无需 API key；但 Studio 的调研页仍要求启用 `TESTBRIDGE_LLM_*`（DeepSeek Search 与写课）。可选环境变量：
 
 ```bash
 export TESTBRIDGE_OPENALEX_MAILTO=you@example.com   # polite pool
@@ -67,7 +67,7 @@ export TESTBRIDGE_OPENALEX_MAILTO=you@example.com   # polite pool
 ```
 
 OpenAlex 可信度：期刊/会议/书籍章节/review 记 A，预印本记 B，其他记 C，撤稿记 D。
-资源必须来自 A/B 命中才能通过质量门禁。
+当存在调研档案时，资源必须来自 A/B 命中才能通过质量门禁。
 
 ## 质量门禁（P3.2）
 

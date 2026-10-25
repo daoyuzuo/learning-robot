@@ -6,7 +6,7 @@
 > **当前期：P3.3（检索后端）已完成**
 > 状态：实现并验收，2026-10-25
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2 均已完成。P3.3 增加
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3 均已完成。P3.3 增加
 > OpenAlex 后端、插件化 `SearchRouter`、按主题自动路由与回退、草稿级手动
 > 选择，并收紧溯源信任（资源必须来自 A/B 命中）。设计见
 > [P3.3 检索后端](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)。
@@ -215,7 +215,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] Studio 校验页显示质量分、分项与问题
 - [x] 硬错误阻断定稿；`force` / `skip_verify` 不绕过
 - [x] 写课提示词包含质量约束
-- [x] P3.2 前 369 个测试无回归；当前全量 421 passed（2 个 live 默认取消选择）
+- [x] P3.2 前 369 个测试无回归；P3.2 完成时全量 421 passed（2 个 live 默认取消选择）
 
 ### P3.2 遗留（合并后记录）
 
@@ -252,7 +252,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] 学术主题自动走 OpenAlex，文档主题自动走 DeepSeek；auto 无命中或失败时回退
 - [x] 手动选择严格生效，不静默回退
 - [x] C/D-only 来源被质量门禁阻断；A/B 不受影响
-- [x] 旧草稿缺字段按 auto
+- [x] 旧草稿缺字段按 auto（代码默认）
 - [x] 默认 `pytest` 全绿且离线：456 passed，3 deselected（live）
 - [x] 两个现有包 `tb validate` 仍 0/0（ros2-qos、sample-sensors）
 - [x] `tb quality content-packs/sample-sensors` 100/100，退出码 0
@@ -262,11 +262,11 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ## 后续期摘要
 
-P2、P3.1、P3.2 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3 已实现；当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
-- 资源检索：SearXNG / Firecrawl / arXiv / OpenAlex 等。
+- 资源检索：SearXNG / Firecrawl / arXiv 顺延（OpenAlex 已于 P3.3 完成）。
 - AI 起草：按 `tb/1` 生成内容包，必须通过 validator。
 - 质量门禁：引用、可信度、练习覆盖、目标级别。
 - 内容包演进：`tb migrate` 或批量重新生成。
