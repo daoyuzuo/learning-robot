@@ -78,7 +78,7 @@ def build_parse_prompt(pack: ContentPack, jd_text: str) -> tuple[str, str]:
     lines += [
         "",
         "<job_description>",
-        jd_text,
+        jd_text.replace("</job_description>", ""),
         "</job_description>",
         "",
         '输出 JSON：{"target_role": "...", "requirements": ['
@@ -126,7 +126,7 @@ def _requirement(item: object, pack: ContentPack) -> JdRequirement:
     if not isinstance(text, str) or not text.strip():
         raise JdError("requirement.text 缺失")
     importance = item.get("importance")
-    if importance not in IMPORTANCE_WEIGHTS:
+    if not isinstance(importance, str) or importance not in IMPORTANCE_WEIGHTS:
         raise JdError(f"importance 非法：{importance}")
 
     raw_concepts = item.get("concepts", [])
