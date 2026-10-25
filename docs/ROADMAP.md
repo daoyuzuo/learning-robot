@@ -3,14 +3,13 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.2（质量门禁）已完成**
-> 状态：已实现，2026-10-25
+> **当前期：P3.3（检索后端）设计已批准，待实现**
+> 状态：设计完成，2026-10-25
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2 均已完成。P3.1 把
-> “主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”固化为 `/studio` 前端工作台，
-> 产物仍是普通 `tb/1` 内容包，引擎零改动。P3.2 为单包增加确定性质量门禁与
-> 0–100 质量分，硬错误阻断定稿。设计见
-> [P3.2 质量门禁](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2 均已完成。P3.3 增加
+> OpenAlex 后端、插件化 `SearchRouter`、按主题自动路由与回退、草稿级手动
+> 选择，并收紧溯源信任（资源必须来自 A/B 命中）。设计见
+> [P3.3 检索后端](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)。
 
 ---
 
@@ -219,9 +218,9 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ### P3.2 遗留（合并后记录）
 
-- **溯源信任缺口（需 spec 决策）**：资源 URL 只要出现在任意调研命中即可追溯，
-  未要求命中本身为 A/B；模型可把 C 级来源标成 `trust: A` 绕过。留待 P3.3 或
-  单独 spec 决定是否要求匹配命中为 A/B。
+- **溯源信任缺口（P3.3 决定收紧）**：资源 URL 必须出现在至少一条 A/B 命中里；
+  只出现在 C/D 命中时新增 `quality.resource_untrusted_source` 硬错误。实现与
+  验收见 P3.3 spec §9。
 - 重新生成课程后，页面继续显示上一次校验分数，直到再次校验；定稿门禁每次
   重算，不影响安全。
 - `tb quality --json` 遇结构无效包仍打印人类可读错误（非 JSON）；显式空
@@ -230,6 +229,31 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
   traceable/dossiers/queries 不受控；当前无调用者触发。
 - 依赖边界测试只匹配 `testbridge.<module>` 字符串，不覆盖相对 import。
 - `test_force_does_not_bypass_quality` 在两个测试文件中重名（行为各自独立）。
+
+---
+
+## P3.3 检索后端（设计已批准，待实现）
+
+**范围：**
+
+- `OpenAlexSearch`：`/works` 检索，摘要还原，DOI/landing page/OA URL 映射。
+- `SearchRouter`：关键词 + concept.domain 自动路由；auto 逐查询回退；手动
+  `deepseek` / `openalex` 不回退。
+- 草稿级 `search_backend`（`auto` / `deepseek` / `openalex`）与新建表单。
+- OpenAlex authority：评审 A、预印本 B、其他 C、撤稿 D。
+- 调研档案与页面记录实际使用的 backend。
+- 溯源信任收紧：C/D-only 来源阻断定稿。
+
+**不做：** SearXNG / Firecrawl / arXiv 适配器、网页抓取、结果缓存、跨后端扇出。
+
+**退出标准：**
+
+- [ ] 学术主题自动走 OpenAlex，文档主题自动走 DeepSeek；auto 无命中或失败时回退
+- [ ] 手动选择严格生效，不静默回退
+- [ ] C/D-only 来源被质量门禁阻断；A/B 不受影响
+- [ ] 旧草稿缺字段按 auto
+- [ ] 默认 `pytest` 全绿且离线；现有两个包 `tb validate` 仍 0/0
+- [ ] `TESTBRIDGE_LIVE=1` 时 OpenAlex 真实调用通过
 
 ---
 
@@ -258,5 +282,6 @@ P2、P3.1、P3.2 已实现；当前范围、退出标准与遗留以上方章节
 - 总设计：[2026-10-24-teaching-engine-design.md](superpowers/specs/2026-10-24-teaching-engine-design.md)
 - P3.1 内容工作台：[2026-10-25-p3.1-content-studio-design.md](superpowers/specs/2026-10-25-p3.1-content-studio-design.md)
 - P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
+- P3.3 检索后端：[2026-10-25-p3.3-search-backends-design.md](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

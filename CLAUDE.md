@@ -12,21 +12,27 @@
 **P3.2 已完成。** `/studio` 提供“主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”工作台，产物是普通 `tb/1` 包，引擎零改动。P3.2 增加确定性质量门禁：`tb quality` 给出 0–100 质量分，硬错误阻断定稿。规则、分值与验收见
 `docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md`。
 
-**下一步：定义 P3.3（检索后端）范围。**
+**当前 P3.3（检索后端）设计已批准，待实现。** 本期只实现 OpenAlex：插件化
+`SearchRouter`、学术关键词 + domain 自动路由、auto 回退、草稿级手动覆盖，以及
+“资源必须来自 A/B 命中”的溯源收紧。设计见
+`docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
 **不要提前实现：**
 
-- P3.3–P3.5：检索后端、批量/多模块、内容演进
+- P3.3 未列入的 SearXNG / Firecrawl / arXiv 适配器
+- P3.4–P3.5：批量/多模块、内容演进
 - P4：面试 / 公司情报 / 求职管理
 
 除非用户明确要求并先更新 ROADMAP。
 
-**P3.1 附加边界：**
+**P3.1 / P3.2 附加边界：**
 
 - `src/testbridge/studio/` 不得 import `mastery`、`schedule`、`learning`、`evidence`。
 - 模型输出与检索结果按不可信输入处理：先解析、再 `sanitize_fragment`、后落盘。
-- 密钥只从 `TESTBRIDGE_LLM_*` 环境变量读取，不落盘、不回显、不写日志。
+- 模型密钥只从 `TESTBRIDGE_LLM_*` 读取；OpenAlex 可选配置只从
+  `TESTBRIDGE_OPENALEX_*` 读取。都不落盘、不回显、不写日志。
 - 草稿在 `drafts/`（已 gitignore）；默认 `pytest` 不联网，真实调用需 `TESTBRIDGE_LIVE=1`。
+- 手动选择检索后端时不静默回退；只有 `auto` 才回退。
 
 ## 不可破坏的边界
 
