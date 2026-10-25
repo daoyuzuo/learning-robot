@@ -43,3 +43,34 @@ def test_progress_includes_readiness(tmp_path: Path) -> None:
     response = c.get("/progress")
     assert response.status_code == 200
     assert "Readiness" in response.text
+
+
+def test_dashboard_links_p2_pages(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    text = c.get("/").text
+    assert 'href="/today"' in text
+    assert 'href="/concepts"' in text
+    assert 'href="/review"' in text
+
+
+def test_progress_shows_mastery_summary(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    response = c.get("/progress")
+    assert response.status_code == 200
+    assert "掌握度" in response.text
+    assert "<th>概念</th>" in response.text
+    assert "<th>等级</th>" in response.text
+    assert "<th>目标</th>" in response.text
+
+
+def test_progress_filters_by_concept(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    response = c.get("/progress?concept=sensor-time-sync")
+    assert response.status_code == 200
+    assert "sensor-time-sync" in response.text
+
+
+def test_concepts_link_to_evidence(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    text = c.get("/concepts").text
+    assert 'href="/progress?concept=sensor-time-sync"' in text

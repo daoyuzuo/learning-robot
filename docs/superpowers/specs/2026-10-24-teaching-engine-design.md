@@ -196,6 +196,7 @@ title: 传感器时间同步
 concepts: [sensor-time-sync]
 lessons: [L-SYNC-001]
 order: 1
+priority: P0
 ```
 
 规则：

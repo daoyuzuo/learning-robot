@@ -18,6 +18,7 @@ P1 已完成；P2 在追加式证据之上增加掌握度（规则 + BKT）、FS
 ## 文档
 
 - [总设计](docs/superpowers/specs/2026-10-24-teaching-engine-design.md)
+- [P2 学习闭环设计](docs/superpowers/specs/2026-10-25-p2-learning-loop-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)
@@ -50,6 +51,8 @@ python -m testbridge.cli build content-packs/sample-sensors --out dist
 python -m testbridge.cli serve content-packs/sample-sensors --port 8000
 ```
 
+打开 http://127.0.0.1:8000 。
+
 ### 学习闭环（P2）
 
 安装后 `tb` 等价于 `python -m testbridge.cli`：
@@ -67,9 +70,4 @@ tb readiness --pack content-packs/sample-sensors --db data/testbridge.db
 
 # 查看今天学什么、为什么、预计时长
 tb today --pack content-packs/sample-sensors --db data/testbridge.db
-
-# 启动学习界面（Dashboard）
-tb serve content-packs/sample-sensors --port 8000
 ```
-
-打开 http://127.0.0.1:8000 。

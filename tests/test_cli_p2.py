@@ -69,6 +69,8 @@ def test_goal_set_override_round_trip(tmp_path: Path, capsys) -> None:
         ["--override", "x"],
         ["--override", "x=-1"],
         ["--daily-minutes", "0"],
+        ["--weekly-hours", "nan"],
+        ["--weekly-hours", "inf"],
     ],
 )
 def test_goal_set_rejects_invalid_input(tmp_path: Path, capsys, args: list[str]) -> None:

@@ -62,8 +62,8 @@
 
 - Python 3.10+，Pydantic v2，FastAPI + Jinja2。
 - 代码标识符/注释用英文；面向用户的文档和文案用中文。
-- 每个模块单一职责，边界见 spec 第 6.1 节。
-- 测试放 `tests/`，覆盖 contract / sanitizer / exercise / evidence / web / build。
+- 每个模块单一职责，边界见 P1 spec 6.1 / P2 spec 4.1。
+- 测试放 `tests/`，覆盖 contract / sanitizer / exercise / evidence / web / build / mastery / scheduling / learning / recommend。
 
 ## 完成定义（P2）
 

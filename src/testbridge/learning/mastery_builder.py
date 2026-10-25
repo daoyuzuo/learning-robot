@@ -19,6 +19,7 @@ def build_mastery_state(
     events: Iterable[EvidenceEvent],
     now: datetime,
 ) -> MasteryState:
+    events = list(events)
     rule = rule_score(events, concept_id, now)
     bkt = replay_bkt(events, concept_id)
     value = bkt.p if bkt.observations >= HANDOFF_OBSERVATIONS else rule.score

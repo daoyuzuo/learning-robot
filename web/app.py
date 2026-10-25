@@ -97,14 +97,15 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         )
 
     @app.get("/progress", response_class=HTMLResponse)
-    def progress_page(request: Request):
-        events = store.list(limit=200)
+    def progress_page(request: Request, concept: str = ""):
+        events = store.list(concept_id=concept or None, limit=200)
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
             context=ctx(
                 request,
                 events=events,
+                selected=concept,
                 total=store.count(),
                 readiness=learning.readiness(),
                 views=learning.all_mastery(),

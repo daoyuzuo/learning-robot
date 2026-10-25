@@ -3,15 +3,16 @@
 {% block content %}
 <h1>概念掌握度</h1>
 <table>
-<tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th><th>到期</th><th>先修</th></tr>
+<tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th><th>到期</th><th>先修</th><th>课程</th></tr>
 {% for concept_id, view in views.items() %}
 <tr>
-  <td>{% if lesson_for_concept.get(concept_id) %}<a href="/lesson/{{ lesson_for_concept[concept_id] }}">{{ concept_id }}</a>{% else %}{{ concept_id }}{% endif %}</td>
+  <td><a href="/progress?concept={{ concept_id }}">{{ concept_id }}</a></td>
   <td>{{ "%.2f"|format(view.estimate) }}</td>
   <td>{{ view.level }}</td>
   <td>{{ pack.concepts[concept_id].target_level }}</td>
   <td>{{ due_counts.get(concept_id, 0) }}</td>
   <td>{{ pack.concepts[concept_id].prerequisites|join(", ") }}</td>
+  <td>{% if lesson_for_concept.get(concept_id) %}<a href="/lesson/{{ lesson_for_concept[concept_id] }}">课程</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </table>

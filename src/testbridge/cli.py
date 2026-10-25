@@ -180,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             if daily_minutes <= 0:
                 raise ValueError("daily minutes must be > 0")
+            if not math.isfinite(weekly_hours):
+                raise ValueError("weekly hours must be finite")
             if weekly_hours < 0:
                 raise ValueError("weekly hours must be >= 0")
         except ValueError as exc:

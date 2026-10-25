@@ -4,6 +4,14 @@
 <h1>进度</h1>
 <h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
 {% if readiness.gate_active %}<p>门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
+<h2>掌握度</h2>
+<table>
+<tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th></tr>
+{% for concept_id, view in views.items() %}
+<tr><td>{{ concept_id }}</td><td>{{ "%.2f"|format(view.estimate) }}</td><td>{{ view.level }}</td><td>{{ pack.concepts[concept_id].target_level }}</td></tr>
+{% endfor %}
+</table>
+<h2>{% if selected %}概念 {{ selected }} 的证据{% else %}证据{% endif %}</h2>
 <p>共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
 <table>
 <tr><th>时间</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th></tr>

@@ -150,6 +150,8 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - BKT 参数校准（P3 用真实数据）。
 - 概念级 FSRS 卡与复习后手动自评。
 - Artifact 仍只记录路径；产出物评分（`accept` / `max_size_mb`、`data/artifacts/<evidence-id>/`）顺延。
+- CLI 的内容/导入错误仍直接打印 traceback，而不是 `ERROR code: path: message`。
+- 旧证据迁移：P1 时期把 self_assess / artifact 行写成 `exercise_attempt` 的记录，在 P2.1 / 真实数据使用前需要规范化。
 - P1 工程债中未随 P2 处理的部分：`tb build --lesson` 未知 ID 抛 `KeyError`；单文件 HTML 未内联完整 manifest / objectives / 资源列表；`web/` 与 `web/static` 未进 wheel；`schema_version` 别名；证据导出 100 万条上限、导入非原子、`new_event` 不支持 `supersedes`；CSP 对 `application/json` 内联块的内联报告；首页“继续学习”/内容包列表、提交聚合统计、证据写入失败 503 降级。
 
 ---

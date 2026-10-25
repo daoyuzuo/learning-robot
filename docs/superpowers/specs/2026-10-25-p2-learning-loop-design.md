@@ -157,7 +157,7 @@ CREATE TABLE goal (
 对概念 `c`，收集所有 `concept_ids` 包含 `c` 的 Evidence：
 
 ```
-age_days = max(0, (now - created_at).days)
+age_days = max(0, (now - created_at).total_seconds() / 86400)
 decay = 0.5 ** (age_days / 30)
 kind_weight:
   exercise_attempt = 1.0
@@ -300,7 +300,8 @@ readiness = Σ(weight_c * mastery_c) / Σ(weight_c)
 
 - `total`（0–1）
 - `by_module`：每个模块的加权分
-- `gate`：`{active: bool, cap: 0.7, reasons: [...]}`
+- `gate_active`：是否触发 P0 门控
+- `gate_reasons`：门控原因列表（无门控时为空）
 - `breakdown`：概念、权重、mastery、level、target_level
 
 ## 9. 今日推荐
@@ -421,7 +422,7 @@ P2 概念页用**表格 + 先修关系文本**；`/today` 和 `/concepts` 都是
 
 ### 13.3 时间注入
 
-- `LearningService`、`Planner`、`Readiness` 接收 `now: datetime` 参数（默认 UTC now），测试可固定时间。
+- `LearningService`、`Planner`、规则衰减（`rule_score`）与 `rebuild-state` 使用显式 `now: datetime`（默认 UTC now），测试可固定时间；BKT 重放（`replay_bkt`）按证据顺序确定性重放。
 - 规则衰减、到期判断、计划生成都使用同一个 `now`。
 
 ## 14. 错误处理
