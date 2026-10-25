@@ -12,7 +12,7 @@
 **P4.1 面试闭环：已完成（2026-10-26，分支 `p4.1-interview`，基线 `d275f89`）。**
 成套技术面试模拟：弱项抽题（3/5 题）、LLM 建议评分、用户确认后写 `kind=interview`
 证据、会话暂停/恢复/放弃、汇总页与 `/progress` 下钻；面试证据权重 0.6、单独计数、
-不进 BKT，面试失分进入 `/today` 弱项。默认 `pytest` 595 passed、3 deselected；
+不进 BKT，面试失分进入 `/today` 弱项。默认 `pytest` 606 passed、3 deselected；
 两个包 `tb validate` 0/0。设计见
 `docs/superpowers/specs/2026-10-26-p4.1-interview-loop-design.md`。P4.2（公司/JD）与
 P4.3（求职管理）各自另写 spec。

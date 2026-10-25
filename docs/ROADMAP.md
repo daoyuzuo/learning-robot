@@ -335,7 +335,7 @@ quality: 100/100                # exit 0
       （`test_three_question_flow_reaches_today`：`/today` 出现“面试失分”）
 - [x] 未配置 LLM 时可手动打分完成流程
       （`test_manual_scoring_flow_writes_evidence`：`mode=manual`，确认后写证据）
-- [x] `pytest` 全绿，P3.4 的 508 个测试无回归（595 passed，3 deselected）
+- [x] `pytest` 全绿，P3.4 的 508 个测试无回归（606 passed，3 deselected；含最终评审修复波次）
 - [x] 两个现有包 `tb validate` 仍 0/0
 
 **设计：** [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
@@ -344,7 +344,7 @@ quality: 100/100                # exit 0
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-595 passed, 3 deselected in 34.02s
+606 passed, 3 deselected in 34.77s
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0
