@@ -3,14 +3,17 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.4（多模块与批量）已完成，2026-10-26**
-> 状态：已实现（分支 `p3.4-multi-module-batch`）；默认 `pytest` 508 passed、3 deselected，
-> 两个现有包 `tb validate` 0/0，`tb quality` 100/100。下一期 P3.5（内容演进）范围待定义。
+> **当前期：P4.1（面试闭环）设计已确认，实施待开始，2026-10-26**
+> 状态：设计定稿（分支 `p4.1-interview`，基线 `d275f89`），实现尚未开始。
+> 用户于 2026-10-26 明确要求启动 P4；P3.5（内容演进）范围仍待定义。
+> 设计见 [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)。
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成。P3.4
 > 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量
 > 与单课重写。设计见
 > [P3.4 多模块与批量](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)。
+> P4.1 把成套面试模拟接入同一本能力账本：面试建议分经用户确认后写入
+> `kind=interview` 证据，驱动掌握度与 `/today` 弱项。
 
 ---
 
@@ -305,11 +308,39 @@ quality: 100/100                # exit 0
 
 ---
 
+## P4.1 面试闭环（设计已确认，实施待开始）
+
+**范围：**
+
+- 题库先落 `interview-banks/<pack-id>.yaml`，目标形态是包内 `interviews.yaml`，两者同构。
+- 成套模拟：默认 3 题、可选 5 题，弱项优先抽题，可手动覆盖概念。
+- 作答 → LLM 逐维建议评分 → 用户审阅改分 → 确认后写 `kind=interview` 证据。
+- 会话可暂停、恢复、放弃；答案提交即落库，确认幂等。
+- 无 LLM 时降级为手动 rubric 评分。
+- 引擎加法：面试权重 0.6、独立计数、不进 BKT；planner 弱项包含面试失分。
+
+**不做：** 行为题、系统设计题、多轮追问、语音、强制计时、JD 匹配（P4.2）、
+投递复盘（P4.3）、把 `interviews.yaml` 纳入 `tb/1` 校验（P4.1b）。
+
+**退出标准（待实测）：**
+
+- [ ] 3 题模拟可从 `/interview` 开始、暂停、恢复、完成并生成汇总
+- [ ] 每题确认后写面试证据，重复确认不重复写
+- [ ] 能下钻到面试证据与原始回答
+- [ ] 面试失分概念进入 `/today` 弱项
+- [ ] 未配置 LLM 时可手动打分完成流程
+- [ ] `pytest` 全绿，P3.4 的 508 个测试无回归
+- [ ] 两个现有包 `tb validate` 仍 0/0
+
+**设计：** [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
+
+---
+
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4 已实现；P4.1 已定设计、待实施。当前范围、退出标准与遗留以上方章节为准。
 
-### P3.5 内容演进（下一步，范围待定义）
+### P3.5 内容演进（范围待定义，与 P4.1 并行）
 
 - 现有内容包的整体演进：批量重新生成、版本迁移（`tb migrate`）或等价重建脚本。
 - 分期的具体范围与退出标准待 brainstorming + spec 后写入本文件。
@@ -324,10 +355,10 @@ P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留�
 
 ### P4 应用整合
 
-- 面试：rubric → InterviewScore → Evidence。
-- 公司/JD：概念权重、匹配度。
-- 求职管理：投递、复盘。
-- 所有应用层只读写账本，不另建状态。
+- [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已定设计，实施待开始。
+- P4.2 公司/JD：概念权重、匹配度；待单独 spec。
+- P4.3 求职管理：投递、复盘；待单独 spec。
+- 能力结论仍只来自 evidence；面试会话与题库属于过程状态，不是第二本账。
 
 ---
 
@@ -338,5 +369,6 @@ P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留�
 - P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - P3.3 检索后端：[2026-10-25-p3.3-search-backends-design.md](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - P3.4 多模块与批量：[2026-10-25-p3.4-multi-module-batch-design.md](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
+- P4.1 面试闭环：[2026-10-26-p4.1-interview-loop-design.md](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

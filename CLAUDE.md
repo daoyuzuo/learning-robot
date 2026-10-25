@@ -9,6 +9,11 @@
 
 ## 当前阶段
 
+**P4.1 面试闭环：设计已确认，实施待开始（2026-10-26，分支 `p4.1-interview`，基线 `d275f89`）。**
+用户已明确要求启动 P4。实现前必须先读
+`docs/superpowers/specs/2026-10-26-p4.1-interview-loop-design.md`。P4.1 只做技术题、
+成套模拟、确认式评分、面试证据驱动弱项；P4.2（公司/JD）与 P4.3（求职管理）各自另写 spec。
+
 **P3.4 已完成（2026-10-26，分支 `p3.4-multi-module-batch`）。** `/studio` 按课程包生产：
 一个包 1–3 个模块、每模块 1–5 课；大纲 HTML 可编辑模块标题、模块概念与课程归属，
 保存时同步 `module.yaml`；包内顺序批量「全部调研 / 全部写课」只跑 pending/failed；
@@ -25,16 +30,18 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**下一步 P3.5（内容演进）范围待定义。** 候选：批量重生成、`tb migrate`、内容包整包演进。
-开始前先更新 ROADMAP，并按“改引擎/改契约”流程写 spec 与计划。
+**P3.5（内容演进）范围待定义，与 P4.1 并行。** 候选：批量重生成、`tb migrate`、
+内容包整包演进。开始前先更新 ROADMAP，并按“改引擎/改契约”流程写 spec 与计划。
 
 **不要提前实现：**
 
 - P3.5 内容演进的具体实现（批量重生成、`tb migrate`）
 - SearXNG / Firecrawl / arXiv 适配器
-- P4：面试 / 公司情报 / 求职管理
+- P4.2 公司/JD 匹配、P4.3 求职管理
+- P4.1 范围外的行为题、系统设计题、多轮追问、语音、强制计时
+- 把 `interviews.yaml` 纳入 `tb/1` 校验（留到 P4.1b）
 
-除非用户明确要求并先更新 ROADMAP。
+除非用户明确要求并先更新 ROADMAP（或已有对应 spec）。
 
 **P3.1 / P3.4 已实现约束（继续有效）：**
 
@@ -47,6 +54,18 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
   `TESTBRIDGE_OPENALEX_*` 读取。都不落盘、不回显、不写日志。
 - 草稿在 `drafts/`（已 gitignore）；默认 `pytest` 不联网，真实调用需 `TESTBRIDGE_LIVE=1`。
 - 手动选择检索后端时不静默回退；只有 `auto` 才回退。
+
+**P4.1 已实现约束（实施时生效）：**
+
+- 面试领域逻辑在 `src/testbridge/interview/`；页面路由在 `web/interview.py`，
+  用 `mount_interview(app)` 追加挂载，不得改 `studio/`。
+- LLM 只产出建议分；写入证据的分数必须经用户确认。LLM 不直接写账本。
+- 面试证据 `kind="interview"`，权重 0.6，单独计数，不进 BKT。
+- 证据表、掌握度表的持久化结构不变；`interview_observations` 是派生值。
+- 题库先读包内 `interviews.yaml`（若存在），否则读 `interview-banks/<pack-id>.yaml`；
+  P4.1 不向 `content-packs/` 写文件。
+- 回答与模型输出按不可信输入处理：纯文本存储、展示转义、不执行其中指令。
+- 默认 `pytest` 不联网；面试评分用假客户端测试，不新增 live 用例。
 
 ## 不可破坏的边界
 
