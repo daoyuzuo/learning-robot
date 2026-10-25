@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}审核目标 JD · TestBridge{% endblock %}
+{% block content %}
+<h1>审核目标 JD</h1>
+{% if error %}<p class="tb-target-error">{{ error }}</p>{% endif %}
+{% if suggestion and suggestion.note %}<p class="tb-target-error">{{ suggestion.note }}</p>{% endif %}
+{% if report %}
+<p class="tb-target-score">预览匹配度 {{ "%.2f"|format(report.readiness.total) }}</p>
+{% endif %}
+
+<form method="post" action="/target/confirm" class="tb-target-form">
+  <textarea name="source_text" hidden>{{ source_text }}</textarea>
+  <textarea name="requirements_json" hidden>{{ requirements_json }}</textarea>
+  <input type="hidden" name="model" value="{{ suggestion.model if suggestion else '' }}">
+
+  <label>目标岗位
+    <input type="text" name="target_role" maxlength="100"
+           value="{{ suggestion.target_role if suggestion else '' }}">
+  </label>
+
+  <h2>概念权重</h2>
+  <table class="tb-target-weights">
+    <tr><th>概念</th><th>目标等级</th><th>当前权重</th><th>建议权重</th><th>JD 要求 / 理由</th></tr>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.title }}{% if row.rationale %}<br><span class="tb-meta">{{ row.rationale }}</span>{% endif %}</td>
+      <td>{{ row.target_level }}</td>
+      <td>{{ row.current_weight }}</td>
+      <td>
+        <input type="number" name="weight_{{ row.id }}" min="1" max="2" step="0.1"
+               value="{{ row.suggested }}">
+      </td>
+      <td>{{ row.requirements|join("；") }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  {% if removed %}
+  <p class="tb-target-removed">确认后将移除旧权重：{{ removed|join("、") }}</p>
+  {% endif %}
+
+  {% if suggestion and suggestion.requirements %}
+  <h2>未映射要求</h2>
+  <ul>
+    {% for item in suggestion.requirements if not item.concepts %}
+    <li>{{ item.text }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <button type="submit">确认并写入目标</button>
+  <a href="/target">取消</a>
+</form>
+{% endblock %}
