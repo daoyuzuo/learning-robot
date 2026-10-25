@@ -16,6 +16,15 @@ STATUSES = (
     "offer", "rejected", "withdrawn",
 )
 TERMINAL_STATUSES = frozenset({"offer", "rejected", "withdrawn"})
+STATUS_LABELS = {
+    "draft": "草稿",
+    "applied": "已投递",
+    "screening": "筛选中",
+    "interviewing": "面试中",
+    "offer": "Offer",
+    "rejected": "已拒绝",
+    "withdrawn": "已撤回",
+}
 MAX_COMPANY = 200
 MAX_ROLE = 200
 MAX_SOURCE = 100

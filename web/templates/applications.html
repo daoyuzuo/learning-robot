@@ -5,7 +5,7 @@
 {% if error %}<p class="tb-app-error">{{ error }}</p>{% endif %}
 
 <p class="tb-app-counts">
-  {% for status in statuses %}{{ status }} {{ counts[status] }}{% if not loop.last %} · {% endif %}{% endfor %}
+  {% for status in statuses %}{{ status_labels[status] }} {{ counts[status] }}{% if not loop.last %} · {% endif %}{% endfor %}
 </p>
 
 {% if due %}
@@ -16,7 +16,7 @@
   <tr>
     <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
     <td>{{ item.role }}</td><td>{{ item.next_action }}</td>
-    <td>{{ item.next_action_at }}</td><td>{{ item.status }}</td>
+    <td>{{ item.next_action_at }}</td><td>{{ status_labels[item.status] }}</td>
   </tr>
   {% endfor %}
 </table>
@@ -25,7 +25,7 @@
 <h2>全部投递</h2>
 <p class="tb-meta">
   <a href="/applications">全部</a>
-  {% for status in statuses %} · <a href="/applications?status={{ status }}">{{ status }}</a>{% endfor %}
+  {% for status in statuses %} · <a href="/applications?status={{ status }}">{{ status_labels[status] }}</a>{% endfor %}
 </p>
 {% if items %}
 <table>
@@ -33,7 +33,7 @@
   {% for item in items %}
   <tr>
     <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
-    <td>{{ item.role }}</td><td>{{ item.status }}</td>
+    <td>{{ item.role }}</td><td>{{ status_labels[item.status] }}</td>
     <td>{{ item.applied_at or "" }}</td>
     <td>{{ item.next_action }}{% if item.next_action_at %}（{{ item.next_action_at }}）{% endif %}</td>
     <td>{{ item.updated_at }}</td>
@@ -51,13 +51,13 @@
   <label>渠道 <input type="text" name="source" maxlength="100" value="{{ form.source or '' }}"></label>
   <label>状态
     <select name="status">
-      {% for status in statuses %}<option value="{{ status }}" {% if (form.status or 'draft') == status %}selected{% endif %}>{{ status }}</option>{% endfor %}
+      {% for status in statuses %}<option value="{{ status }}" {% if (form.status or 'draft') == status %}selected{% endif %}>{{ status_labels[status] }}</option>{% endfor %}
     </select>
   </label>
   <label>投递日期 <input type="date" name="applied_at" value="{{ form.applied_at or '' }}"></label>
   <label>下一步 <input type="text" name="next_action" maxlength="200" value="{{ form.next_action or '' }}"></label>
   <label>跟进日期 <input type="date" name="next_action_at" value="{{ form.next_action_at or '' }}"></label>
-  <label>笔记 <textarea name="notes" rows="4">{{ form.notes or '' }}</textarea></label>
+  <label>笔记 <textarea name="notes" rows="4" maxlength="5000">{{ form.notes or '' }}</textarea></label>
   <button type="submit">保存投递</button>
 </form>
 {% endblock %}

@@ -79,3 +79,64 @@ def test_status_filter(tmp_path: Path) -> None:
     page = c.get("/applications?status=offer").text
     assert "另一家" in page
     assert "某机器人公司" not in page
+
+
+def create_one(c: TestClient, **overrides) -> str:
+    response = c.post("/applications", data=create_data(**overrides),
+                      follow_redirects=False)
+    return response.headers["location"].rsplit("/", 1)[-1]
+
+
+def test_detail_renders_and_escapes(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    app_id = create_one(c, company="<b>公司</b>", notes="<script>x</script>")
+    page = c.get(f"/applications/{app_id}").text
+    assert "&lt;b&gt;公司&lt;/b&gt;" in page
+    assert "<b>公司</b>" not in page
+    assert "&lt;script&gt;" in page
+
+
+def test_unknown_detail_is_404(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    assert c.get("/applications/nope").status_code == 404
+
+
+def test_update_status_and_notes(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    app_id = create_one(c)
+    response = c.post(f"/applications/{app_id}", data=create_data(
+        status="interviewing", notes="约了下周"),
+        follow_redirects=False)
+    assert response.status_code == 303
+    page = c.get(f"/applications/{app_id}").text
+    assert "interviewing" in page
+    assert "约了下周" in page
+
+
+def test_update_validation_preserves_input(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    app_id = create_one(c)
+    response = c.post(f"/applications/{app_id}", data=create_data(
+        applied_at="2026/10/26", notes="保留我"),
+    )
+    assert response.status_code == 400
+    assert "YYYY-MM-DD" in response.text
+    assert "保留我" in response.text
+
+
+def test_withdraw(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    app_id = create_one(c)
+    response = c.post(f"/applications/{app_id}/withdraw",
+                      follow_redirects=False)
+    assert response.status_code == 303
+    page = c.get(f"/applications/{app_id}").text
+    assert "withdrawn" in page
+
+
+def test_list_escapes_company(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    create_one(c, company="<script>公司</script>")
+    page = c.get("/applications").text
+    assert "&lt;script&gt;公司&lt;/script&gt;" in page
+    assert "<script>公司</script>" not in page

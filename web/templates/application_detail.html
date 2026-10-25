@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ application.company }} · 求职{% endblock %}
+{% block content %}
+<h1>{{ application.company }} · {{ application.role }}</h1>
+{% if error %}<p class="tb-app-error">{{ error }}</p>{% endif %}
+<p class="tb-meta">状态 {{ status_labels[application.status] }} · 更新于 {{ application.updated_at }}</p>
+{% if application.notes %}<pre class="tb-app-notes">{{ application.notes }}</pre>{% endif %}
+
+<form method="post" action="/applications/{{ application.id }}" class="tb-app-form">
+  <label>公司 <input type="text" name="company" maxlength="200" required value="{{ form.company if form else application.company }}"></label>
+  <label>岗位 <input type="text" name="role" maxlength="200" required value="{{ form.role if form else application.role }}"></label>
+  <label>渠道 <input type="text" name="source" maxlength="100" value="{{ form.source if form else application.source }}"></label>
+  <label>状态
+    <select name="status">
+      {% set current_status = (form.status if form else application.status) %}
+      {% for status in statuses %}<option value="{{ status }}" {% if current_status == status %}selected{% endif %}>{{ status_labels[status] }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>投递日期 <input type="date" name="applied_at" value="{{ form.applied_at if form else (application.applied_at or '') }}"></label>
+  <label>下一步 <input type="text" name="next_action" maxlength="200" value="{{ form.next_action if form else application.next_action }}"></label>
+  <label>跟进日期 <input type="date" name="next_action_at" value="{{ form.next_action_at if form else (application.next_action_at or '') }}"></label>
+  <label>笔记 <textarea name="notes" rows="6" maxlength="5000">{{ form.notes if form else application.notes }}</textarea></label>
+  <button type="submit">保存</button>
+  <a href="/applications">返回列表</a>
+</form>
+
+{% if not terminal %}
+<form method="post" action="/applications/{{ application.id }}/withdraw" class="tb-app-form">
+  <button type="submit">撤回这次投递</button>
+</form>
+{% endif %}
+{% endblock %}
