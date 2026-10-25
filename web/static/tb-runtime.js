@@ -25,6 +25,95 @@
     return null;
   }
 
+  function tutorEnabled() {
+    const panel = document.querySelector(".tb-tutor");
+    return panel && panel.dataset.tutorEnabled === "true";
+  }
+
+  function renderReview(container, payload) {
+    container.innerHTML = "";
+    const badge = document.createElement("p");
+    badge.className = "tb-review-verdict";
+    badge.textContent = "AI 讲评（" + payload.model + "）";
+    container.appendChild(badge);
+
+    const explanation = document.createElement("p");
+    explanation.textContent = payload.explanation;
+    container.appendChild(explanation);
+
+    [["优点", payload.strengths], ["差距", payload.gaps]].forEach(([label, items]) => {
+      if (!items || !items.length) return;
+      const title = document.createElement("p");
+      title.textContent = label + "：";
+      container.appendChild(title);
+      const list = document.createElement("ul");
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+      container.appendChild(list);
+    });
+
+    if (payload.rubric && payload.rubric.length) {
+      const table = document.createElement("table");
+      payload.rubric.forEach((item) => {
+        const row = document.createElement("tr");
+        [item.dimension, item.met ? "达成" : "未达成", item.comment].forEach((text) => {
+          const cell = document.createElement("td");
+          cell.textContent = text;
+          row.appendChild(cell);
+        });
+        table.appendChild(row);
+      });
+      container.appendChild(table);
+    }
+
+    if (payload.suggested_score !== null && payload.suggested_score !== undefined) {
+      const score = document.createElement("p");
+      score.className = "tb-review-score";
+      score.textContent =
+        "参考分 " + payload.suggested_score.toFixed(2)
+        + "（" + payload.model + "，不参与掌握度）";
+      container.appendChild(score);
+    }
+  }
+
+  function maybeAddReviewButton(form, evidenceId) {
+    if (!tutorEnabled() || !evidenceId) return;
+    if (form.querySelector(".tb-review-button")) return;
+    const box = document.createElement("div");
+    box.className = "tb-review";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "tb-review-button";
+    button.textContent = "让 AI 讲讲";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      const original = button.textContent;
+      button.textContent = "正在讲评…";
+      try {
+        const response = await fetch("/api/review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ evidence_id: evidenceId }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail ? payload.detail.message : "讲评失败");
+        }
+        renderReview(box, payload);
+      } catch (err) {
+        box.textContent = "讲评失败：" + err.message;
+      } finally {
+        button.disabled = false;
+        button.textContent = original;
+      }
+    });
+    box.appendChild(button);
+    form.appendChild(box);
+  }
+
   document.querySelectorAll("form.tb-exercise").forEach((form) => {
     let hintsUsed = 0;
     const startedAt = Date.now();
@@ -66,6 +155,7 @@
         feedback.hidden = false;
         feedback.dataset.outcome = payload.grade.outcome;
         feedback.textContent = payload.grade.feedback;
+        maybeAddReviewButton(form, payload.evidence_id);
       } catch (err) {
         feedback.hidden = false;
         feedback.textContent = "提交失败：" + err.message;

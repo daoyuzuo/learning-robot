@@ -28,6 +28,26 @@ def test_export_import_is_idempotent(tmp_path: Path) -> None:
     assert store.count() == 1
 
 
+def test_get_returns_event_by_id(tmp_path: Path) -> None:
+    store = EvidenceStore(tmp_path / "e.db")
+    event = new_event(kind="exercise_attempt", concept_ids=["c-one"])
+    store.append(event)
+
+    assert store.get(event.id) == event
+    assert store.get("missing") is None
+
+
+def test_list_filters_by_kind(tmp_path: Path) -> None:
+    store = EvidenceStore(tmp_path / "e.db")
+    store.append(new_event(kind="exercise_attempt", concept_ids=["c-one"]))
+    store.append(new_event(kind="llm_review", concept_ids=["c-one"]))
+
+    rows = store.list(kind="llm_review")
+
+    assert len(rows) == 1
+    assert rows[0].kind == "llm_review"
+
+
 def test_concept_filter(tmp_path: Path) -> None:
     store = EvidenceStore(tmp_path / "e.db")
     store.append(new_event(kind="exercise_attempt", concept_ids=["c-one"], outcome="correct"))

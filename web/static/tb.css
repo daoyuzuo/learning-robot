@@ -34,3 +34,8 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-tutor-basis[data-basis="general"] { background: #fef3c7; }
 .tb-tutor-citations { font-size: .85rem; color: #6b7280; }
 .tb-tutor-error { color: #b91c1c; }
+.tb-review { margin-top: .8rem; padding-top: .6rem; border-top: 1px dashed var(--line); }
+.tb-review-verdict { font-weight: 600; color: #4338ca; }
+.tb-review-score { font-size: .9rem; color: #6b7280; }
+.tb-review table { border-collapse: collapse; margin: .4rem 0; }
+.tb-review td { border: 1px solid var(--line); padding: .2rem .5rem; }
