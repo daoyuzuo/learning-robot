@@ -53,7 +53,7 @@
     score.textContent = quality.score + "/100";
     flags.textContent = "硬错误 " + quality.errors.length + " · 警告 " +
       quality.warnings.length;
-    note.textContent = quality.provenance_evaluated ? "" : "结构分（溯源未评估）";
+    note.textContent = quality.provenance_evaluated ? "" : "溯源与调研未评估";
     quality.metrics.forEach((metric) => {
       const item = document.createElement("li");
       item.textContent = metric.label + " " + metric.earned + "/" +

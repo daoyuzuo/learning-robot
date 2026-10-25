@@ -63,7 +63,7 @@ tb quality drafts/<id>
 tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 ```
 
-有硬错误退出码 1；内容包结构无效、或显式指定的 `--research-dir` 不存在时退出码 2；只有警告退出码 0。
+有硬错误退出码 1；内容包结构无效、或显式指定的 `--research-dir` 不存在、或 `--budget` 小于 1 时退出码 2；只有警告退出码 0。
 `force` 与 `skip_verify` 都不能绕过质量门禁。
 
 ## 文档

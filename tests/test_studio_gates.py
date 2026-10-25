@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from testbridge.quality.report import QualityReport
+from testbridge.quality.report import QualityIssue, QualityReport
 from testbridge.studio.gates import PromoteError, promote, validate_draft, verify_resources
 from testbridge.studio.store import DraftStore
 
@@ -12,6 +12,15 @@ FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "minimal-pack"
 
 def passing_quality(store, draft_id):
     return QualityReport(score=100, earned=100, possible=100)
+
+
+def warning_quality(store, draft_id):
+    return QualityReport(
+        score=80, earned=80, possible=100,
+        warnings=[
+            QualityIssue("quality.type_variety_low", "只有 2 种题型", "warning")
+        ],
+    )
 
 
 def make_draft(tmp_path: Path, draft_id: str = "demo") -> DraftStore:
@@ -44,6 +53,18 @@ def test_promote_copies_only_content_files(tmp_path: Path) -> None:
     assert not (target / "draft.json").exists()
     assert not (target / "outline.html").exists()
     assert not (target / "research").exists()
+
+
+def test_promote_allows_warnings_only(tmp_path: Path) -> None:
+    store = make_draft(tmp_path, "minimal")
+    shutil.copytree(FIXTURE, store.path("minimal"), dirs_exist_ok=True)
+
+    target = promote(
+        store, "minimal", tmp_path / "packs",
+        verifier=lambda items: [], quality_check=warning_quality,
+    )
+
+    assert (target / "pack.yaml").is_file()
 
 
 def test_promote_refuses_existing_pack(tmp_path: Path) -> None:

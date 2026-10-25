@@ -75,6 +75,10 @@ def _run_quality(
         if budget is None and isinstance(draft.get("searches_per_lesson"), int):
             budget = draft["searches_per_lesson"]
 
+    if budget is not None and budget < 1:
+        print(f"ERROR budget: must be >= 1: {budget}")
+        return 2
+
     if explicit_research and (research_path is None or not research_path.is_dir()):
         print(f"ERROR research_dir: not found: {research_path}")
         return 2

@@ -5,9 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from testbridge.content.repository import ContentPack
+from testbridge.contract.models import LEVEL_ORDER
 from testbridge.quality.report import QualityIssue, QualityMetric, proportional
-
-LEVEL_ORDER = {"L1": 1, "L2": 2, "L3": 3, "L4": 4}
 
 
 @dataclass

@@ -65,6 +65,11 @@ def test_quality_auto_reads_draft_metadata(tmp_path: Path, capsys) -> None:
     assert "research: evaluated" in out
 
 
+def test_quality_rejects_nonpositive_budget(capsys) -> None:
+    assert main(["quality", str(SAMPLE), "--budget", "0"]) == 2
+    assert "budget" in capsys.readouterr().out
+
+
 def test_quality_explicit_missing_research_dir_is_error(tmp_path: Path, capsys) -> None:
     assert main([
         "quality", str(SAMPLE), "--research-dir", str(tmp_path / "nope"),

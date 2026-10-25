@@ -48,10 +48,13 @@ def validate_draft(store: DraftStore, draft_id: str) -> ValidationSummary:
 
 def quality_draft(store: DraftStore, draft_id: str) -> QualityReport:
     draft = store.load(draft_id)
+    budget = draft.get("searches_per_lesson")
+    if not isinstance(budget, int) or isinstance(budget, bool):
+        budget = 1
     return evaluate_draft(
         store.path(draft_id),
         research_dir=store.path(draft_id) / "research",
-        budget=int(draft.get("searches_per_lesson") or 1),
+        budget=budget,
     )
 
 
@@ -99,7 +102,7 @@ def promote(
         quality = check_quality(store, draft_id)
     except QualityUnavailable as exc:
         raise PromoteError(
-            "invalid_pack", f"{len(exc.report.errors)} error(s)"
+            "invalid_pack", f"内容包结构无效：{len(exc.report.errors)} 个错误"
         ) from None
     if not quality.ok:
         raise PromoteError(

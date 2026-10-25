@@ -197,7 +197,7 @@ def evaluate_provenance(
                 lesson_id=lesson_id,
             ))
         if budget is not None:
-            threshold = max(1, math.ceil(budget / 2))
+            threshold = math.ceil(budget / 2)
             if dossier.queries < threshold:
                 result.warnings.append(_warning(
                     "quality.research_queries_low",

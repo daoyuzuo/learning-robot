@@ -39,7 +39,7 @@
         <strong>质量分</strong>
         <span class="tb-quality-score">{% if quality %}{{ quality.score }}/100{% else %}—{% endif %}</span>
         <span class="tb-quality-flags">{% if quality %}硬错误 {{ quality.errors|length }} · 警告 {{ quality.warnings|length }}{% endif %}</span>
-        <span class="tb-quality-note">{% if quality and not quality.provenance_evaluated %}结构分（溯源未评估）{% endif %}</span>
+        <span class="tb-quality-note">{% if quality and not quality.provenance_evaluated %}溯源与调研未评估{% endif %}</span>
       </p>
       <ul class="tb-quality-metrics">
       {% if quality %}{% for metric in quality.metrics %}
