@@ -365,9 +365,7 @@ def mount_studio(
 
         errors = summary.errors + quality_errors + verify_errors
         warnings = summary.warnings + quality_warnings
-        extra = {"issues": errors + warnings}
-        if quality is not None:
-            extra["quality"] = quality
+        extra = {"issues": errors + warnings, "quality": quality}
         store.set_step(
             draft_id, "validation",
             status="done" if not errors else "failed",

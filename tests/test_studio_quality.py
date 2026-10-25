@@ -108,7 +108,9 @@ def test_quality_gate_blocks_promote(tmp_path: Path) -> None:
     app = make_app(tmp_path, LOW_LEVEL_JSON)
     run_lessons(app)
 
-    validation = app.post("/api/studio/demo/validate", json={})
+    validation = app.post(
+        "/api/studio/demo/validate", json={"skip_verify": True}
+    )
     assert validation.status_code == 200
     payload = validation.json()
     assert payload["ok"] is False
@@ -139,9 +141,33 @@ def test_force_does_not_bypass_quality(tmp_path: Path) -> None:
 def test_draft_page_shows_quality_score(tmp_path: Path) -> None:
     app = make_app(tmp_path, LOW_LEVEL_JSON)
     run_lessons(app)
-    app.post("/api/studio/demo/validate", json={})
+    app.post("/api/studio/demo/validate", json={"skip_verify": True})
 
     page = app.get("/studio/demo").text
 
     assert "质量分" in page
     assert "硬错误" in page
+
+
+def test_revalidation_clears_stale_quality_report(tmp_path: Path) -> None:
+    app = make_app(tmp_path, LOW_LEVEL_JSON)
+    run_lessons(app)
+
+    first = app.post("/api/studio/demo/validate", json={"skip_verify": True})
+    assert first.status_code == 200
+    old_score = f"{first.json()['quality']['score']}/100"
+    assert old_score in app.get("/studio/demo").text
+
+    pack_path = tmp_path / "drafts" / "demo" / "pack.yaml"
+    pack_path.write_text("schema: [unclosed", encoding="utf-8")
+
+    second = app.post("/api/studio/demo/validate", json={"skip_verify": True})
+    payload = second.json()
+    assert payload["quality"] is None
+    assert payload["quality_skipped"] == "invalid_pack"
+
+    stored = app.app.state.studio_store.load("demo")["steps"]["validation"]
+    assert stored["quality"] is None
+
+    page = app.get("/studio/demo").text
+    assert old_score not in page
