@@ -249,6 +249,21 @@ def test_save_outline_rewrites_module_yaml_and_rekeys(tmp_path: Path) -> None:
     assert "L-CB-002" not in draft["steps"]["lessons"]
 
 
+def test_save_outline_rejected_while_batch_running(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2",
+                 lesson_count=4, searches_per_lesson=5,
+                 model="m", prompt_version="studio/1")
+    write_outline(store, "demo", parse_outline_json(json.dumps(SCHEMA), 2, 2))
+    html = store.read("demo", "outline.html")
+    store.set_step("demo", "batch", status="running")
+
+    with pytest.raises(OutlineError):
+        save_outline_html(store, "demo", html)
+
+    assert store.load("demo")["steps"]["batch"]["status"] == "running"
+
+
 def test_save_outline_creates_module_without_concepts(tmp_path: Path) -> None:
     store = DraftStore(tmp_path / "drafts")
     store.create(draft_id="demo", topic="t", level="L2",

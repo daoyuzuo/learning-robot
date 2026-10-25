@@ -9,8 +9,10 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
@@ -148,15 +150,28 @@ class DraftStore:
             temporary.replace(target)
 
     def list(self) -> list[dict]:
-        if not self.root.is_dir():
-            return []
-        drafts = []
-        for item in sorted(self.root.iterdir()):
-            if (item / "draft.json").is_file():
-                drafts.append(json.loads(
-                    (item / "draft.json").read_text(encoding="utf-8")
-                ))
-        return sorted(drafts, key=lambda draft: draft["id"])
+        with self._lock:
+            if not self.root.is_dir():
+                return []
+            drafts = []
+            for item in sorted(self.root.iterdir()):
+                if (item / "draft.json").is_file():
+                    drafts.append(json.loads(
+                        (item / "draft.json").read_text(encoding="utf-8")
+                    ))
+            return sorted(drafts, key=lambda draft: draft["id"])
+
+    def update(self, draft_id: str, mutator: Callable[[dict], Any]) -> Any:
+        """Load, mutate and save a draft while holding the store lock.
+
+        Mutators must re-check any state they depend on: the lock makes the
+        check and the following write one atomic step.
+        """
+        with self._lock:
+            draft = self.load(draft_id)
+            result = mutator(draft)
+            self.save(draft)
+            return result
 
     def set_step(
         self,

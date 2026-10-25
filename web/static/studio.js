@@ -64,7 +64,10 @@
 
   function paintBatch(batch) {
     document.querySelectorAll("[data-batch-status]").forEach((node) => {
-      if (!batch || !batch.mode) { node.textContent = ""; return; }
+      if (!batch || !batch.mode || node.dataset.batchStatus !== batch.mode) {
+        node.textContent = "";
+        return;
+      }
       node.textContent = batch.status === "failed"
         ? "失败：" + (batch.error || "")
         : "完成 " + (batch.done || 0) + "/" + (batch.total || 0);

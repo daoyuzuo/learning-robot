@@ -446,26 +446,32 @@ def write_module_files(
 def _rekey_steps(
     store: DraftStore, draft_id: str, modules: list[ModulePlan]
 ) -> None:
-    draft = store.load(draft_id)
     lessons = flatten_modules(modules)
     research_defaults = {
         "status": "pending", "error": None, "at": None,
         "queries": 0, "hits": 0, "backend": "",
     }
     lesson_defaults = {"status": "pending", "error": None, "at": None}
-    for step, defaults in (
-        ("research", research_defaults), ("lessons", lesson_defaults),
-    ):
-        container = draft["steps"][step]
-        draft["steps"][step] = {
-            lesson.lesson_id: container.get(lesson.lesson_id, dict(defaults))
-            for lesson in lessons
+
+    def rekey(draft: dict) -> None:
+        # Re-check under the store lock: a batch may have started after the
+        # caller's own guard, and resetting its step would corrupt progress.
+        if draft["steps"].get("batch", {}).get("status") == "running":
+            raise OutlineError("批量运行中，不能保存大纲")
+        for step, defaults in (
+            ("research", research_defaults), ("lessons", lesson_defaults),
+        ):
+            container = draft["steps"][step]
+            draft["steps"][step] = {
+                lesson.lesson_id: container.get(lesson.lesson_id, dict(defaults))
+                for lesson in lessons
+            }
+        draft["steps"]["batch"] = {
+            "status": "pending", "error": None, "at": None,
+            "mode": None, "done": 0, "total": 0,
         }
-    draft["steps"]["batch"] = {
-        "status": "pending", "error": None, "at": None,
-        "mode": None, "done": 0, "total": 0,
-    }
-    store.save(draft)
+
+    store.update(draft_id, rekey)
 
 
 def write_outline(

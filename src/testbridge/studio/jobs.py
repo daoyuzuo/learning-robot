@@ -48,9 +48,15 @@ class JobRunner:
                 raise JobBusy(f"{kind} is already running")
             self._running.add(key)
 
-        self.store.set_step(
-            draft_id, STEP_FOR_KIND[kind], status="running", lesson_id=lesson_id
-        )
+        try:
+            self.store.set_step(
+                draft_id, STEP_FOR_KIND[kind], status="running",
+                lesson_id=lesson_id,
+            )
+        except Exception:
+            with self._lock:
+                self._running.discard(key)
+            raise
 
         def run() -> None:
             try:
@@ -86,7 +92,12 @@ class JobRunner:
                 raise JobBusy("a step is already running")
             self._batch_running.add(draft_id)
 
-        self.store.set_step(draft_id, "batch", status="running")
+        try:
+            self.store.set_step(draft_id, "batch", status="running")
+        except Exception:
+            with self._lock:
+                self._batch_running.discard(draft_id)
+            raise
 
         def run() -> None:
             try:
