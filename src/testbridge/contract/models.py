@@ -272,6 +272,7 @@ class Module(StrictModel):
     schema_version: Literal["tb/1"] = Field(alias="schema")
     id: Id
     title: str = Field(min_length=1)
+    priority: Literal["P0", "P1", "P2"] = "P1"
     concepts: list[Id] = Field(default_factory=list)
     lessons: list[Id] = Field(default_factory=list)
     order: int = 0

@@ -1,6 +1,7 @@
 schema: tb/1
 id: M01
 title: 传感器时间同步
+priority: P0
 concepts: [timestamp-basics, clock-drift, sensor-time-sync]
 lessons: [L-SYNC-001, L-SYNC-002, L-SYNC-003]
 order: 1
