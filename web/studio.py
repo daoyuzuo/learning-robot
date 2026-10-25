@@ -14,7 +14,7 @@ from typing import Any
 import yaml
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from testbridge.quality.evaluate import QualityUnavailable
 from testbridge.studio import lessons as lesson_writer
@@ -74,7 +74,9 @@ class EvolutionTarget(BaseModel):
 
 
 class EvolutionBody(BaseModel):
-    targets: list[EvolutionTarget]
+    # Empty default so a body without ``targets`` is a 400 invalid_request
+    # from the route, not a framework-level 422.
+    targets: list[EvolutionTarget] = Field(default_factory=list)
 
 
 def _snapshot_summary(snapshot: dict) -> dict:
@@ -298,6 +300,7 @@ def mount_studio(
         results: list[dict] = []
         failures = 0
         for index, lesson_id in enumerate(lesson_ids, start=1):
+            evolution.note_lesson(draft_id, lesson_id)
             plan = plans.get(lesson_id)
             result: dict[str, Any]
             if plan is None:
@@ -356,6 +359,9 @@ def mount_studio(
                                 lesson_id=lesson_id,
                             )
             results.append(result)
+            # Count the attempt itself, including snapshot failures and
+            # lessons that are missing from the outline.
+            evolution.note_lesson(draft_id, lesson_id, completed=True)
             store.set_step(
                 draft_id, "batch",
                 extra={"mode": "evolve", "done": index, "total": total},
@@ -565,14 +571,18 @@ def mount_studio(
         current = snapshot_lesson(store, draft_id, plan)
         current_hash = (current.get("metrics") or {}).get("html_hash")
         snapshots = list_snapshots(store, draft_id, lesson_id)
-        before = next(
+        older = next(
             (
                 snapshot for snapshot in snapshots
                 if (snapshot.get("metrics") or {}).get("html_hash")
                 != current_hash
             ),
-            snapshots[0] if snapshots else None,
+            None,
         )
+        before = older if older is not None else (
+            snapshots[0] if snapshots else None
+        )
+        same_as_current = older is None and before is not None
         return templates.TemplateResponse(
             request=request, name="studio_history.html",
             context=ctx(
@@ -581,6 +591,7 @@ def mount_studio(
                 plan=plan,
                 before=before,
                 current=current,
+                same_as_current=same_as_current,
             ),
         )
 

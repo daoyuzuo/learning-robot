@@ -97,7 +97,7 @@
     }
     const quality = node(
       "p",
-      "质量 " + qualityLine(draft.quality_before) + " → " +
+      qualityLine(draft.quality_before) + " → " +
         qualityLine(draft.quality_after) +
         qualityDelta(draft.quality_before, draft.quality_after)
     );

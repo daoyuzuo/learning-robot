@@ -311,8 +311,9 @@ quality: 100/100                # exit 0
 
 - `/studio/evolution`：跨草稿选课，按草稿分组、组内按大纲顺序串行重生成。
 - prompt 版本：当前 `studio/2`，旧草稿 `studio/1`；每课记录实际版本与写入时间。
-- 每课重写前快照旧 HTML/练习/资源到 `drafts/<id>/history/<lesson_id>/`；重写后对比
-  练习数/题型/级别/资源数/trust/HTML/版本变化。
+- 每课重写前快照旧 HTML/练习/资源到 `drafts/<id>/history/<lesson_id>/`；重写后记录
+  练习数/题型/级别/资源数/trust/HTML/版本变化。结果页展示练习/资源数与质量分 delta，
+  级别与 trust 在历史页对比。
 - 每个草稿记录整包质量分前后 delta；报告写 `history/evolution-<时间戳>.json`。
 - 历史页 `/studio/<id>/history/<lesson_id>` 展示“最近一次与当前内容不同的快照 vs 当前”摘要。
 - 单课失败继续；草稿忙整组失败；进化任务与批量/单课互斥。
@@ -336,7 +337,7 @@ quality: 100/100                # exit 0
       `test_evolution_page_lists_drafts_and_lessons`）
 - [x] 进化任务运行中第二个任务 409；同草稿批量/单课互斥
       （`test_evolution_returns_conflict_while_running`；`JobRunner` 既有互斥测试不回归）
-- [x] 默认 `pytest` 全绿，现有 518 个测试无回归（559 passed，3 deselected）
+- [x] 默认 `pytest` 全绿；P3.4 的 518 个测试无回归，P3.5 完成时全量 559 passed、3 deselected
 
 **验证命令（2026-10-26）：**
 

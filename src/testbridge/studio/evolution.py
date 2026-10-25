@@ -25,10 +25,6 @@ from testbridge.studio.outline import LessonPlan
 from testbridge.studio.store import ID_RE, DraftStore
 
 SNAPSHOT_SCHEMA = "studio-snapshot/1"
-EMPTY_METRICS: dict = {
-    "exercise_count": 0, "types": [], "levels": [], "max_level": "",
-    "resource_count": 0, "trust": {}, "html_hash": "",
-}
 
 
 def _empty_metrics() -> dict:
@@ -42,6 +38,9 @@ def _empty_metrics() -> dict:
         "exercise_count": 0, "types": [], "levels": [], "max_level": "",
         "resource_count": 0, "trust": {}, "html_hash": "",
     }
+
+
+EMPTY_METRICS: dict = _empty_metrics()
 
 
 def _yaml_list(
@@ -106,7 +105,10 @@ def _read_lesson(
 def lesson_metrics(
     store: DraftStore, draft_id: str, plan: LessonPlan
 ) -> dict:
-    """Return counts and hashes for one lesson without keeping its content."""
+    """Return counts and hashes for one lesson without keeping its content.
+
+    Test-only helper; production reads snapshots through the history page.
+    """
     return _read_lesson(store, draft_id, plan)[3]
 
 
@@ -182,7 +184,10 @@ def save_snapshot(store: DraftStore, snapshot: dict) -> str:
 def latest_snapshot(
     store: DraftStore, draft_id: str, lesson_id: str
 ) -> dict | None:
-    """Return the newest snapshot for a lesson, or ``None`` if none exist."""
+    """Return the newest snapshot for a lesson, or ``None`` if none exist.
+
+    Test-only helper; the history page selects through :func:`list_snapshots`.
+    """
     if not ID_RE.fullmatch(str(draft_id)) or not ID_RE.fullmatch(
         str(lesson_id)
     ):
@@ -281,6 +286,9 @@ class EvolutionJob:
             "status": "idle", "total": 0, "done": 0,
             "current": None, "results": [], "error": None,
         }
+        # Lessons already reported as completed, per draft, so the draft-end
+        # fallback below does not count them twice.
+        self._reported: dict[str, int] = {}
 
     def start(
         self,
@@ -298,6 +306,7 @@ class EvolutionJob:
                 "status": "running", "total": total, "done": 0,
                 "current": None, "results": [], "error": None,
             }
+            self._reported = {}
 
         def run() -> None:
             failures = 0
@@ -333,8 +342,16 @@ class EvolutionJob:
                             "lessons": [],
                         }
                     with self._lock:
+                        reported = self._reported.get(draft_id, 0)
                         self._state["results"].append(result)
-                        self._state["done"] += len(result["lessons"])
+                        # Fallback for callbacks that never call
+                        # ``note_lesson``. Busy/malformed results carry no
+                        # lessons, so they add no phantom progress.
+                        self._state["done"] = min(
+                            self._state["total"],
+                            self._state["done"]
+                            + max(0, len(result["lessons"]) - reported),
+                        )
                         self._state["current"] = None
                     if result.get("error") or any(
                         not item.get("ok") for item in result["lessons"]
@@ -357,6 +374,30 @@ class EvolutionJob:
             run()
         else:
             threading.Thread(target=run, daemon=True).start()
+
+    def note_lesson(
+        self, draft_id: str, lesson_id: str, *, completed: bool = False
+    ) -> None:
+        """Record which lesson a running job is on.
+
+        Callbacks call this before starting a lesson and, with
+        ``completed=True``, after each attempted lesson (success or failure).
+        The per-draft count lets the draft-end fallback skip already-reported
+        lessons.
+        """
+        with self._lock:
+            if self._state["status"] != "running":
+                return
+            self._state["current"] = {
+                "draft_id": draft_id, "lesson_id": lesson_id,
+            }
+            if completed:
+                self._state["done"] = min(
+                    self._state["total"], self._state["done"] + 1
+                )
+                self._reported[draft_id] = (
+                    self._reported.get(draft_id, 0) + 1
+                )
 
     def status(self) -> dict:
         """Return a copy of the in-memory job state."""

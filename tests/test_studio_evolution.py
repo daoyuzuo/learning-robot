@@ -380,6 +380,43 @@ def test_evolution_job_runs_drafts_in_order(tmp_path: Path) -> None:
     assert state["done"] == 1
 
 
+def test_evolution_job_tracks_current_lesson_and_progress(
+    tmp_path: Path,
+) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+    seen: list[dict] = []
+
+    def process(draft_id: str, lessons: list[str]) -> dict:
+        for lesson_id in lessons:
+            job.note_lesson(draft_id, lesson_id)
+            seen.append(job.status()["current"])
+            job.note_lesson(draft_id, lesson_id, completed=True)
+        return _draft_report(draft_id, lessons)
+
+    job.start([("demo", ["L-1", "L-2"])], process, inline=True)
+
+    state = job.status()
+    assert [item["lesson_id"] for item in seen] == ["L-1", "L-2"]
+    assert [item["draft_id"] for item in seen] == ["demo", "demo"]
+    assert state["status"] == "done"
+    # Reported completions and the draft-end fallback must not double count.
+    assert state["done"] == 2
+    assert state["current"] is None
+
+
+def test_evolution_job_ignores_lesson_notes_when_idle(
+    tmp_path: Path,
+) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+
+    job.note_lesson("demo", "L-1", completed=True)
+
+    assert job.status()["done"] == 0
+    assert job.status()["current"] is None
+
+
 def test_evolution_job_counts_failed_lessons(tmp_path: Path) -> None:
     store, _ = setup_lesson(tmp_path)
     job = EvolutionJob(store, JobRunner(store, inline=True))

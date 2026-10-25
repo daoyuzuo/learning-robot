@@ -5,11 +5,11 @@
 <h1>{{ plan.lesson_id }} · {{ plan.title }}</h1>
 <p class="tb-meta">{{ draft.id }} · 模块 {{ plan.module_id }} · 只读对比，不提供恢复</p>
 {% if not before %}
-<p class="tb-warn">暂无快照。运行一次演进后，这里会显示最近快照与当前内容的摘要。</p>
+<p class="tb-warn">暂无快照。运行一次演进后，这里会显示最近一次与当前内容不同的快照，以及当前内容摘要。</p>
 {% else %}
 <div class="tb-history-grid">
   <section class="tb-history-col">
-    <h2>上一版快照 <span class="tb-status">{{ before.get("prompt_version") or "studio/1" }}</span></h2>
+    <h2>{% if same_as_current %}当前内容与最近快照一致{% else %}上一版快照{% endif %} <span class="tb-status">{{ before.get("prompt_version") or "studio/1" }}</span></h2>
     <p class="tb-meta">记录于 {{ before.get("created_at", "") }}</p>
     {% set metrics = before.get("metrics") or {} %}
     {% set trust = metrics.get("trust") or {} %}

@@ -10,7 +10,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from testbridge.studio.outline import parse_outline_json, write_outline
+from testbridge.studio.evolution import save_snapshot, snapshot_lesson
+from testbridge.studio.outline import (
+    LessonPlan,
+    parse_outline_json,
+    write_outline,
+)
 from testbridge.studio.search import SearchHit
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
@@ -281,6 +286,46 @@ def test_history_page_without_snapshot_renders_empty_state(
 
     assert page.status_code == 200
     assert "暂无快照" in page.text
+
+
+def test_history_page_labels_identical_snapshot(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    seed_draft(app, "demo")
+    write_lessons(app, "demo")
+    store = app.app.state.studio_store
+    plan = LessonPlan(
+        "L-1", "课一", 20, ["目标一"], [],
+        module_id="M01", concepts=["c-one"],
+    )
+    save_snapshot(store, snapshot_lesson(store, "demo", plan))
+
+    page = app.get("/studio/demo/history/L-1")
+
+    assert page.status_code == 200
+    text = page.text
+    assert "当前内容与最近快照一致" in text
+    assert "上一版快照" not in text
+    # The identical snapshot stays visible instead of being hidden.
+    assert "练习题干" in text
+    assert "EX-1-1" in text
+
+
+def test_evolution_script_labels_quality_once() -> None:
+    script = (
+        Path(__file__).parents[1] / "web" / "static" / "evolution.js"
+    ).read_text(encoding="utf-8")
+
+    assert "质量 质量" not in script
+    assert script.count('"质量 ') == 1
+
+
+def test_evolution_api_missing_targets_returns_400(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+
+    response = app.post("/api/studio/evolution", json={})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_request"
 
 
 @pytest.mark.parametrize(
