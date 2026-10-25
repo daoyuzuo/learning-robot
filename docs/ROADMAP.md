@@ -3,10 +3,10 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.3（求职管理）设计已确认，实施中，2026-10-26**
-> 状态：设计定稿（分支 `p4.3-job-applications`）；P4.2 已完成并合并到 master。
+> **当前期：P4.3（求职管理）已完成，2026-10-26**
+> 状态：分支 `p4.3-job-applications`；P4.2 已完成并合并到 master。
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 均已完成。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
 > 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。P4.1 把成套面试模拟
 > 接入同一本能力账本：面试建议分经用户确认后写入 `kind=interview` 证据，驱动掌握度与
@@ -448,7 +448,7 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 ---
 
-## P4.3 求职管理（设计已确认，实施中）
+## P4.3 求职管理（已完成，2026-10-26）
 
 **范围：**
 
@@ -462,22 +462,42 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 **不做：** 自动投递、招聘网站爬虫、邮件/日历集成、多用户、与面试会话的强关联。
 
-**退出标准（待实测）：**
+**退出标准（实测，2026-10-26）：**
 
-- [ ] `/applications` 可创建、列表、筛选、编辑、撤回
-- [ ] 到期跟进正确显示；结束态与未来项不显示
-- [ ] 公司/岗位/笔记正确转义
-- [ ] 非法状态/日期/空必填被拒绝（400）并保留输入
-- [ ] 全量测试通过，两个包 `tb validate` 0/0
-- [ ] 引擎模块不 import `career`；readiness/mastery 不受投递记录影响
+- [x] `/applications` 可创建、列表、筛选、编辑、撤回
+      （`tests/test_career_applications_web.py` 13 个测试：创建/列表/筛选/详情/编辑/撤回全流程）
+- [x] 到期跟进正确显示；结束态与未来项不显示
+      （`test_due_follow_up_lifecycle`：`next_action_at = 昨天` 时列表出现“到期跟进”与公司名；
+      改为 `offer` 后同一日期不再出现）
+- [x] 公司/岗位/笔记正确转义
+      （`test_list_escapes_company`、`test_detail_renders_and_escapes`）
+- [x] 非法状态/日期/空必填被拒绝（400）并保留输入
+      （`test_create_validation_preserves_input`、`test_update_validation_preserves_input`）
+- [x] 全量测试通过，两个包 `tb validate` 0/0（742 passed，3 deselected；两包均 0 error / 0 warning）
+- [x] 引擎模块不 import `career`；readiness/mastery 不受投递记录影响
+      （`test_quality_boundaries.py::test_engine_does_not_import_career`；投递记录不进 evidence，
+      readiness/mastery 无新增输入）
 
 **设计：** [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)
+
+**验证命令（2026-10-26）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+742 passed, 3 deselected in 43.65s
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+```
 
 ---
 
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现；P4.3 实施中。当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -488,11 +508,11 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现；P4.3 实施中�
 
 ### P4 应用整合
 
-P4.1 与 P4.2 已合并到 master；P4.3 实施中。
+P4.1 与 P4.2 已合并到 master；P4.3 已完成（分支 `p4.3-job-applications`）。
 
 - [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
 - [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：已完成。
-- [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)：实施中。
+- [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)：已完成。
 - 能力结论仍只来自 evidence；面试会话、题库、JD 与投递记录属于过程状态，不是第二本账。
 
 ---

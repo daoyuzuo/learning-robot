@@ -147,3 +147,17 @@ def test_list_escapes_company(tmp_path: Path) -> None:
     page = c.get("/applications").text
     assert "&lt;script&gt;公司&lt;/script&gt;" in page
     assert "<script>公司</script>" not in page
+
+
+def test_due_follow_up_lifecycle(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    app_id = create_one(c, status="applied", next_action_at=today(-1))
+    page = c.get("/applications").text
+    assert "到期跟进" in page
+    assert "某机器人公司" in page
+
+    c.post(f"/applications/{app_id}", data=create_data(
+        status="offer", next_action_at=today(-1)),
+        follow_redirects=False)
+    page = c.get("/applications").text
+    assert "到期跟进" not in page

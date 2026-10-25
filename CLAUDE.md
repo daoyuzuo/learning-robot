@@ -9,10 +9,11 @@
 
 ## 当前阶段
 
-**P4.3 求职管理：设计已确认，实施中（2026-10-26，分支 `p4.3-job-applications`）。**
+**P4.3 求职管理已完成（2026-10-26，分支 `p4.3-job-applications`）。**
 `/applications` 与 `/applications/{id}`：投递记录（公司、岗位、渠道、状态、投递日期、
 下一步动作与日期、笔记）、状态筛选与计数、到期跟进、快捷撤回。纯本地 SQLite、无 LLM、
 引擎零改动；投递记录不影响 readiness/mastery/planner。不提供删除，用 `withdrawn` 结束。
+完成时默认 `pytest` 742 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0。
 设计见 `docs/superpowers/specs/2026-10-26-p4.3-job-applications-design.md`。
 
 **P4.2 公司/JD 匹配已完成（2026-10-26，分支 `p4.2-company-jd`）。**
@@ -108,7 +109,7 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 - 引擎零改动；不修改内容契约、证据表、掌握度表。
 - 默认 `pytest` 不联网；JD 解析用假客户端测试。
 
-**P4.3 约束（实施中）：**
+**P4.3 约束（继续有效）：**
 
 - `src/testbridge/career/applications.py` 只做投递记录与校验；不调用 LLM；不得被引擎模块 import。
 - 投递记录是过程状态，不参与 mastery/readiness/planner，也不写入 evidence。
