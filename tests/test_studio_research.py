@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from testbridge.studio.outline import LessonPlan
@@ -66,6 +67,30 @@ def test_write_research_creates_json_and_html(tmp_path: Path) -> None:
     page = store.read("demo", "research/L-1.html")
     assert "docs.ros.org" in page
     assert "A" in page
+
+
+def test_run_research_records_backend() -> None:
+    result = run_research(
+        LESSON, ["执行器基础"], FakeSearch(), budget=3, backend="openalex"
+    )
+
+    assert result.backend == "openalex"
+
+
+def test_write_research_includes_backend(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(
+        draft_id="demo", topic="t", level="L2", lesson_count=1,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    result = run_research(
+        LESSON, ["执行器基础"], FakeSearch(), budget=3, backend="deepseek"
+    )
+
+    write_research(store, "demo", LESSON, result)
+
+    payload = json.loads(store.read("demo", "research/L-1.json"))
+    assert payload["backend"] == "deepseek"
 
 
 def test_research_html_escapes_titles() -> None:
