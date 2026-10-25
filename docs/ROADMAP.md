@@ -3,14 +3,13 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.3（检索后端）已完成**
-> 状态：实现并验收，2026-10-25
+> **当前期：P3.4（多模块与批量）设计已批准，待实现**
+> 状态：设计完成，2026-10-25
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3 均已完成。P3.3 增加
-> OpenAlex 后端、插件化 `SearchRouter`、按主题自动路由与回退、草稿级手动
-> 选择，并收紧溯源信任（资源必须来自 A/B 命中）。设计见
-> [P3.3 检索后端](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)。
-> 下一步：P3.4（批量/多模块内容演进）。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3 均已完成。P3.4
+> 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量
+> 与单课重写。设计见
+> [P3.4 多模块与批量](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)。
 
 ---
 
@@ -260,6 +259,31 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
+## P3.4 多模块与批量（设计已批准，待实现）
+
+**范围：**
+
+- 一个包 1–3 个模块，每模块 1–5 课；全局概念 + 模块子集 + 课概念。
+- 大纲 HTML 可编辑模块标题/概念/课程归属；保存重写 `module.yaml`。
+- 包内顺序批量：只跑 pending/failed，逐课进度与失败隔离。
+- 单课重写替换旧练习/资源，不产生重复 ID。
+- 旧草稿与旧扁平 outline 兼容。
+
+**不做：** 跨主题批量建包、并行批量、取消运行中的批量、自动发布。
+
+**退出标准：**
+
+- [ ] 2 模块 × 2 课生成 → 校验 → 定稿，`tb validate` 0/0
+- [ ] `module.yaml` concepts/lessons/order 正确
+- [ ] 大纲编辑后 module.yaml 同步
+- [ ] 批量只跑待办；失败继续；进度可见
+- [ ] 单课重写替换旧输出
+- [ ] 旧草稿可继续使用
+- [ ] 批量与单课互斥返回 409
+- [ ] 默认 `pytest` 全绿，现有 458 个测试无回归
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3 已实现；当前范围、退出标准与遗留以上方章节为准。
@@ -286,5 +310,6 @@ P2、P3.1、P3.2、P3.3 已实现；当前范围、退出标准与遗留以上�
 - P3.1 内容工作台：[2026-10-25-p3.1-content-studio-design.md](superpowers/specs/2026-10-25-p3.1-content-studio-design.md)
 - P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - P3.3 检索后端：[2026-10-25-p3.3-search-backends-design.md](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
+- P3.4 多模块与批量：[2026-10-25-p3.4-multi-module-batch-design.md](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)
