@@ -72,3 +72,14 @@ def test_missing_rows_return_none(tmp_path: Path) -> None:
     store = make_store(tmp_path)
     assert store.get_session("nope") is None
     assert store.get_answer("nope", "q1") is None
+
+
+def test_create_session_accepts_explicit_id(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    session = store.create_session(
+        learner_id="local", pack_id="p",
+        question_ids=["q1"], concept_ids=["c1"],
+        session_id="fixed-id",
+    )
+    assert session.id == "fixed-id"
+    assert store.get_session("fixed-id") is not None
