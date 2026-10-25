@@ -4,6 +4,9 @@ from pathlib import Path
 import yaml
 
 from testbridge.content.repository import load_pack
+from testbridge.quality.provenance import (
+    evaluate_provenance, load_dossiers, normalize_url,
+)
 from testbridge.quality.structural import evaluate_structural
 
 
@@ -218,3 +221,163 @@ def test_lesson_no_resource_warning(tmp_path: Path) -> None:
     result = evaluate_structural(load_pack(pack))
 
     assert any(issue.code == "quality.lesson_no_resource" for issue in result.warnings)
+
+
+def write_research(
+    root: Path, *, queries: list[str] | None = None, hits: list[dict] | None = None
+) -> Path:
+    research = root / "research"
+    research.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "lesson_id": "L-ONE",
+        "queries": ["q", "q2"] if queries is None else queries,
+        "hits": (
+            [{"url": "https://docs.example/x", "trust": "A"}]
+            if hits is None else hits
+        ),
+    }
+    (research / "L-ONE.json").write_text(
+        json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+    )
+    return research
+
+
+def test_normalize_url() -> None:
+    assert normalize_url("HTTPS://Docs.Example:443/X/?utm=1#top") == (
+        "https://docs.example/X"
+    )
+    assert normalize_url("http://example.com:80") == "http://example.com/"
+    assert normalize_url("ftp://example.com") == ""
+    assert normalize_url("not a url") == ""
+
+
+def test_traceable_resource_has_no_error(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert not any(
+        issue.code == "quality.resource_unsourced" for issue in result.errors
+    )
+    assert any(
+        metric.key == "provenance.traceable" and metric.earned == 15
+        for metric in result.metrics
+    )
+
+
+def test_untraceable_resource_is_error(tmp_path: Path) -> None:
+    resource = {**default_resource(), "url": "https://docs.example/other"}
+    pack = build_pack(tmp_path / "pack", resources=[resource])
+    research = write_research(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.resource_unsourced"
+        and issue.resource_id == "DOC-1"
+        for issue in result.errors
+    )
+
+
+def test_missing_dossier_is_error(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = tmp_path / "pack" / "research"
+    research.mkdir(parents=True)
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.research_missing" and issue.lesson_id == "L-ONE"
+        for issue in result.errors
+    )
+
+
+def test_empty_dossier_is_error(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack", hits=[])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(issue.code == "quality.research_empty" for issue in result.errors)
+
+
+def test_malformed_dossier_is_error_without_missing(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = tmp_path / "pack" / "research"
+    research.mkdir(parents=True)
+    (research / "L-ONE.json").write_text("{bad", encoding="utf-8")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    codes = [issue.code for issue in result.errors]
+    assert "quality.research_malformed" in codes
+    assert "quality.research_missing" not in codes
+
+
+def test_low_query_count_is_warning(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack", queries=["q"])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=10)
+
+    assert any(issue.code == "quality.research_queries_low" for issue in result.warnings)
+    assert any(
+        metric.key == "research.queries" and metric.earned == 0
+        for metric in result.metrics
+    )
+
+
+def test_no_ab_source_is_warning(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(
+        tmp_path / "pack", hits=[{"url": "https://docs.example/x", "trust": "C"}]
+    )
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(issue.code == "quality.lesson_no_ab_source" for issue in result.warnings)
+
+
+def test_resource_trust_error(tmp_path: Path) -> None:
+    resource = {**default_resource(), "trust": "C"}
+    pack = build_pack(tmp_path / "pack", resources=[resource])
+
+    result = evaluate_provenance(load_pack(pack))
+
+    assert any(
+        issue.code == "quality.resource_trust" and issue.resource_id == "DOC-1"
+        for issue in result.errors
+    )
+
+
+def test_resource_metadata_warning(tmp_path: Path) -> None:
+    resource = {**default_resource(), "license": "", "last_verified": "", "why": ""}
+    pack = build_pack(tmp_path / "pack", resources=[resource])
+
+    result = evaluate_provenance(load_pack(pack))
+
+    assert any(
+        issue.code == "quality.resource_metadata" and issue.resource_id == "DOC-1"
+        for issue in result.warnings
+    )
+
+
+def test_no_research_omits_resource_metrics(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), include_metrics=False)
+
+    assert result.metrics == []
+
+
+def test_load_dossiers_reports_malformed(tmp_path: Path) -> None:
+    research = tmp_path / "research"
+    research.mkdir()
+    (research / "L-ONE.json").write_text("{bad", encoding="utf-8")
+
+    dossiers, malformed, issues = load_dossiers(research)
+
+    assert dossiers == {}
+    assert malformed == {"L-ONE"}
+    assert issues[0].code == "quality.research_malformed"
