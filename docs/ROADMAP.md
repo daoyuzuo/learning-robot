@@ -215,7 +215,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] Studio 校验页显示质量分、分项与问题
 - [x] 硬错误阻断定稿；`force` / `skip_verify` 不绕过
 - [x] 写课提示词包含质量约束
-- [x] P3.2 前 369 个测试无回归；当前全量 415 passed（2 个 live 默认取消选择）
+- [x] P3.2 前 369 个测试无回归；当前全量 421 passed（2 个 live 默认取消选择）
 
 ---
 
