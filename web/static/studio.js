@@ -36,6 +36,32 @@
     }
   }
 
+  function paintQuality(quality) {
+    const box = root.querySelector(".tb-quality");
+    if (!box) return;
+    const score = box.querySelector(".tb-quality-score");
+    const flags = box.querySelector(".tb-quality-flags");
+    const note = box.querySelector(".tb-quality-note");
+    const list = box.querySelector(".tb-quality-metrics");
+    list.replaceChildren();
+    if (!quality) {
+      score.textContent = "—";
+      flags.textContent = "";
+      note.textContent = "质量评估未运行";
+      return;
+    }
+    score.textContent = quality.score + "/100";
+    flags.textContent = "硬错误 " + quality.errors.length + " · 警告 " +
+      quality.warnings.length;
+    note.textContent = quality.provenance_evaluated ? "" : "溯源与调研未评估";
+    quality.metrics.forEach((metric) => {
+      const item = document.createElement("li");
+      item.textContent = metric.label + " " + metric.earned + "/" +
+        metric.possible + " · " + metric.detail;
+      list.appendChild(item);
+    });
+  }
+
   function paint(payload) {
     document.querySelectorAll("[data-status-for]").forEach((node) => {
       const entry = payload.steps[node.dataset.statusFor] || {};
@@ -46,6 +72,7 @@
         paintLesson(step, lesson, entry);
       });
     });
+    paintQuality(payload.steps.validation && payload.steps.validation.quality);
     const issues = payload.steps.validation && payload.steps.validation.issues;
     if (Array.isArray(issues)) {
       root.querySelector('[data-step="validation"] .tb-issues').textContent =
@@ -109,6 +136,7 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ skip_verify: skipVerify }),
           });
+          paintQuality(payload.quality);
           root.querySelector('[data-step="validation"] .tb-issues').textContent =
             [...payload.errors, ...payload.warnings].join("\n") ||
             (payload.ok ? "校验通过" : "");

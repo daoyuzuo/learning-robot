@@ -33,6 +33,20 @@
     <h2>4 校验 <span class="tb-status" data-status-for="validation">{{ draft.steps.validation.status }}</span></h2>
     <p><label><input type="checkbox" class="tb-skip-verify"> 跳过资源可达性检查</label></p>
     <p><button type="button" data-action="validate">运行校验</button></p>
+    {% set quality = draft.steps.validation.get("quality") %}
+    <div class="tb-quality">
+      <p>
+        <strong>质量分</strong>
+        <span class="tb-quality-score">{% if quality %}{{ quality.score }}/100{% else %}—{% endif %}</span>
+        <span class="tb-quality-flags">{% if quality %}硬错误 {{ quality.errors|length }} · 警告 {{ quality.warnings|length }}{% endif %}</span>
+        <span class="tb-quality-note">{% if quality and not quality.provenance_evaluated %}溯源与调研未评估{% endif %}</span>
+      </p>
+      <ul class="tb-quality-metrics">
+      {% if quality %}{% for metric in quality.metrics %}
+        <li>{{ metric.label }} {{ metric.earned }}/{{ metric.possible }} · {{ metric.detail }}</li>
+      {% endfor %}{% endif %}
+      </ul>
+    </div>
     <pre class="tb-issues">{{ (draft.steps.validation.get("issues") or []) | join("\n") }}</pre>
   </section>
   <section class="tb-step" data-step="promote">

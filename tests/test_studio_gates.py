@@ -3,10 +3,24 @@ from pathlib import Path
 
 import pytest
 
+from testbridge.quality.report import QualityIssue, QualityReport
 from testbridge.studio.gates import PromoteError, promote, validate_draft, verify_resources
 from testbridge.studio.store import DraftStore
 
 FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "minimal-pack"
+
+
+def passing_quality(store, draft_id):
+    return QualityReport(score=100, earned=100, possible=100)
+
+
+def warning_quality(store, draft_id):
+    return QualityReport(
+        score=80, earned=80, possible=100,
+        warnings=[
+            QualityIssue("quality.type_variety_low", "只有 2 种题型", "warning")
+        ],
+    )
 
 
 def make_draft(tmp_path: Path, draft_id: str = "demo") -> DraftStore:
@@ -30,12 +44,27 @@ def test_promote_copies_only_content_files(tmp_path: Path) -> None:
     store.write("minimal", "outline.html", "<article>x</article>")
     store.write("minimal", "research/L-ONE.html", "<article>r</article>")
 
-    target = promote(store, "minimal", tmp_path / "packs", verifier=lambda items: [])
+    target = promote(
+        store, "minimal", tmp_path / "packs",
+        verifier=lambda items: [], quality_check=passing_quality,
+    )
 
     assert (target / "pack.yaml").is_file()
     assert not (target / "draft.json").exists()
     assert not (target / "outline.html").exists()
     assert not (target / "research").exists()
+
+
+def test_promote_allows_warnings_only(tmp_path: Path) -> None:
+    store = make_draft(tmp_path, "minimal")
+    shutil.copytree(FIXTURE, store.path("minimal"), dirs_exist_ok=True)
+
+    target = promote(
+        store, "minimal", tmp_path / "packs",
+        verifier=lambda items: [], quality_check=warning_quality,
+    )
+
+    assert (target / "pack.yaml").is_file()
 
 
 def test_promote_refuses_existing_pack(tmp_path: Path) -> None:
@@ -55,7 +84,7 @@ def test_promote_skip_verify_does_not_check_resources(tmp_path: Path) -> None:
 
     promote(
         store, "minimal", tmp_path / "packs",
-        skip_verify=True, verifier=verifier,
+        skip_verify=True, verifier=verifier, quality_check=passing_quality,
     )
 
 
@@ -79,3 +108,31 @@ def test_verify_resources_reports_unreachable() -> None:
         resources, client=FakeClient({"https://bad.example": 404})
     )
     assert errors == ["DOC-2: HTTP 404"]
+
+
+def test_promote_blocks_quality_errors(tmp_path: Path) -> None:
+    store = make_draft(tmp_path, "minimal")
+    shutil.copytree(FIXTURE, store.path("minimal"), dirs_exist_ok=True)
+
+    with pytest.raises(PromoteError) as excinfo:
+        promote(
+            store, "minimal", tmp_path / "packs",
+            skip_verify=True, verifier=lambda items: [],
+        )
+
+    assert excinfo.value.code == "quality_gate"
+
+
+def test_force_does_not_bypass_quality(tmp_path: Path) -> None:
+    store = make_draft(tmp_path, "minimal")
+    shutil.copytree(FIXTURE, store.path("minimal"), dirs_exist_ok=True)
+    target = tmp_path / "packs" / "minimal"
+    target.mkdir(parents=True)
+
+    with pytest.raises(PromoteError) as excinfo:
+        promote(
+            store, "minimal", tmp_path / "packs",
+            force=True, skip_verify=True, verifier=lambda items: [],
+        )
+
+    assert excinfo.value.code == "quality_gate"

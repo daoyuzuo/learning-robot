@@ -55,3 +55,8 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-issues { white-space: pre-wrap; background: #f8fafc; padding: .6rem; }
 .tb-error { color: #b91c1c; }
 .tb-warn { color: #b45309; }
+.tb-quality { margin: .6rem 0; padding: .6rem; background: #f8fafc; border-radius: 6px; }
+.tb-quality-score { font-weight: 700; color: #2563eb; }
+.tb-quality-flags { font-size: .9rem; color: #6b7280; margin-left: .6rem; }
+.tb-quality-note { font-size: .85rem; color: #b45309; margin-left: .6rem; }
+.tb-quality-metrics { font-size: .9rem; color: #374151; }

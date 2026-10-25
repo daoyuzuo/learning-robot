@@ -3,10 +3,10 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.2（质量门禁）**
-> 状态：设计已批准，待实现
+> **当前期：P3.2（质量门禁）已完成**
+> 状态：已实现，2026-10-25
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1 均已完成。P3.1 把
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2 均已完成。P3.1 把
 > “主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”固化为 `/studio` 前端工作台，
 > 产物仍是普通 `tb/1` 内容包，引擎零改动。P3.2 为单包增加确定性质量门禁与
 > 0–100 质量分，硬错误阻断定稿。设计见
@@ -208,9 +208,20 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
+## P3.2 质量门禁（已完成，2026-10-25）
+
+- [x] `src/testbridge/quality/`：报告、结构规则、溯源规则、组合评估
+- [x] `tb quality <pack>`：退出码 0/1/2、`--json`、自动读取草稿
+- [x] Studio 校验页显示质量分、分项与问题
+- [x] 硬错误阻断定稿；`force` / `skip_verify` 不绕过
+- [x] 写课提示词包含质量约束
+- [x] P3.2 前 369 个测试无回归；当前全量 421 passed（2 个 live 默认取消选择）
+
+---
+
 ## 后续期摘要
 
-P2、P3.1 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2 已实现；当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -232,5 +243,6 @@ P2、P3.1 已实现；当前范围、退出标准与遗留以上方章节为准�
 
 - 总设计：[2026-10-24-teaching-engine-design.md](superpowers/specs/2026-10-24-teaching-engine-design.md)
 - P3.1 内容工作台：[2026-10-25-p3.1-content-studio-design.md](superpowers/specs/2026-10-25-p3.1-content-studio-design.md)
+- P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

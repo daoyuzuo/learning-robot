@@ -33,11 +33,28 @@ LESSON_JSON = (
     '{"manifest": {"title": "单线程执行器", "minutes": 20, '
     '"objectives": ["说明调度顺序"]}, '
     '"html": "<article class=\\"tb-lesson\\"><h1>课</h1>'
-    '<div data-tb-exercise=\\"EX-1\\"></div></article>", '
-    '"exercises": [{"id": "EX-1", "type": "single_choice", '
+    '<div data-tb-exercise=\\"EX-1\\"></div>'
+    '<div data-tb-exercise=\\"EX-2\\"></div>'
+    '<div data-tb-exercise=\\"EX-3\\"></div></article>", '
+    '"exercises": ['
+    '{"id": "EX-1", "type": "single_choice", '
     '"concepts": ["executor-basics"], "level": "L2", "prompt": "选一个", '
     '"options": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}], '
-    '"answer": "a"}], "resources": []}'
+    '"answer": "a"}, '
+    '{"id": "EX-2", "type": "multi_choice", '
+    '"concepts": ["executor-basics"], "level": "L2", "prompt": "多选", '
+    '"options": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}], '
+    '"answer": ["a"]}, '
+    '{"id": "EX-3", "type": "short_answer", '
+    '"concepts": ["executor-basics"], "level": "L2", "prompt": "简答", '
+    '"answer": {"accepted": ["x"], "min_hits": 1}, '
+    '"rubric": [{"dimension": "d", "weight": 1.0, "criteria": "c"}]}'
+    '], '
+    '"resources": [{"id": "DOC-1", "title": "Executors", '
+    '"url": "https://docs.ros.org/x", "type": "official-doc", '
+    '"trust": "A", "license": "Apache-2.0", '
+    '"last_verified": "2026-10-25", "coverage": ["executor-basics"], '
+    '"why": "官方"}]}'
 )
 
 
@@ -132,9 +149,10 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
     lesson = app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
     assert lesson.status_code == 200
 
-    validation = app.post("/api/studio/demo/validate", json={})
+    validation = app.post("/api/studio/demo/validate", json={"skip_verify": True})
     assert validation.status_code == 200
     assert validation.json()["ok"] is True, validation.json()
+    assert validation.json()["quality"]["score"] == 100
 
     promoted = app.post("/api/studio/demo/promote", json={"skip_verify": True})
     assert promoted.status_code == 200, promoted.text
