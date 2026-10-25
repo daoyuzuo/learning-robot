@@ -24,6 +24,7 @@ OUTLINE_SYSTEM = (
 LESSON_SYSTEM = (
     "你是 TestBridge 的课程作者。根据大纲、概念表和调研资料写一节课。\n"
     "只能使用 <concepts> 中列出的概念 id，不得自造。\n"
+    "练习的 concepts 必须是本课声明概念的子集，不得使用其它课程或模块的概念。\n"
     "要求：\n"
     "1. 中文；正文是 HTML 片段，最外层是 <article class=\"tb-lesson\">。\n"
     "2. 只用允许的标签：article/section/div/h1-h4/p/ul/ol/li/strong/em/code/pre/a/"

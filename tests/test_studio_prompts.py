@@ -1,3 +1,4 @@
+from testbridge.studio.outline import LessonPlan, render_lesson_outline
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
@@ -47,3 +48,20 @@ def test_concepts_text_includes_target_levels() -> None:
     )
     assert "课程目标级别：L3" in text
     assert "target_level=L2" in text
+
+
+def test_lesson_outline_scopes_to_target_lesson() -> None:
+    plan = LessonPlan(
+        "L-1", "课一", 20, ["目标"], ["query"],
+        module_id="M01", concepts=["c-one"],
+    )
+
+    html = render_lesson_outline(plan)
+
+    assert '<section class="tb-outline-lesson" id="L-1">' in html
+    assert "c-one" in html
+    assert "c-two" not in html
+
+
+def test_lesson_system_restricts_exercises_to_lesson_concepts() -> None:
+    assert "子集" in LESSON_SYSTEM

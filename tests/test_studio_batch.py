@@ -6,12 +6,18 @@ import time
 from pathlib import Path
 
 import yaml
-
 from fastapi.testclient import TestClient
 
 from testbridge.contract.validator import validate_pack
-from testbridge.studio.outline import parse_outline_json, write_outline
+from testbridge.studio.outline import (
+    ModulePlan,
+    parse_outline_html,
+    parse_outline_json,
+    render_outline_html,
+    write_outline,
+)
 from testbridge.studio.search import SearchHit
+from testbridge.studio.search_router import SearchRoute
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
@@ -174,6 +180,20 @@ class FakeSearch:
         return ""
 
 
+class FlakyRouteSearch(FakeSearch):
+    """Fail routing for the first lesson, then succeed for the next one."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.routes = 0
+
+    def route(self, *args, **kwargs) -> SearchRoute:
+        self.routes += 1
+        if self.routes == 1:
+            raise RuntimeError("route down")
+        return SearchRoute("custom", self)
+
+
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
 
 
@@ -263,6 +283,53 @@ def test_batch_returns_empty_when_nothing_is_pending(tmp_path: Path) -> None:
     assert response.json() == {"started": []}
     assert search.queries == []
     assert store.load("demo")["steps"]["batch"]["status"] == "pending"
+
+
+def test_batch_empty_targets_conflicts_when_batch_is_running(
+    tmp_path: Path,
+) -> None:
+    app = make_app(tmp_path)
+    seed_draft(app)
+    store = app.app.state.studio_store
+    for lesson_id in ("L-1", "L-2"):
+        store.set_step("demo", "research", status="done", lesson_id=lesson_id)
+    store.set_step("demo", "batch", status="running", extra={
+        "mode": "research", "done": 1, "total": 2,
+    })
+
+    response = app.post("/api/studio/demo/batch", json={"mode": "research"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "step_running"
+
+
+def test_batch_research_continues_after_one_lesson_fails(tmp_path: Path) -> None:
+    search = FlakyRouteSearch()
+    app = make_app(tmp_path, search=search)
+    seed_draft(app)
+
+    response = app.post("/api/studio/demo/batch", json={"mode": "research"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["started"] == ["L-1", "L-2"]
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["steps"]["research"]["L-1"]["status"] == "failed"
+    assert "route down" in draft["steps"]["research"]["L-1"]["error"]
+    assert draft["steps"]["research"]["L-2"]["status"] == "done"
+    assert draft["steps"]["batch"]["status"] == "failed"
+    assert draft["steps"]["batch"]["error"] == "1 课失败"
+    assert draft["steps"]["batch"]["done"] == 2
+    assert draft["steps"]["batch"]["total"] == 2
+
+
+def test_rewrite_requires_lesson_id(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    seed_draft(app)
+
+    response = app.post("/api/studio/demo/lessons", json={"replace": True})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_request"
 
 
 def test_batch_lessons_continues_after_failure(tmp_path: Path) -> None:
@@ -417,6 +484,9 @@ def test_draft_page_shows_batch_and_rewrite_controls(tmp_path: Path) -> None:
     seed_draft(app)
     store = app.app.state.studio_store
     store.set_step("demo", "lessons", status="done", lesson_id="L-1")
+    store.set_step("demo", "batch", status="done", extra={
+        "mode": "lessons", "done": 1, "total": 2,
+    })
 
     page = app.get("/studio/demo").text
 
@@ -425,6 +495,7 @@ def test_draft_page_shows_batch_and_rewrite_controls(tmp_path: Path) -> None:
     assert 'data-batch-status="research"' in page
     assert 'data-batch-status="lessons"' in page
     assert 'data-action="rewrite"' in page
+    assert "lessons · done · 完成 1/2" in page
 
 
 def test_multi_module_batch_end_to_end(tmp_path: Path) -> None:
@@ -536,3 +607,52 @@ def test_multi_module_batch_end_to_end(tmp_path: Path) -> None:
     assert "EX-1-1" not in ids
     assert "EX-5-1" in ids
     assert store.load("demo")["steps"]["lessons"]["L-1"]["status"] == "done"
+
+
+def test_moved_done_lesson_is_rewritten_into_its_new_module(
+    tmp_path: Path,
+) -> None:
+    llm = FakeLlm(outline=MULTI_OUTLINE_JSON)
+    app = make_app(tmp_path, llm=llm)
+    store = app.app.state.studio_store
+
+    created = app.post("/studio", data={
+        "draft_id": "demo", "topic": "双模块课程", "level": "L2",
+        "module_count": "2", "lessons_per_module": "2",
+        "searches_per_lesson": "5",
+    })
+    assert created.status_code == 200, created.text
+    written = app.post("/api/studio/demo/lessons", json={"lesson_id": "L-3"})
+    assert written.status_code == 200, written.text
+    assert store.load("demo")["steps"]["lessons"]["L-3"]["status"] == "done"
+    drafts = tmp_path / "drafts" / "demo"
+    assert (drafts / "modules/M02/lessons/L-3.html").is_file()
+
+    modules = parse_outline_html(store.read("demo", "outline.html"))
+    m01, m02 = modules
+    moved = next(item for item in m02.lessons if item.lesson_id == "L-3")
+    m01 = ModulePlan(m01.module_id, m01.title, m01.concepts, [
+        *m01.lessons, moved,
+    ])
+    m02 = ModulePlan(m02.module_id, m02.title, m02.concepts, [
+        item for item in m02.lessons if item.lesson_id != "L-3"
+    ])
+
+    saved = app.put("/api/studio/demo/outline", json={
+        "html": render_outline_html("双模块包", [m01, m02]),
+    })
+
+    assert saved.status_code == 200, saved.text
+    entry = store.load("demo")["steps"]["lessons"]["L-3"]
+    assert entry["status"] == "failed"
+    assert entry["error"] == "课程已移动到新模块，需要重写"
+
+    batch = app.post("/api/studio/demo/batch", json={"mode": "lessons"})
+
+    assert batch.status_code == 200, batch.text
+    assert "L-3" in batch.json()["started"]
+    assert (drafts / "modules/M01/lessons/L-3.html").is_file()
+    # The stale file in the old module is left in place, not deleted.
+    assert (drafts / "modules/M02/lessons/L-3.html").is_file()
+    assert store.load("demo")["steps"]["lessons"]["L-3"]["status"] == "done"
+    assert validate_pack(drafts).errors == []

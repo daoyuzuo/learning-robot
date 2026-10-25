@@ -98,7 +98,9 @@
       const payload = await call("/api/studio/" + draftId);
       paint(payload);
       const busy = JSON.stringify(payload.steps).includes('"running"');
-      if (!busy && timer) {
+      if (busy) {
+        startPolling();
+      } else if (timer) {
         clearInterval(timer);
         timer = null;
       }
@@ -184,4 +186,8 @@
       }
     });
   });
+
+  // Refresh once on load so a reload mid/after a batch shows progress and
+  // rewrite controls; polling continues only while a step is running.
+  poll();
 })();

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import yaml
 from pydantic import ValidationError
 
-from testbridge.contract.loader import load_lesson_file
+from testbridge.contract.loader import ContentError, load_lesson_file
 from testbridge.contract.models import Exercise, Resource
 from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.studio.outline import LEVELS, LessonPlan
@@ -188,7 +188,7 @@ def _drop_old_lesson_ids(
     for path in old_paths:
         try:
             old_manifest, _ = load_lesson_file(path)
-        except Exception:
+        except (OSError, ContentError):
             continue
         old_exercises.update(old_manifest.exercises)
         old_resources.update(old_manifest.resources)

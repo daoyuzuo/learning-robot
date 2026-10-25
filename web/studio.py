@@ -31,6 +31,7 @@ from testbridge.studio.outline import (
     OutlineError,
     flatten_modules,
     parse_outline_html,
+    render_lesson_outline,
     save_outline_html,
     write_outline,
 )
@@ -104,9 +105,15 @@ def mount_studio(
     def concepts(draft_id: str) -> list[dict]:
         return list(_yaml(draft_id, "concepts.yaml").get("concepts") or [])
 
-    def concepts_text(draft_id: str) -> str:
+    def concepts_text(
+        draft_id: str, selected: list[str] | None = None
+    ) -> str:
         draft = store.load(draft_id)
-        return render_concepts_text(draft.get("level") or "L2", concepts(draft_id))
+        items = concepts(draft_id)
+        if selected:
+            wanted = set(selected)
+            items = [item for item in items if item.get("id") in wanted]
+        return render_concepts_text(draft.get("level") or "L2", items)
 
     def route_for(draft: dict, titles: list[str], domains: list[str]) -> SearchRoute:
         if hasattr(search, "route"):
@@ -222,8 +229,8 @@ def mount_studio(
             draft_id,
             LESSON_SYSTEM,
             render_lesson_prompt(
-                store.read(draft_id, "outline.html"),
-                concepts_text(draft_id),
+                render_lesson_outline(plan),
+                concepts_text(draft_id, plan.concepts),
                 research_text(draft_id, lesson_id),
             ),
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
@@ -367,9 +374,19 @@ def mount_studio(
 
     @router.post("/api/studio/{draft_id}/lessons")
     def start_lesson_writing(draft_id: str, body: dict | None = None):
-        replace = bool((body or {}).get("replace"))
+        draft_or_404(draft_id)
+        payload = body or {}
+        replace = bool(payload.get("replace"))
+        if replace and not payload.get("lesson_id"):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_request",
+                    "message": "replace 需要指定 lesson_id",
+                },
+            )
         targets = start_lessons(
-            draft_id, "lessons", body,
+            draft_id, "lessons", payload,
             lambda target: generate_lesson(draft_id, target, replace=replace),
         )
         return {"started": targets}
@@ -395,6 +412,11 @@ def mount_studio(
             in {"pending", "failed"}
         ]
         if not targets:
+            if (draft["steps"].get("batch") or {}).get("status") == "running":
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "step_running", "message": "任务进行中"},
+                )
             return {"started": []}
 
         def run_batch() -> None:

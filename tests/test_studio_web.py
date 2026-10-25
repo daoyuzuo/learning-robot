@@ -13,7 +13,14 @@ warnings.filterwarnings(
 from fastapi.testclient import TestClient
 
 from testbridge.contract.validator import validate_pack
-from testbridge.studio.outline import parse_outline_json, write_outline
+from testbridge.studio.outline import (
+    LessonPlan,
+    ModulePlan,
+    parse_outline_html,
+    parse_outline_json,
+    render_outline_html,
+    write_outline,
+)
 from testbridge.studio.search import SearchHit
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
@@ -61,6 +68,32 @@ MULTI_OUTLINE_JSON = json.dumps({
               "concepts": ["executor-basics"], "objectives": ["区分回调组"],
               "exercise_intents": ["判断互斥"],
               "research_queries": ["ROS 2 mutually exclusive callback group"]},
+         ]},
+    ],
+})
+
+TWO_CONCEPT_OUTLINE_JSON = json.dumps({
+    "pack_title": "双概念课",
+    "concepts": [
+        {"id": "executor-basics", "title": "执行器基础", "domain": "ros2",
+         "target_level": "L2", "prerequisites": [], "weight": 1.0,
+         "evidence_criteria": []},
+        {"id": "c-two", "title": "概念二", "domain": "ros2",
+         "target_level": "L2", "prerequisites": [], "weight": 1.0,
+         "evidence_criteria": []},
+    ],
+    "modules": [
+        {"id": "M01", "title": "模块一",
+         "concepts": ["executor-basics", "c-two"],
+         "lessons": [
+             {"id": "L-EXEC-001", "title": "单线程执行器", "minutes": 20,
+              "concepts": ["executor-basics"], "objectives": ["说明调度顺序"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["ROS 2 executors"]},
+             {"id": "L-EXEC-002", "title": "概念二课", "minutes": 20,
+              "concepts": ["c-two"], "objectives": ["理解概念二"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["concept two"]},
          ]},
     ],
 })
@@ -115,12 +148,14 @@ class FakeLlm:
         self.calls = 0
         self.outline_json = outline_json
         self.outline_prompts: list[str] = []
+        self.lesson_prompts: list[str] = []
 
     def complete(self, system: str, user: str) -> str:
         self.calls += 1
         if "课程设计师" in system:
             self.outline_prompts.append(user)
             return self.outline_json
+        self.lesson_prompts.append(user)
         return LESSON_JSON
 
 
@@ -210,7 +245,7 @@ def test_create_draft_with_module_counts(tmp_path: Path) -> None:
     assert "每模块课数：2" in llm.outline_prompts[-1]
     page = app.get("/studio/multi")
     assert "2 模块" in page.text
-    assert "2 课/模块" in page.text
+    assert "4 课" in page.text
 
 
 def test_outline_uses_legacy_lesson_count_when_module_fields_missing(
@@ -290,6 +325,52 @@ def test_save_outline_updates_module_files_and_steps(tmp_path: Path) -> None:
     assert module["lessons"] == ["L-CB-001", "L-CB-003"]
     assert "L-CB-003" in store.load("multi")["steps"]["lessons"]
     assert "L-CB-002" not in store.load("multi")["steps"]["lessons"]
+
+
+def test_save_outline_updates_actual_counts_and_page_meta(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    store = seed_multi_draft(app)
+    modules = parse_outline_html(store.read("multi", "outline.html"))
+    third = ModulePlan("M03", "事件驱动", ["executor-basics"], [
+        LessonPlan("L-CB-003", "事件课", 20, ["目标"], ["q"],
+                   module_id="M03", concepts=["executor-basics"]),
+        LessonPlan("L-CB-004", "定时器课", 20, ["目标"], ["q"],
+                   module_id="M03", concepts=["executor-basics"]),
+    ])
+
+    response = app.put("/api/studio/multi/outline", json={
+        "html": render_outline_html("执行器 2", modules + [third]),
+    })
+
+    assert response.status_code == 200, response.text
+    draft = store.load("multi")
+    assert draft["module_count"] == 3
+    assert draft["lesson_count"] == 6
+    assert draft["lessons_per_module"] == 2
+    page = app.get("/studio/multi").text
+    assert "3 模块" in page
+    assert "6 课" in page
+
+
+def test_lesson_prompt_scoped_to_target_lesson_concepts(tmp_path: Path) -> None:
+    llm = FakeLlm(TWO_CONCEPT_OUTLINE_JSON)
+    app = make_app(tmp_path, llm)
+    app.post("/studio", data={
+        "draft_id": "scope", "topic": "双概念", "level": "L2",
+        "module_count": "1", "lessons_per_module": "2",
+        "searches_per_lesson": "5",
+    }, follow_redirects=False)
+
+    response = app.post(
+        "/api/studio/scope/lessons", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    assert response.status_code == 200, response.text
+    prompt = llm.lesson_prompts[-1]
+    assert "executor-basics" in prompt
+    assert "c-two" not in prompt
+    assert '<section class="tb-outline-lesson" id="L-EXEC-001">' in prompt
+    assert "L-EXEC-002" not in prompt
 
 
 def test_save_outline_requires_lesson_ids(tmp_path: Path) -> None:

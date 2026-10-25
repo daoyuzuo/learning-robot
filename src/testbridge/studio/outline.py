@@ -234,6 +234,40 @@ def render_outline_html(pack_title: str, modules: list[ModulePlan]) -> str:
     return "".join(parts)
 
 
+def render_lesson_outline(plan: LessonPlan) -> str:
+    """Render only the target lesson's outline, with no sibling lessons.
+
+    Lesson prompts must not leak concepts from other lessons or modules: the
+    quality gate rejects exercises that use concepts outside the lesson plan.
+    """
+    parts = [
+        '<article class="tb-outline">',
+        (
+            f'<section class="tb-outline-lesson" '
+            f'id="{html_lib.escape(plan.lesson_id)}">'
+            f'<h3 class="tb-lesson-title">{html_lib.escape(plan.title)}</h3>'
+            f'<p class="tb-minutes">{plan.minutes}</p>'
+        ),
+    ]
+    if plan.concepts:
+        items = "".join(
+            f"<li>{html_lib.escape(item)}</li>" for item in plan.concepts
+        )
+        parts.append(f'<ul class="tb-lesson-concepts">{items}</ul>')
+    objectives = "".join(
+        f"<li>{html_lib.escape(item)}</li>" for item in plan.objectives
+    )
+    queries = "".join(
+        f"<li>{html_lib.escape(item)}</li>" for item in plan.queries
+    )
+    parts.append(
+        f'<ul class="tb-objectives">{objectives}</ul>'
+        f'<ul class="tb-queries">{queries}</ul>'
+        "</section></article>"
+    )
+    return "".join(parts)
+
+
 class _OutlineParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -458,18 +492,41 @@ def _rekey_steps(
         # caller's own guard, and resetting its step would corrupt progress.
         if draft["steps"].get("batch", {}).get("status") == "running":
             raise OutlineError("批量运行中，不能保存大纲")
-        for step, defaults in (
-            ("research", research_defaults), ("lessons", lesson_defaults),
-        ):
-            container = draft["steps"][step]
-            draft["steps"][step] = {
-                lesson.lesson_id: container.get(lesson.lesson_id, dict(defaults))
-                for lesson in lessons
-            }
+        existing_research = draft["steps"].get("research") or {}
+        existing_lessons = draft["steps"].get("lessons") or {}
+        draft["steps"]["research"] = {
+            lesson.lesson_id: dict(
+                existing_research.get(lesson.lesson_id) or research_defaults
+            )
+            for lesson in lessons
+        }
+        lesson_steps: dict = {}
+        for lesson in lessons:
+            entry = dict(
+                existing_lessons.get(lesson.lesson_id) or lesson_defaults
+            )
+            # A done step whose file is not in the lesson's current module was
+            # moved by an outline edit; mark it failed so batch/rewrite picks
+            # it up. Replace then drops the old file's exercise/resource IDs.
+            if entry.get("status") == "done":
+                path = (
+                    store.path(draft_id)
+                    / "modules" / lesson.module_id / "lessons"
+                    / f"{lesson.lesson_id}.html"
+                )
+                if not path.is_file():
+                    entry["status"] = "failed"
+                    entry["error"] = "课程已移动到新模块，需要重写"
+            lesson_steps[lesson.lesson_id] = entry
+        draft["steps"]["lessons"] = lesson_steps
         draft["steps"]["batch"] = {
             "status": "pending", "error": None, "at": None,
             "mode": None, "done": 0, "total": 0,
         }
+        # Manual outline edits may diverge from the creation target;
+        # lessons_per_module stays the generation target.
+        draft["module_count"] = len(modules)
+        draft["lesson_count"] = len(lessons)
 
     store.update(draft_id, rekey)
 
@@ -542,6 +599,23 @@ def save_outline_html(
         missing = [item for item in module.concepts if item not in concept_ids]
         if missing:
             raise OutlineError(f"模块 {module.module_id} 引用不存在的概念：{missing}")
+        lesson_concepts = {
+            concept_id
+            for lesson in module.lessons
+            for concept_id in lesson.concepts
+        }
+        outside = sorted(lesson_concepts - set(module.concepts))
+        if outside:
+            raise OutlineError(
+                f"课程概念不属于模块 {module.module_id}：{outside}"
+            )
+        uncovered = [
+            item for item in module.concepts if item not in lesson_concepts
+        ]
+        if uncovered:
+            raise OutlineError(
+                f"模块 {module.module_id} 的概念没有被任何课覆盖：{uncovered}"
+            )
     store.write(draft_id, "outline.html", clean)
     write_module_files(store, draft_id, modules)
     _rekey_steps(store, draft_id, modules)

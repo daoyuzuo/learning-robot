@@ -319,6 +319,48 @@ def test_save_outline_rejects_unknown_module_concept(tmp_path: Path) -> None:
         save_outline_html(store, "demo", html)
 
 
+def test_save_outline_rejects_lesson_concept_outside_module(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2",
+                 lesson_count=1, searches_per_lesson=5,
+                 model="m", prompt_version="studio/1")
+    store.write("demo", "concepts.yaml", yaml.safe_dump({
+        "schema": "tb/1",
+        "concepts": [
+            {"id": "c-one", "title": "一", "domain": "d", "target_level": "L2"},
+            {"id": "c-two", "title": "二", "domain": "d", "target_level": "L2"},
+        ],
+    }, allow_unicode=True, sort_keys=False))
+    module = ModulePlan("M01", "模块", ["c-one"], [
+        LessonPlan("L-1", "课一", 20, ["目标"], ["q"],
+                   module_id="M01", concepts=["c-two"]),
+    ])
+
+    with pytest.raises(OutlineError, match="不属于模块"):
+        save_outline_html(store, "demo", render_outline_html("包", [module]))
+
+
+def test_save_outline_rejects_uncovered_module_concept(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2",
+                 lesson_count=1, searches_per_lesson=5,
+                 model="m", prompt_version="studio/1")
+    store.write("demo", "concepts.yaml", yaml.safe_dump({
+        "schema": "tb/1",
+        "concepts": [
+            {"id": "c-one", "title": "一", "domain": "d", "target_level": "L2"},
+            {"id": "c-two", "title": "二", "domain": "d", "target_level": "L2"},
+        ],
+    }, allow_unicode=True, sort_keys=False))
+    module = ModulePlan("M01", "模块", ["c-one", "c-two"], [
+        LessonPlan("L-1", "课一", 20, ["目标"], ["q"],
+                   module_id="M01", concepts=["c-one"]),
+    ])
+
+    with pytest.raises(OutlineError, match="没有被任何课覆盖"):
+        save_outline_html(store, "demo", render_outline_html("包", [module]))
+
+
 def test_save_outline_sanitizes_edited_html(tmp_path: Path) -> None:
     store = DraftStore(tmp_path / "drafts")
     store.create(
