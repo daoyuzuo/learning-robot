@@ -253,7 +253,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] 手动选择严格生效，不静默回退
 - [x] C/D-only 来源被质量门禁阻断；A/B 不受影响
 - [x] 旧草稿缺字段按 auto（代码默认）
-- [x] 默认 `pytest` 全绿且离线：456 passed，3 deselected（live）
+- [x] 默认 `pytest` 全绿且离线：458 passed，3 deselected（live）
 - [x] 两个现有包 `tb validate` 仍 0/0（ros2-qos、sample-sensors）
 - [x] `tb quality content-packs/sample-sensors` 100/100，退出码 0
 - [x] `TESTBRIDGE_LIVE=1 pytest -m live`：3 passed（含 OpenAlex 真实检索）

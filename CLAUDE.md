@@ -14,7 +14,7 @@
 
 **P3.3 已完成。** 新增 OpenAlex 后端、插件化 `SearchRouter`、学术关键词 +
 domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“资源必须来自 A/B 命中”
-的溯源收紧。默认 `pytest` 456 passed、3 个 live 取消选择；live 3 passed。设计见
+的溯源收紧。默认 `pytest` 458 passed、3 个 live 取消选择；live 3 passed。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
 **下一步：P3.4（批量/多模块内容演进）。**
