@@ -14,21 +14,34 @@
   </section>
   <section class="tb-step" data-step="research">
     <h2>2 调研</h2>
-    <ul>{% for lesson_id in lessons %}{% set entry = draft.steps.research.get(lesson_id, {}) %}
-      <li>{{ lesson_id }}
-        <span class="tb-status" data-step-status="research:{{ lesson_id }}">{{ entry.get("status", "pending") }}</span>
+    {% for module in modules %}
+    <h3>{{ module.module_id }} · {{ module.title }}</h3>
+    <ul>
+    {% for plan in module.lessons %}{% set entry = draft.steps.research.get(plan.lesson_id, {}) %}
+      <li>{{ plan.lesson_id }} {{ plan.title }}
+        <span class="tb-status" data-step-status="research:{{ plan.lesson_id }}">{{ entry.get("status", "pending") }}</span>
+        <span class="tb-progress" data-progress-for="research:{{ plan.lesson_id }}"></span>
         {% if entry.get("backend") %}<span class="tb-status">{{ entry.get("backend") }}</span>{% endif %}
-        <span class="tb-progress" data-progress-for="research:{{ lesson_id }}"></span>
-        <button type="button" data-action="research" data-lesson="{{ lesson_id }}" {% if not enabled %}disabled{% endif %}>开始调研</button>
-      </li>{% endfor %}</ul>
+        <button type="button" data-action="research" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>开始调研</button>
+      </li>{% endfor %}
+    </ul>
+    {% endfor %}
   </section>
   <section class="tb-step" data-step="lessons">
     <h2>3 写课</h2>
-    <ul>{% for lesson_id in lessons %}{% set entry = draft.steps.lessons.get(lesson_id, {}) %}
-      <li>{{ lesson_id }}
-        <span class="tb-status" data-step-status="lessons:{{ lesson_id }}">{{ entry.get("status", "pending") }}</span>
-        <button type="button" data-action="lesson" data-lesson="{{ lesson_id }}" {% if not enabled %}disabled{% endif %}>写这一课</button>
-      </li>{% endfor %}</ul>
+    {% for module in modules %}
+    <h3>{{ module.module_id }} · {{ module.title }}</h3>
+    <ul>
+    {% for plan in module.lessons %}{% set lesson_entry = draft.steps.lessons.get(plan.lesson_id, {}) %}
+      <li>{{ plan.lesson_id }} {{ plan.title }}
+        <span class="tb-status" data-step-status="lessons:{{ plan.lesson_id }}">{{ lesson_entry.get("status", "pending") }}</span>
+        <button type="button" data-action="lesson" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>写这一课</button>
+        {% if lesson_entry.get("status") == "done" %}
+        <button type="button" data-action="rewrite" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>重写这一课</button>
+        {% endif %}
+      </li>{% endfor %}
+    </ul>
+    {% endfor %}
   </section>
   <section class="tb-step" data-step="validation">
     <h2>4 校验 <span class="tb-status" data-status-for="validation">{{ draft.steps.validation.status }}</span></h2>

@@ -14,7 +14,6 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
-from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.quality.evaluate import QualityUnavailable
 from testbridge.studio import lessons as lesson_writer
 from testbridge.studio import outline as outline_writer
@@ -28,7 +27,13 @@ from testbridge.studio.gates import (
 )
 from testbridge.studio.jobs import JobBusy, JobRunner
 from testbridge.studio.lessons import LessonError
-from testbridge.studio.outline import OutlineError, parse_outline_html, write_outline
+from testbridge.studio.outline import (
+    OutlineError,
+    flatten_modules,
+    parse_outline_html,
+    save_outline_html,
+    write_outline,
+)
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
@@ -113,11 +118,14 @@ def mount_studio(
             )
         return SearchRoute("custom", search)
 
-    def outline_plans(draft_id: str) -> list:
+    def outline_modules(draft_id: str) -> list:
         try:
             return parse_outline_html(store.read(draft_id, "outline.html"))
         except (FileNotFoundError, OutlineError):
             return []
+
+    def outline_plans(draft_id: str) -> list:
+        return flatten_modules(outline_modules(draft_id))
 
     def add_usage(draft_id: str, *, searches: int = 0, llm_calls: int = 0) -> None:
         draft = store.load(draft_id)
@@ -266,6 +274,7 @@ def mount_studio(
                     outline_path.read_text(encoding="utf-8")
                     if outline_path.is_file() else ""
                 ),
+                modules=outline_modules(draft_id),
                 lessons=[plan.lesson_id for plan in outline_plans(draft_id)],
             ),
         )
@@ -293,32 +302,18 @@ def mount_studio(
     @router.put("/api/studio/{draft_id}/outline")
     def save_outline(draft_id: str, body: OutlineBody):
         draft_or_404(draft_id)
-        clean = sanitize_fragment(body.html)
         try:
-            plans = parse_outline_html(clean)
+            modules = save_outline_html(store, draft_id, body.html)
         except OutlineError as exc:
             raise HTTPException(
                 status_code=400,
                 detail={"code": "invalid_outline", "message": exc.message},
             ) from None
-        store.write(draft_id, "outline.html", clean)
-        draft = store.load(draft_id)
-        for step in ("research", "lessons"):
-            container = draft["steps"][step]
-            draft["steps"][step] = {
-                plan.lesson_id: container.get(
-                    plan.lesson_id,
-                    (
-                        {"status": "pending", "error": None, "at": None,
-                         "queries": 0, "hits": 0}
-                        if step == "research"
-                        else {"status": "pending", "error": None, "at": None}
-                    ),
-                )
-                for plan in plans
-            }
-        store.save(draft)
-        return {"lessons": [plan.lesson_id for plan in plans]}
+        lessons = [plan.lesson_id for plan in flatten_modules(modules)]
+        return {
+            "lessons": lessons,
+            "modules": [module.module_id for module in modules],
+        }
 
     def start_lessons(draft_id: str, kind: str, body: dict | None, handler) -> list[str]:
         draft_or_404(draft_id)

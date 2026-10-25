@@ -1,5 +1,8 @@
+import json
 import warnings
 from pathlib import Path
+
+import yaml
 
 warnings.filterwarnings(
     "ignore",
@@ -10,6 +13,7 @@ warnings.filterwarnings(
 from fastapi.testclient import TestClient
 
 from testbridge.contract.validator import validate_pack
+from testbridge.studio.outline import parse_outline_json, write_outline
 from testbridge.studio.search import SearchHit
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
@@ -28,6 +32,38 @@ OUTLINE_JSON = """
   "objectives": ["说明调度顺序"], "exercise_intents": ["选择题"],
   "research_queries": ["ROS 2 executors"]}]}
 """
+
+MULTI_OUTLINE_JSON = json.dumps({
+    "pack_title": "执行器 2",
+    "concepts": [
+        {"id": "executor-basics", "title": "执行器基础", "domain": "ros2",
+         "target_level": "L2", "prerequisites": [], "weight": 1.0,
+         "evidence_criteria": [{"id": "EV-1", "description": "能解释", "level": "L1"}]}],
+    "modules": [
+        {"id": "M01", "title": "执行器基础", "concepts": ["executor-basics"],
+         "lessons": [
+             {"id": "L-EXEC-001", "title": "单线程执行器", "minutes": 20,
+              "concepts": ["executor-basics"], "objectives": ["说明调度顺序"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["ROS 2 executors"]},
+             {"id": "L-EXEC-002", "title": "多线程执行器", "minutes": 25,
+              "concepts": ["executor-basics"], "objectives": ["区分执行器"],
+              "exercise_intents": ["判断并发"],
+              "research_queries": ["ROS 2 multithreaded executor"]},
+         ]},
+        {"id": "M02", "title": "回调组", "concepts": ["executor-basics"],
+         "lessons": [
+             {"id": "L-CB-001", "title": "回调组基础", "minutes": 20,
+              "concepts": ["executor-basics"], "objectives": ["说明回调组"],
+              "exercise_intents": ["选回调组"],
+              "research_queries": ["ROS 2 callback groups"]},
+             {"id": "L-CB-002", "title": "互斥回调组", "minutes": 25,
+              "concepts": ["executor-basics"], "objectives": ["区分回调组"],
+              "exercise_intents": ["判断互斥"],
+              "research_queries": ["ROS 2 mutually exclusive callback group"]},
+         ]},
+    ],
+})
 
 LESSON_JSON = (
     '{"manifest": {"title": "单线程执行器", "minutes": 20, '
@@ -102,6 +138,18 @@ def create_draft(app: TestClient, draft_id: str = "demo") -> None:
     assert response.status_code == 303
 
 
+def seed_multi_draft(app: TestClient):
+    """Write a 2x2 outline directly; the web form gains module fields in Task 4."""
+    store = app.app.state.studio_store
+    store.create(
+        draft_id="multi", topic="t", level="L2", lesson_count=4,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    parsed = parse_outline_json(MULTI_OUTLINE_JSON, 2, 2)
+    write_outline(store, "multi", parsed)
+    return store
+
+
 def test_studio_list_page_renders(tmp_path: Path) -> None:
     assert "新建草稿" in make_app(tmp_path).get("/studio").text
 
@@ -129,6 +177,35 @@ def test_status_endpoint_returns_steps(tmp_path: Path) -> None:
     payload = app.get("/api/studio/demo").json()
     assert payload["id"] == "demo"
     assert payload["steps"]["outline"]["status"] == "done"
+
+
+def test_draft_page_groups_lessons_by_module(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    seed_multi_draft(app)
+
+    page = app.get("/studio/multi")
+
+    assert page.status_code == 200
+    assert "M01 · 执行器基础" in page.text
+    assert "M02 · 回调组" in page.text
+    assert page.text.index("M01 · 执行器基础") < page.text.index("M02 · 回调组")
+
+
+def test_save_outline_updates_module_files_and_steps(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    store = seed_multi_draft(app)
+    html = store.read("multi", "outline.html").replace("L-CB-002", "L-CB-003")
+
+    response = app.put("/api/studio/multi/outline", json={"html": html})
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["modules"] == ["M01", "M02"]
+    assert payload["lessons"][-1] == "L-CB-003"
+    module = yaml.safe_load(store.read("multi", "modules/M02/module.yaml"))
+    assert module["lessons"] == ["L-CB-001", "L-CB-003"]
+    assert "L-CB-003" in store.load("multi")["steps"]["lessons"]
+    assert "L-CB-002" not in store.load("multi")["steps"]["lessons"]
 
 
 def test_save_outline_requires_lesson_ids(tmp_path: Path) -> None:

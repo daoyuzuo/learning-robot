@@ -187,115 +187,196 @@ def parse_outline_json(
     }
 
 
-def render_outline_html(module_title: str, lessons: list[LessonPlan]) -> str:
-    sections = []
-    for plan in lessons:
-        objectives = "".join(
-            f"<li>{html_lib.escape(item)}</li>" for item in plan.objectives
+def render_outline_html(pack_title: str, modules: list[ModulePlan]) -> str:
+    parts = [
+        (
+            '<article class="tb-outline">'
+            f'<h1 class="tb-pack-title">{html_lib.escape(pack_title)}</h1>'
         )
-        queries = "".join(
-            f"<li>{html_lib.escape(item)}</li>" for item in plan.queries
+    ]
+    for module in modules:
+        parts.append(
+            f'<section class="tb-outline-module" id="{html_lib.escape(module.module_id)}">'
+            f'<h2 class="tb-module-title">{html_lib.escape(module.title)}</h2>'
         )
-        sections.append(
-            f'<section class="tb-outline-lesson" id="{html_lib.escape(plan.lesson_id)}">'
-            f"<h2>{html_lib.escape(plan.title)}</h2>"
-            f'<p class="tb-minutes">{plan.minutes}</p>'
-            f'<ul class="tb-objectives">{objectives}</ul>'
-            f'<ul class="tb-queries">{queries}</ul>'
-            "</section>"
-        )
-    return (
-        '<article class="tb-outline">'
-        f'<h1 class="tb-module-title">{html_lib.escape(module_title)}</h1>'
-        + "".join(sections)
-        + "</article>"
-    )
+        if module.concepts is not None:
+            items = "".join(
+                f"<li>{html_lib.escape(item)}</li>" for item in module.concepts
+            )
+            parts.append(f'<ul class="tb-module-concepts">{items}</ul>')
+        for lesson in module.lessons:
+            parts.append(
+                f'<section class="tb-outline-lesson" id="{html_lib.escape(lesson.lesson_id)}">'
+                f'<h3 class="tb-lesson-title">{html_lib.escape(lesson.title)}</h3>'
+                f'<p class="tb-minutes">{lesson.minutes}</p>'
+            )
+            if lesson.concepts:
+                items = "".join(
+                    f"<li>{html_lib.escape(item)}</li>" for item in lesson.concepts
+                )
+                parts.append(f'<ul class="tb-lesson-concepts">{items}</ul>')
+            objectives = "".join(
+                f"<li>{html_lib.escape(item)}</li>" for item in lesson.objectives
+            )
+            queries = "".join(
+                f"<li>{html_lib.escape(item)}</li>" for item in lesson.queries
+            )
+            parts.append(
+                f'<ul class="tb-objectives">{objectives}</ul>'
+                f'<ul class="tb-queries">{queries}</ul>'
+                "</section>"
+            )
+        parts.append("</section>")
+    parts.append("</article>")
+    return "".join(parts)
 
 
 class _OutlineParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.module_title = ""
-        self.lessons: list[dict] = []
-        self._current: dict | None = None
+        self.pack_title = ""
+        self.modules: list[dict] = []
+        self.legacy_lessons: list[dict] = []
+        self._module: dict | None = None
+        self._lesson: dict | None = None
         self._capture: str | None = None
         self._buffer: list[str] = []
+        self._items: str | None = None
+        self._concepts_seen = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         classes = (values.get("class") or "").split()
-        if tag == "section" and "tb-outline-lesson" in classes:
-            self._current = {
-                "id": values.get("id") or "", "title": "", "minutes": 20,
-                "objectives": [], "queries": [],
-            }
-        elif tag == "h1" and "tb-module-title" in classes:
-            self._capture = "title"
+        if tag == "h1" and (
+            "tb-pack-title" in classes
+            or ("tb-module-title" in classes and self._module is None)
+        ):
+            self._capture = "pack_title"
             self._buffer = []
-        elif tag == "h2" and self._current is not None:
+        elif tag == "section" and "tb-outline-module" in classes:
+            self._module = {
+                "id": values.get("id") or "", "title": "",
+                "concepts": [], "lessons": [],
+            }
+            self.modules.append(self._module)
+            self._concepts_seen = False
+        elif tag == "h2" and "tb-module-title" in classes and self._module:
+            self._capture = "module_title"
+            self._buffer = []
+        elif tag == "section" and "tb-outline-lesson" in classes:
+            self._lesson = {
+                "id": values.get("id") or "", "title": "", "minutes": 20,
+                "objectives": [], "queries": [], "concepts": [],
+            }
+        elif tag in {"h2", "h3"} and self._lesson is not None:
             self._capture = "lesson_title"
             self._buffer = []
-        elif tag == "p" and "tb-minutes" in classes:
+        elif tag == "p" and "tb-minutes" in classes and self._lesson is not None:
             self._capture = "minutes"
             self._buffer = []
-        elif tag == "ul" and self._current is not None:
-            self._capture = (
-                "objectives" if "tb-objectives" in classes
-                else "queries" if "tb-queries" in classes else None
-            )
-        elif tag == "li" and self._capture in {"objectives", "queries"}:
+        elif tag == "ul" and "tb-module-concepts" in classes and self._module:
+            self._module["concepts"] = []
+            self._concepts_seen = True
+            self._items = "module_concepts"
+        elif tag == "ul" and "tb-lesson-concepts" in classes and self._lesson:
+            self._lesson["concepts"] = []
+            self._items = "lesson_concepts"
+        elif tag == "ul" and "tb-objectives" in classes and self._lesson:
+            self._items = "objectives"
+        elif tag == "ul" and "tb-queries" in classes and self._lesson:
+            self._items = "queries"
+        elif tag == "li" and self._items:
             self._buffer = []
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "h1" and self._capture == "title":
-            self.module_title = "".join(self._buffer).strip()
-            self._capture = None
-        elif tag == "h2" and self._capture == "lesson_title" and self._current is not None:
-            self._current["title"] = "".join(self._buffer).strip()
-            self._capture = None
-        elif tag == "p" and self._capture == "minutes" and self._current is not None:
-            try:
-                self._current["minutes"] = int("".join(self._buffer).strip())
-            except ValueError:
-                self._current["minutes"] = 20
-            self._capture = None
-        elif tag == "li" and self._capture in {"objectives", "queries"}:
+        if tag in {"h1", "h2", "h3"} and self._capture in {
+            "pack_title", "module_title", "lesson_title",
+        }:
             value = "".join(self._buffer).strip()
-            if value and self._current is not None:
-                self._current[self._capture].append(value)
+            if self._capture == "pack_title":
+                self.pack_title = value
+            elif self._capture == "module_title" and self._module is not None:
+                self._module["title"] = value
+            elif self._capture == "lesson_title" and self._lesson is not None:
+                self._lesson["title"] = value
+            self._capture = None
+        elif tag == "p" and self._capture == "minutes" and self._lesson is not None:
+            try:
+                self._lesson["minutes"] = int("".join(self._buffer).strip())
+            except ValueError:
+                self._lesson["minutes"] = 20
+            self._capture = None
+        elif tag == "li" and self._items:
+            value = "".join(self._buffer).strip()
+            if value:
+                if self._items == "module_concepts" and self._module is not None:
+                    self._module["concepts"].append(value)
+                elif self._items == "lesson_concepts" and self._lesson is not None:
+                    self._lesson["concepts"].append(value)
+                elif self._lesson is not None and self._items in {"objectives", "queries"}:
+                    self._lesson[self._items].append(value)
             self._buffer = []
         elif tag == "ul":
-            self._capture = None
-        elif tag == "section" and self._current is not None:
-            self.lessons.append(self._current)
-            self._current = None
+            self._items = None
+        elif tag == "section" and self._lesson is not None:
+            target = self._module["lessons"] if self._module else self.legacy_lessons
+            target.append(self._lesson)
+            self._lesson = None
+        elif tag == "section" and self._module is not None:
+            if not self._concepts_seen:
+                self._module["concepts"] = None
+            self._module = None
 
     def handle_data(self, data: str) -> None:
-        if self._capture:
+        if self._capture or self._items:
             self._buffer.append(data)
 
 
-def parse_outline_html(html: str) -> list[LessonPlan]:
+def parse_outline_html(html: str) -> list[ModulePlan]:
     parser = _OutlineParser()
     parser.feed(html)
     parser.close()
-    plans = []
-    seen: set[str] = set()
-    for item in parser.lessons:
-        _check_id(item["id"], "lesson.id")
-        if item["id"] in seen:
-            raise OutlineError(f"课程 ID 重复：{item['id']}")
-        seen.add(item["id"])
-        plans.append(LessonPlan(
-            lesson_id=item["id"],
-            title=item["title"] or item["id"],
-            minutes=item["minutes"] or 20,
-            objectives=item["objectives"],
-            queries=item["queries"],
+    raw_modules = parser.modules
+    if not raw_modules:
+        raw_modules = [{
+            "id": "M01",
+            "title": parser.pack_title or "M01",
+            "concepts": None,
+            "lessons": parser.legacy_lessons,
+        }]
+    modules: list[ModulePlan] = []
+    lesson_seen: set[str] = set()
+    for raw in raw_modules:
+        _check_id(raw["id"], "module.id")
+        raw_lessons = raw.get("lessons") or []
+        lessons = []
+        for item in raw_lessons:
+            _check_id(item["id"], "lesson.id")
+            if item["id"] in lesson_seen:
+                raise OutlineError(f"课程 ID 重复：{item['id']}")
+            lesson_seen.add(item["id"])
+            lessons.append(LessonPlan(
+                lesson_id=item["id"],
+                title=item["title"] or item["id"],
+                minutes=item["minutes"] or 20,
+                objectives=item["objectives"],
+                queries=item["queries"],
+                module_id=raw["id"],
+                concepts=item.get("concepts") or [],
+            ))
+        modules.append(ModulePlan(
+            module_id=raw["id"],
+            title=raw["title"] or raw["id"],
+            concepts=raw.get("concepts"),
+            lessons=lessons,
         ))
-    if not plans:
+    if not lesson_seen:
         raise OutlineError("大纲里没有找到课程")
-    return plans
+    return modules
+
+
+def flatten_modules(modules: list[ModulePlan]) -> list[LessonPlan]:
+    return [lesson for module in modules for lesson in module.lessons]
 
 
 def lesson_plans(parsed: dict) -> list[LessonPlan]:
@@ -314,50 +395,51 @@ def lesson_plans(parsed: dict) -> list[LessonPlan]:
     return plans
 
 
-def write_outline(store: DraftStore, draft_id: str, parsed: dict) -> list[LessonPlan]:
+def write_module_files(
+    store: DraftStore, draft_id: str, modules: list[ModulePlan]
+) -> None:
+    root = store.path(draft_id) / "modules"
+    existing = {
+        path.parent.name for path in root.glob("*/module.yaml")
+    } if root.is_dir() else set()
+    for index, module in enumerate(modules, start=1):
+        path = root / module.module_id / "module.yaml"
+        if module.concepts is None:
+            if not path.is_file():
+                continue
+            data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        else:
+            data = {
+                "schema": "tb/1", "id": module.module_id,
+                "title": module.title, "priority": "P1",
+                "concepts": module.concepts,
+            }
+        data["title"] = module.title
+        data["lessons"] = [lesson.lesson_id for lesson in module.lessons]
+        data["order"] = index
+        data.setdefault("schema", "tb/1")
+        data.setdefault("id", module.module_id)
+        data.setdefault("priority", "P1")
+        data.setdefault("concepts", [])
+        store.write(
+            draft_id, f"modules/{module.module_id}/module.yaml",
+            yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
+        )
+    current = {module.module_id for module in modules}
+    for module_id in sorted(existing - current):
+        path = root / module_id / "module.yaml"
+        if path.is_file():
+            path.replace(path.with_suffix(".yaml.removed"))
+
+
+def _rekey_steps(
+    store: DraftStore, draft_id: str, modules: list[ModulePlan]
+) -> None:
     draft = store.load(draft_id)
-    lessons = lesson_plans(parsed)
-    concepts = [
-        {key: value for key, value in item.items() if key in CONCEPT_FIELDS}
-        for item in parsed["concepts"]
-    ]
-
-    pack = {
-        "schema": "tb/1",
-        "id": draft_id,
-        "version": "0.1.0",
-        "title": parsed["module_title"],
-        "description": draft["topic"],
-        "language": "zh-CN",
-        "license": "CC-BY-4.0",
-        "authors": ["studio"],
-        "created": draft["created_at"][:10],
-        "fixture": False,
-    }
-    module = {
-        "schema": "tb/1",
-        "id": "M01",
-        "title": parsed["module_title"],
-        "priority": "P1",
-        "concepts": [item["id"] for item in concepts],
-        "lessons": [plan.lesson_id for plan in lessons],
-        "order": 1,
-    }
-
-    store.write(draft_id, "pack.yaml", yaml.safe_dump(
-        pack, allow_unicode=True, sort_keys=False))
-    store.write(draft_id, "concepts.yaml", yaml.safe_dump(
-        {"schema": "tb/1", "concepts": concepts},
-        allow_unicode=True, sort_keys=False))
-    store.write(draft_id, "modules/M01/module.yaml", yaml.safe_dump(
-        module, allow_unicode=True, sort_keys=False))
-    store.write(
-        draft_id, "outline.html",
-        sanitize_fragment(render_outline_html(parsed["module_title"], lessons)),
-    )
-
+    lessons = flatten_modules(modules)
     research_defaults = {
-        "status": "pending", "error": None, "at": None, "queries": 0, "hits": 0,
+        "status": "pending", "error": None, "at": None,
+        "queries": 0, "hits": 0, "backend": "",
     }
     lesson_defaults = {"status": "pending", "error": None, "at": None}
     for step, defaults in (
@@ -365,8 +447,85 @@ def write_outline(store: DraftStore, draft_id: str, parsed: dict) -> list[Lesson
     ):
         container = draft["steps"][step]
         draft["steps"][step] = {
-            plan.lesson_id: container.get(plan.lesson_id, dict(defaults))
-            for plan in lessons
+            lesson.lesson_id: container.get(lesson.lesson_id, dict(defaults))
+            for lesson in lessons
         }
+    draft["steps"]["batch"] = {
+        "status": "pending", "error": None, "at": None,
+        "mode": None, "done": 0, "total": 0,
+    }
     store.save(draft)
-    return lessons
+
+
+def write_outline(
+    store: DraftStore, draft_id: str, parsed: dict
+) -> list[ModulePlan]:
+    draft = store.load(draft_id)
+    modules = [
+        ModulePlan(
+            module_id=module["id"],
+            title=module["title"],
+            concepts=[str(item) for item in module["concepts"]],
+            lessons=[
+                LessonPlan(
+                    lesson_id=item["id"],
+                    title=str(item.get("title") or item["id"]),
+                    minutes=int(item.get("minutes") or 20),
+                    objectives=[str(value) for value in item.get("objectives") or []],
+                    queries=[
+                        str(value) for value in item.get("research_queries") or []
+                    ],
+                    module_id=module["id"],
+                    concepts=[str(value) for value in item.get("concepts") or []],
+                )
+                for item in module["lessons"]
+            ],
+        )
+        for module in parsed["modules"]
+    ]
+    concepts = [
+        {key: value for key, value in item.items() if key in CONCEPT_FIELDS}
+        for item in parsed["concepts"]
+    ]
+    pack = {
+        "schema": "tb/1", "id": draft_id, "version": "0.1.0",
+        "title": parsed["pack_title"], "description": draft["topic"],
+        "language": "zh-CN", "license": "CC-BY-4.0", "authors": ["studio"],
+        "created": draft["created_at"][:10], "fixture": False,
+    }
+    store.write(draft_id, "pack.yaml", yaml.safe_dump(
+        pack, allow_unicode=True, sort_keys=False))
+    store.write(draft_id, "concepts.yaml", yaml.safe_dump(
+        {"schema": "tb/1", "concepts": concepts},
+        allow_unicode=True, sort_keys=False))
+    write_module_files(store, draft_id, modules)
+    store.write(
+        draft_id, "outline.html",
+        sanitize_fragment(render_outline_html(parsed["pack_title"], modules)),
+    )
+    _rekey_steps(store, draft_id, modules)
+    return modules
+
+
+def save_outline_html(
+    store: DraftStore, draft_id: str, html: str
+) -> list[ModulePlan]:
+    clean = sanitize_fragment(html)
+    modules = parse_outline_html(clean)
+    try:
+        concepts_file = yaml.safe_load(store.read(draft_id, "concepts.yaml")) or {}
+    except FileNotFoundError:
+        concepts_file = {}
+    concept_ids = {
+        item.get("id") for item in concepts_file.get("concepts") or []
+    }
+    for module in modules:
+        if module.concepts is None:
+            continue
+        missing = [item for item in module.concepts if item not in concept_ids]
+        if missing:
+            raise OutlineError(f"模块 {module.module_id} 引用不存在的概念：{missing}")
+    store.write(draft_id, "outline.html", clean)
+    write_module_files(store, draft_id, modules)
+    _rekey_steps(store, draft_id, modules)
+    return modules
