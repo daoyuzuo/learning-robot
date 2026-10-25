@@ -424,7 +424,8 @@ quality: 100/100             # exit 0
 - [x] 未知概念/非法权重被拒绝（400），JD 原文与理由正确转义
       （`test_confirm_rejects_out_of_range_weight`、`test_confirm_rejects_unknown_concept_in_requirements`、
       `test_jd_text_is_escaped`、`test_rationale_is_escaped`、`test_failed_confirm_leaves_stores_untouched`）
-- [x] 全量测试通过，两个包 `tb validate` 0/0（706 passed，3 deselected；两包均 0 error / 0 warning）
+- [x] 全量测试通过，两个包 `tb validate` 0/0（720 passed，3 deselected；两包均 0 error / 0 warning；
+      含最终评审修复波次）
 - [x] 引擎模块不 import `career`（`test_engine_does_not_import_career`：mastery / schedule /
       evidence / contract / learning 均无 `testbridge.career` 引用）
 
@@ -434,7 +435,7 @@ quality: 100/100             # exit 0
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-706 passed, 3 deselected in 46.53s
+720 passed, 3 deselected in 38.64s
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0

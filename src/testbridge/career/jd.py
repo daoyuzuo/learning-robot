@@ -78,7 +78,7 @@ def build_parse_prompt(pack: ContentPack, jd_text: str) -> tuple[str, str]:
     lines += [
         "",
         "<job_description>",
-        jd_text.replace("</job_description>", ""),
+        re.sub(r"</job_description\s*>", "", jd_text, flags=re.IGNORECASE),
         "</job_description>",
         "",
         '输出 JSON：{"target_role": "...", "requirements": ['
@@ -132,14 +132,14 @@ def _requirement(item: object, pack: ContentPack) -> JdRequirement:
     raw_concepts = item.get("concepts", [])
     if not isinstance(raw_concepts, list):
         raise JdError("concepts 必须是数组")
-    if len(raw_concepts) > MAX_CONCEPTS_PER_REQUIREMENT:
-        raise JdError("单条要求概念过多")
     concepts: list[str] = []
     for concept_id in raw_concepts:
         if not isinstance(concept_id, str) or concept_id not in pack.concepts:
             raise JdError(f"未知概念：{concept_id}")
         if concept_id not in concepts:
             concepts.append(concept_id)
+    if len(concepts) > MAX_CONCEPTS_PER_REQUIREMENT:
+        raise JdError("单条要求概念过多")
 
     rationale = item.get("rationale", "")
     if not isinstance(rationale, str):

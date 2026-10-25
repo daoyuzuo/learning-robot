@@ -39,10 +39,10 @@
   <p class="tb-target-removed">确认后将移除旧权重：{{ removed|join("、") }}</p>
   {% endif %}
 
-  {% if suggestion and suggestion.requirements %}
+  {% if unmapped %}
   <h2>未映射要求</h2>
   <ul>
-    {% for item in suggestion.requirements if not item.concepts %}
+    {% for item in unmapped %}
     <li>{{ item.text }}</li>
     {% endfor %}
   </ul>
@@ -50,5 +50,15 @@
 
   <button type="submit">确认并写入目标</button>
   <a href="/target">取消</a>
+</form>
+
+<details>
+  <summary>JD 原文</summary>
+  <pre>{{ source_text }}</pre>
+</details>
+
+<form method="post" action="/target/parse" class="tb-target-form">
+  <textarea name="jd_text" hidden>{{ source_text }}</textarea>
+  <button type="submit">重新解析</button>
 </form>
 {% endblock %}

@@ -12,9 +12,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from testbridge.career.jd import (
     JdError,
     JdSuggestion,
+    MAX_TARGET_ROLE_CHARS,
     manual_suggestion,
     parse_suggestion,
     parse_with_llm,
+    safe_text,
     suggest_weights,
     validate_jd_text,
 )
@@ -76,7 +78,6 @@ def mount_target(
         source_text: str,
         suggestion: JdSuggestion,
         weights: dict[str, float],
-        error: str | None = None,
     ):
         goal = learning.goal()
         preview_goal = replace(goal, concept_overrides=weights)
@@ -114,18 +115,21 @@ def mount_target(
         removed = sorted(
             cid for cid in goal.concept_overrides if cid not in weights
         )
+        unmapped = [
+            item for item in suggestion.requirements if not item.concepts
+        ]
         return ctx(
             request,
             source_text=source_text,
             suggestion=suggestion,
             rows=rows,
             removed=removed,
+            unmapped=unmapped,
             report=report,
             requirements_json=json.dumps(
                 [asdict(item) for item in suggestion.requirements],
                 ensure_ascii=False,
             ),
-            error=error,
         )
 
     @router.post("/target/parse", response_class=HTMLResponse)
@@ -139,7 +143,7 @@ def mount_target(
                 status_code=400,
                 context=ctx(
                     request, source_text=jd_text, suggestion=None,
-                    rows=[], removed=[], report=None,
+                    rows=[], removed=[], unmapped=[], report=None,
                     requirements_json="[]", error=str(exc),
                 ),
             )
@@ -183,7 +187,9 @@ def mount_target(
                 )
             else:
                 suggestion = JdSuggestion(
-                    target_role=target_role.strip()[:100],
+                    target_role=safe_text(target_role.strip())[
+                        :MAX_TARGET_ROLE_CHARS
+                    ],
                     requirements=(),
                     mode="manual",
                     model=model,
@@ -207,8 +213,13 @@ def mount_target(
                     status_code=400,
                     detail=f"权重必须在 1.0–2.0：{concept_id}",
                 )
+            if abs(value * 10 - round(value * 10)) > 1e-9:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"权重必须是 0.1 的倍数：{concept_id}",
+                )
             if value > 1.0:
-                weights[concept_id] = round(value, 1)
+                weights[concept_id] = value
 
         store.save(TargetJd(
             learner_id=learner_id,

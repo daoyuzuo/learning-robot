@@ -69,7 +69,7 @@ class FakeClient:
         return self.reply
 
 
-def parse_form(c: TestClient, jd: str = "招聘时间同步测试工程师") -> dict:
+def parse_form(c: TestClient, jd: str = "招聘时间同步测试工程师"):
     response = c.post("/target/parse", data={"jd_text": jd})
     assert response.status_code == 200
     return response
@@ -95,6 +95,9 @@ def test_parse_renders_review_without_writing(tmp_path: Path) -> None:
     assert "审核" in response.text
     assert "1.6" in response.text
     assert "熟悉 AUTOSAR" in response.text
+    assert "未映射要求" in response.text
+    assert "JD 原文" in response.text
+    assert "重新解析" in response.text
     db = tmp_path / "target.db"
     assert TargetJdStore(db).get() is None
     assert LearningStore(db).get_goal().concept_overrides == {}
@@ -132,6 +135,7 @@ def test_manual_mode_without_usable_llm(tmp_path: Path) -> None:
     c = make_app(tmp_path, llm=FakeClient("not json"), config=CONFIG)
     response = parse_form(c)
     assert "自动解析失败" in response.text
+    assert "未映射要求" not in response.text
     data = {
         "source_text": "招聘时间同步测试工程师",
         "target_role": "测试工程师",
@@ -206,6 +210,36 @@ def test_confirm_preserves_goal_time_budget(tmp_path: Path) -> None:
     assert goal.concept_overrides == {
         "sensor-time-sync": 1.6, "clock-drift": 1.3,
     }
+
+
+def test_confirm_replaces_old_overrides_and_warns(tmp_path: Path) -> None:
+    db = tmp_path / "target.db"
+    LearningStore(db).set_goal(Goal(
+        learner_id="local",
+        concept_overrides={"timestamp-basics": 1.7},
+    ))
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    review = parse_form(c)
+    assert "确认后将移除旧权重" in review.text
+    assert "timestamp-basics" in review.text
+    response = c.post("/target/confirm", data=confirm_data(),
+                      follow_redirects=False)
+    assert response.status_code == 303
+    goal = LearningStore(db).get_goal()
+    assert goal.concept_overrides == {
+        "sensor-time-sync": 1.6, "clock-drift": 1.3,
+    }
+
+
+def test_confirm_rejects_non_tenth_weight(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    parse_form(c)
+    for raw in ("1.04", "1.25"):
+        data = confirm_data()
+        data["weight_clock-drift"] = raw
+        assert c.post("/target/confirm", data=data).status_code == 400
+    db = tmp_path / "target.db"
+    assert TargetJdStore(db).get() is None
 
 
 def test_failed_confirm_leaves_stores_untouched(tmp_path: Path) -> None:

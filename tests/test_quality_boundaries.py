@@ -36,6 +36,14 @@ def test_engine_does_not_import_career() -> None:
                     module == "career" or module.startswith("career.")
                 ):
                     offenders.append(str(relative))
+                elif module == "testbridge" and any(
+                    alias.name == "career" for alias in node.names
+                ):
+                    offenders.append(str(relative))
+                elif module in ("", None) and node.level >= 1 and any(
+                    alias.name == "career" for alias in node.names
+                ):
+                    offenders.append(str(relative))
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     if alias.name == "testbridge.career" or alias.name.startswith(

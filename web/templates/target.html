@@ -13,7 +13,7 @@
 
   <h2>按模块</h2>
   <table>
-    <tr><th>模块</th><th>Weighted mastery</th></tr>
+    <tr><th>模块</th><th>加权掌握度</th></tr>
     {% for module_id, value in report.readiness.by_module.items() %}
     <tr><td>{{ module_id }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
     {% endfor %}
