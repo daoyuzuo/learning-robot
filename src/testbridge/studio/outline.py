@@ -345,9 +345,13 @@ def parse_outline_html(html: str) -> list[ModulePlan]:
             "lessons": parser.legacy_lessons,
         }]
     modules: list[ModulePlan] = []
+    module_seen: set[str] = set()
     lesson_seen: set[str] = set()
     for raw in raw_modules:
         _check_id(raw["id"], "module.id")
+        if raw["id"] in module_seen:
+            raise OutlineError(f"模块 ID 重复：{raw['id']}")
+        module_seen.add(raw["id"])
         raw_lessons = raw.get("lessons") or []
         lessons = []
         for item in raw_lessons:

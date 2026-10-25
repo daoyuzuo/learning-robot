@@ -150,6 +150,22 @@ def test_outline_html_round_trip_modules() -> None:
     assert parsed[0].lessons[0].concepts == ["c-one"]
 
 
+def test_parse_outline_html_rejects_duplicate_module_ids() -> None:
+    first = ModulePlan(
+        "M01", "模块一", ["c-one"],
+        [LessonPlan("L-1", "课一", 20, ["目标"], ["q1"], module_id="M01",
+                    concepts=["c-one"])],
+    )
+    second = ModulePlan(
+        "M01", "模块二", ["c-one"],
+        [LessonPlan("L-2", "课二", 20, ["目标"], ["q2"], module_id="M01",
+                    concepts=["c-one"])],
+    )
+
+    with pytest.raises(OutlineError):
+        parse_outline_html(render_outline_html("包", [first, second]))
+
+
 def test_legacy_flat_outline_html_falls_back_to_m01() -> None:
     html = (
         '<article class="tb-outline"><h1 class="tb-module-title">旧包</h1>'
