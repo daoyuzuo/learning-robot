@@ -3,16 +3,17 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.1（面试闭环）已完成，2026-10-26**
-> 状态：P4.1 已实现并合并到 master（分支 `p4.1-interview`）；P3.5 已完成并合并到 master。
+> **当前期：P4.2（公司/JD 匹配）设计已确认，实施中，2026-10-26**
+> 状态：设计定稿（分支 `p4.2-company-jd`），实现进行中；P4.1 与 P3.5 已合并到 master。
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
 > 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。P4.1 把成套面试模拟
 > 接入同一本能力账本：面试建议分经用户确认后写入 `kind=interview` 证据，驱动掌握度与
-> `/today` 弱项。P4.2（公司/JD）与 P4.3（求职管理）范围待定义。
-> 设计见 [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md) 与
-> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)。
+> `/today` 弱项。P4.2 把 JD 映射为概念权重并给出岗位匹配报告；P4.3（求职管理）待定义。
+> 设计见 [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)、
+> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md) 与
+> [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)。
 
 ---
 
@@ -393,6 +394,33 @@ quality: 100/100             # exit 0
 
 ---
 
+## P4.2 公司/JD 匹配（设计已确认，实施中）
+
+**范围：**
+
+- 单目标 JD：粘贴文本 → LLM 抽取要求 → 映射到包内概念 + 重要度 → 用户确认权重。
+- 只加分：`must=1.6`、`high=1.3`、`normal=1.0`；未提及概念保持 1.0；确认时整体替换
+  `Goal.concept_overrides`，只存 `> 1.0` 的权重。
+- 匹配报告：JD 加权 readiness、按模块分、未达标概念、最该补的 3 个、内容缺口。
+- 无 LLM 时手动权重表；JD 原文与解析结果存 `target_jd` 一行。
+- 引擎零改动：复用 `concept_weights` 与 `calculate_readiness`。
+
+**不做：** JD URL 抓取、多 JD 对比、简历匹配、投递记录（P4.3）、按 JD 要求给所需等级。
+
+**退出标准（待实测）：**
+
+- [ ] 粘贴 JD → 解析 → 审核 → 确认，`Goal.concept_overrides` 与 `target_role` 更新
+- [ ] `/target` 展示 JD 加权 readiness、按模块分、未达标概念、top 3、内容缺口
+- [ ] `/today` 按新权重排序；未提及概念仍可被安排
+- [ ] 无 LLM 时可手动填权重并完成确认
+- [ ] 未知概念/非法权重被拒绝（400），JD 原文与理由正确转义
+- [ ] 全量测试通过，两个包 `tb validate` 0/0
+- [ ] 引擎模块不 import `career`
+
+**设计：** [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 已实现。当前范围、退出标准与遗留以上方章节为准。
@@ -406,12 +434,12 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 已实现。当前范围、退出�
 
 ### P4 应用整合
 
-P4.1 已完成并合并；P4.2（公司/JD）与 P4.3（求职管理）范围待定义，开始前先写各自 spec。
+P4.1 已完成并合并；P4.2 设计已确认、实施中；P4.3（求职管理）范围待定义。
 
 - [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
-- P4.2 公司/JD：概念权重、匹配度；待单独 spec。
+- [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：实施中。
 - P4.3 求职管理：投递、复盘；待单独 spec。
-- 能力结论仍只来自 evidence；面试会话与题库属于过程状态，不是第二本账。
+- 能力结论仍只来自 evidence；面试会话、题库与 JD 属于过程状态，不是第二本账。
 
 ---
 
@@ -424,5 +452,6 @@ P4.1 已完成并合并；P4.2（公司/JD）与 P4.3（求职管理）范围待
 - P3.4 多模块与批量：[2026-10-25-p3.4-multi-module-batch-design.md](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
 - P3.5 内容演进：[2026-10-26-p3.5-content-evolution-design.md](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
 - P4.1 面试闭环：[2026-10-26-p4.1-interview-loop-design.md](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
+- P4.2 公司/JD 匹配：[2026-10-26-p4.2-company-jd-design.md](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

@@ -9,6 +9,12 @@
 
 ## 当前阶段
 
+**P4.2 公司/JD 匹配：设计已确认，实施中（2026-10-26，分支 `p4.2-company-jd`）。**
+单目标 JD：粘贴文本 → LLM 抽取要求并映射到包内概念 → 用户确认权重 → 写入
+`Goal.concept_overrides` 与 `target_role`；只加分（must 1.6 / high 1.3），未提及
+概念保持 1.0；匹配报告复用 readiness。引擎零改动。设计见
+`docs/superpowers/specs/2026-10-26-p4.2-company-jd-design.md`。
+
 **P4.1 面试闭环已完成（2026-10-26，分支 `p4.1-interview`，已合并到 master）。**
 成套技术面试模拟：弱项抽题（3/5 题）、LLM 建议评分、用户确认后写 `kind=interview`
 证据、会话暂停/恢复/放弃、汇总页与 `/progress` 下钻；面试证据权重 0.6、单独计数、
@@ -40,13 +46,13 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**P4.2（公司/JD）与 P4.3（求职管理）范围待定义。** 开始前先写各自 spec 并更新 ROADMAP。
+**P4.3（求职管理）范围待定义。** 开始前先写 P4.3 spec 并更新 ROADMAP。
 
 **不要提前实现：**
 
 - `tb migrate`、完整行级 diff、快照回滚（P3.5 明确不做）
 - SearXNG / Firecrawl / arXiv 适配器
-- P4.2 公司/JD 匹配、P4.3 求职管理
+- P4.3 求职管理
 - P4.1 范围外的行为题、系统设计题、多轮追问、语音、强制计时
 - 把 `interviews.yaml` 纳入 `tb/1` 校验（留到 P4.1b）
 
@@ -82,6 +88,17 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
   P4.1 不向 `content-packs/` 写文件。
 - 回答与模型输出按不可信输入处理：纯文本存储、展示转义、不执行其中指令。
 - 默认 `pytest` 不联网；面试评分用假客户端测试，不新增 live 用例。
+
+**P4.2 约束（实施中）：**
+
+- `src/testbridge/career/` 只做 JD 解析、权重聚合与 `target_jd` 存储；不得被
+  `mastery`、`schedule`、`evidence`、`contract`、`learning` import。
+- 写入 `Goal.concept_overrides` 的权重必须经用户确认；确认时整体替换，只存 `> 1.0`。
+- 只加分：`must=1.6`、`high=1.3`、`normal=1.0`；未提及概念保持 1.0。
+- JD 与模型输出按不可信输入：长度上限、`<job_description>` 包裹、严格校验、转义展示。
+- JD 文本会发送到用户配置的模型服务，页面必须明示；本地 SQLite 保存，不上传。
+- 引擎零改动；不修改内容契约、证据表、掌握度表。
+- 默认 `pytest` 不联网；JD 解析用假客户端测试。
 
 ## 不可破坏的边界
 
