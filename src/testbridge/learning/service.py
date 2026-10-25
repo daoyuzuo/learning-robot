@@ -8,16 +8,11 @@ from typing import TYPE_CHECKING
 
 from testbridge.content.repository import ContentPack
 from testbridge.evidence.store import EvidenceEvent, EvidenceStore
-from testbridge.learning.store import Goal, LearningStore, MasteryState
-from testbridge.learning.timeutil import iso, utcnow
+from testbridge.learning.mastery_builder import build_mastery_state
+from testbridge.learning.store import Goal, LearningStore
+from testbridge.learning.timeutil import utcnow
 from testbridge.mastery.bkt import BKTState
-from testbridge.mastery.estimator import (
-    HANDOFF_OBSERVATIONS,
-    MasteryView,
-    estimate,
-    replay_bkt,
-)
-from testbridge.mastery.rule import confidence_for, level_for, rule_score
+from testbridge.mastery.estimator import MasteryView, estimate
 from testbridge.schedule.fsrs import review_event
 
 if TYPE_CHECKING:
@@ -46,7 +41,7 @@ class LearningService:
     def goal(self) -> Goal:
         return self.store.get_goal(self.learner_id)
 
-    def _visible_events(self) -> list[EvidenceEvent]:
+    def visible_events(self) -> list[EvidenceEvent]:
         events = self.evidence.list(limit=1_000_000)
         superseded = {e.supersedes for e in events if e.supersedes}
         return [
@@ -59,7 +54,7 @@ class LearningService:
 
     def _mastery(self, concept_id: str, now: datetime) -> MasteryView:
         events = [
-            e for e in self._visible_events() if concept_id in e.concept_ids
+            e for e in self.visible_events() if concept_id in e.concept_ids
         ]
         state = self.store.get_mastery(self.learner_id, concept_id)
         bkt_state = (
@@ -76,26 +71,17 @@ class LearningService:
 
     def record(self, event: EvidenceEvent) -> None:
         now = self.now()
-        visible = self._visible_events()
+        visible = self.visible_events()
         for concept_id in event.concept_ids:
             if concept_id not in self.pack.concepts:
                 continue
             events = [e for e in visible if concept_id in e.concept_ids]
-            rule = rule_score(events, concept_id, now)
-            bkt = replay_bkt(events, concept_id)
-            value = bkt.p if bkt.observations >= HANDOFF_OBSERVATIONS else rule.score
             self.store.upsert_mastery(
-                MasteryState(
+                build_mastery_state(
                     learner_id=self.learner_id,
                     concept_id=concept_id,
-                    rule_score=rule.score,
-                    bkt_p=bkt.p,
-                    exercise_observations=bkt.observations,
-                    other_observations=rule.other_observations,
-                    estimate=value,
-                    confidence=confidence_for(bkt.observations, rule.other_observations),
-                    level=level_for(value),
-                    updated_at=iso(now),
+                    events=events,
+                    now=now,
                 )
             )
         if event.kind == "exercise_attempt" and event.exercise_id in self.pack.exercises:

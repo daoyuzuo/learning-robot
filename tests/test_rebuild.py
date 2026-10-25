@@ -33,7 +33,7 @@ def comparable(service: LearningService) -> tuple:
     reviews = service.store.list_reviews("local")
     m = tuple(sorted(
         (key, value.rule_score, value.bkt_p, value.exercise_observations,
-         value.other_observations, value.estimate, value.level)
+         value.other_observations, value.estimate, value.confidence, value.level)
         for key, value in mastery.items()
     ))
     r = tuple(sorted(
@@ -78,3 +78,43 @@ def test_superseded_events_are_skipped(tmp_path: Path) -> None:
     rebuild_state(service)
     view = service.mastery("sensor-time-sync")
     assert view.estimate < 0.5
+
+
+def test_other_learner_events_are_ignored(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    service.evidence.append(replace(attempt("correct"), learner_id="other"))
+    result = rebuild_state(service)
+    assert result.events == 0
+    assert service.store.list_mastery("local") == {}
+    assert service.store.list_reviews("local") == {}
+
+
+def test_unknown_concept_and_exercise_are_skipped(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    item = replace(
+        new_event(
+            kind="exercise_attempt", lesson_id="L-SYNC-001",
+            exercise_id="EX-NOPE", concept_ids=["unknown"], outcome="correct",
+            score=1.0, max_score=1.0,
+        ),
+        created_at=NOW.isoformat(),
+    )
+    service.evidence.append(item)
+    result = rebuild_state(service)
+    assert result.skipped_concepts == ["unknown"]
+    assert result.skipped_exercises == ["EX-NOPE"]
+    assert service.store.list_mastery("local") == {}
+    assert service.store.list_reviews("local") == {}
+
+
+def test_duplicate_concept_ids_count_once(tmp_path: Path) -> None:
+    service = make_service(tmp_path)
+    item = replace(
+        attempt("correct"),
+        concept_ids=["sensor-time-sync", "sensor-time-sync"],
+    )
+    service.evidence.append(item)
+    rebuild_state(service)
+    state = service.store.get_mastery("local", "sensor-time-sync")
+    assert state is not None
+    assert state.exercise_observations == 1
