@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -10,6 +11,8 @@ import httpx
 import yaml
 
 from testbridge.contract.validator import validate_pack
+from testbridge.quality.evaluate import QualityUnavailable, evaluate_draft
+from testbridge.quality.report import QualityReport
 from testbridge.studio.store import DraftStore
 
 CONTENT_FILES = (
@@ -43,6 +46,15 @@ def validate_draft(store: DraftStore, draft_id: str) -> ValidationSummary:
     )
 
 
+def quality_draft(store: DraftStore, draft_id: str) -> QualityReport:
+    draft = store.load(draft_id)
+    return evaluate_draft(
+        store.path(draft_id),
+        research_dir=store.path(draft_id) / "research",
+        budget=int(draft.get("searches_per_lesson") or 1),
+    )
+
+
 def verify_resources(resources, client=None) -> list[str]:
     owned = client is None
     client = client or httpx.Client(timeout=10.0, follow_redirects=True)
@@ -71,6 +83,7 @@ def promote(
     force: bool = False,
     skip_verify: bool = False,
     verifier=None,
+    quality_check: Callable[[DraftStore, str], QualityReport] | None = None,
 ) -> Path:
     source = store.path(draft_id)
     target = packs_root / draft_id
@@ -80,6 +93,21 @@ def promote(
     summary = validate_draft(store, draft_id)
     if not summary.ok:
         raise PromoteError("invalid_pack", "；".join(summary.errors[:5]))
+
+    check_quality = quality_check or quality_draft
+    try:
+        quality = check_quality(store, draft_id)
+    except QualityUnavailable as exc:
+        raise PromoteError(
+            "invalid_pack", f"{len(exc.report.errors)} error(s)"
+        ) from None
+    if not quality.ok:
+        raise PromoteError(
+            "quality_gate",
+            "；".join(
+                f"{issue.code}: {issue.message}" for issue in quality.errors[:5]
+            ),
+        )
 
     resources_path = source / "resources.yaml"
     if not skip_verify and resources_path.is_file():

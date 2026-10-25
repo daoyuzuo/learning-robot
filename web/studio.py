@@ -15,12 +15,14 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
 from testbridge.contract.sanitize import sanitize_fragment
+from testbridge.quality.evaluate import QualityUnavailable
 from testbridge.studio import lessons as lesson_writer
 from testbridge.studio import outline as outline_writer
 from testbridge.studio import research as research_runner
 from testbridge.studio.gates import (
     PromoteError,
     promote,
+    quality_draft,
     validate_draft,
     verify_resources,
 )
@@ -332,19 +334,52 @@ def mount_studio(
     def run_validation(draft_id: str, body: dict | None = None):
         draft_or_404(draft_id)
         summary = validate_draft(store, draft_id)
+        quality = None
+        quality_skipped = None
+        quality_errors: list[str] = []
+        quality_warnings: list[str] = []
+        if summary.ok:
+            try:
+                report = quality_draft(store, draft_id)
+            except QualityUnavailable:
+                quality_skipped = "unavailable"
+                quality_warnings = [
+                    "quality.unavailable: 内容包结构无效，质量评估未运行"
+                ]
+            else:
+                quality = report.as_dict()
+                quality_errors = [
+                    f"{issue.code}: {issue.message}" for issue in report.errors
+                ]
+                quality_warnings = [
+                    f"{issue.code}: {issue.message}" for issue in report.warnings
+                ]
+        else:
+            quality_skipped = "invalid_pack"
+
         verify_errors: list[str] = []
         if not (body or {}).get("skip_verify"):
             resources = _yaml(draft_id, "resources.yaml").get("resources") or []
             if resources:
                 verify_errors = verify_resources(resources)
-        errors = summary.errors + verify_errors
+
+        errors = summary.errors + quality_errors + verify_errors
+        warnings = summary.warnings + quality_warnings
+        extra = {"issues": errors + warnings}
+        if quality is not None:
+            extra["quality"] = quality
         store.set_step(
-            draft_id, "validation", status="done" if not errors else "failed",
+            draft_id, "validation",
+            status="done" if not errors else "failed",
             error=errors[0] if errors else None,
-            extra={"issues": errors + summary.warnings},
+            extra=extra,
         )
         return {
-            "ok": not errors, "errors": errors, "warnings": summary.warnings,
+            "ok": not errors,
+            "errors": errors,
+            "warnings": warnings,
+            "quality": quality,
+            "quality_skipped": quality_skipped,
         }
 
     @router.post("/api/studio/{draft_id}/promote")
