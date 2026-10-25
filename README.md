@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）。
 
 ## AI 追问（可选）
 
@@ -63,7 +63,7 @@ tb quality drafts/<id>
 tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 ```
 
-有硬错误退出码 1；内容包结构无效退出码 2；只有警告退出码 0。
+有硬错误退出码 1；内容包结构无效、或显式指定的 `--research-dir` 不存在时退出码 2；只有警告退出码 0。
 `force` 与 `skip_verify` 都不能绕过质量门禁。
 
 ## 文档
@@ -72,6 +72,7 @@ tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 - [P2 学习闭环设计](docs/superpowers/specs/2026-10-25-p2-learning-loop-design.md)
 - [P2.2 AI 追问设计](docs/superpowers/specs/2026-10-25-p2.2-tutor-design.md)
 - [ROS2 QoS 内容试点](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)
+- [P3.2 质量门禁设计](docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)

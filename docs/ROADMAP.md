@@ -215,13 +215,13 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - [x] Studio 校验页显示质量分、分项与问题
 - [x] 硬错误阻断定稿；`force` / `skip_verify` 不绕过
 - [x] 写课提示词包含质量约束
-- [x] 现有 369 个测试无回归
+- [x] P3.2 前 369 个测试无回归；当前全量 415 passed（2 个 live 默认取消选择）
 
 ---
 
 ## 后续期摘要
 
-P2、P3.1 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2 已实现；当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -243,5 +243,6 @@ P2、P3.1 已实现；当前范围、退出标准与遗留以上方章节为准�
 
 - 总设计：[2026-10-24-teaching-engine-design.md](superpowers/specs/2026-10-24-teaching-engine-design.md)
 - P3.1 内容工作台：[2026-10-25-p3.1-content-studio-design.md](superpowers/specs/2026-10-25-p3.1-content-studio-design.md)
+- P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)
