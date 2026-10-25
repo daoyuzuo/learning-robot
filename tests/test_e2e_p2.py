@@ -1,4 +1,5 @@
 import warnings
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
-from testbridge.learning.store import LearningStore
+from testbridge.learning.store import Goal, LearningStore
 from web.app import create_app
 
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
@@ -28,20 +29,32 @@ def test_learning_loop_end_to_end(tmp_path: Path) -> None:
         LearningStore(tmp_path / "l.db"), now_fn=lambda: NOW,
     )
     for outcome in ["correct", "correct", "correct"]:
-        event = new_event(
-            kind="exercise_attempt", lesson_id="L-SYNC-001",
-            exercise_id="EX-SYNC-001", concept_ids=["sensor-time-sync"],
-            outcome=outcome, score=1.0, max_score=1.0,
+        event = replace(
+            new_event(
+                kind="exercise_attempt", lesson_id="L-SYNC-001",
+                exercise_id="EX-SYNC-001", concept_ids=["sensor-time-sync"],
+                outcome=outcome, score=1.0, max_score=1.0,
+            ),
+            created_at=NOW.isoformat(),
         )
         service.evidence.append(event)
-    rebuild_state(service)
+    result = rebuild_state(service)
+    assert result.events == 3
+    assert result.concepts == 1
+    assert result.reviews == 1
+    assert service.store.get_mastery("local", "sensor-time-sync") is not None
     view = service.mastery("sensor-time-sync")
     assert view.exercise_observations == 3
     assert view.estimate == view.bkt_p
     assert service.store.list_reviews("local")
-    assert 0.0 <= service.readiness().total <= 1.0
+    readiness = service.readiness()
+    assert readiness.total > 0
+    assert "M01" in readiness.by_module
+    service.store.set_goal(Goal(learner_id="local", daily_minutes=30))
     plan = service.today_plan()
-    assert plan.budget_minutes == 45
+    assert plan.budget_minutes == 30
+    assert plan.items
+    assert all(item.reason and item.estimated_minutes > 0 for item in plan.items)
 
 
 def test_p2_web_pages_on_sample_pack(tmp_path: Path) -> None:
@@ -49,4 +62,6 @@ def test_p2_web_pages_on_sample_pack(tmp_path: Path) -> None:
     assert c.get("/today").status_code == 200
     assert c.get("/concepts").status_code == 200
     assert c.get("/review").status_code == 200
+    assert c.get("/progress").status_code == 200
+    assert "Readiness" in c.get("/progress").text
     assert c.get("/").status_code == 200

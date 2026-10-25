@@ -128,7 +128,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
-## P2 退出标准
+## P2 退出标准（实现自检）
 
 - [x] `pytest` 全绿，P1 测试无回归
 - [x] 掌握度、复习、readiness、今日计划接口可用
@@ -149,45 +149,24 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - 独立复习播放器；P2 的 `/review` 列表跳转课程页复用已有表单。
 - BKT 参数校准（P3 用真实数据）。
 - 概念级 FSRS 卡与复习后手动自评。
+- Artifact 仍只记录路径；产出物评分（`accept` / `max_size_mb`、`data/artifacts/<evidence-id>/`）顺延。
 - P1 工程债中未随 P2 处理的部分：`tb build --lesson` 未知 ID 抛 `KeyError`；单文件 HTML 未内联完整 manifest / objectives / 资源列表；`web/` 与 `web/static` 未进 wheel；`schema_version` 别名；证据导出 100 万条上限、导入非原子、`new_event` 不支持 `supersedes`；CSP 对 `application/json` 内联块的内联报告；首页“继续学习”/内容包列表、提交聚合统计、证据写入失败 503 降级。
 
 ---
 
-## P1 遗留（P2 前必须处理）
+## P1 遗留（已处理 / 顺延）
 
-P1 已满足退出标准；以下是最终审查确认的遗留项，排进 P2 或更早。
-
-### 必须在 P2 掌握度/防作弊之前
-
-- 前端内嵌练习 JSON 仍包含 `answer` 字段；P2 读证据前改成安全投影或移除。
-- 证据 API 应校验 `exercise_id` 属于请求的 `lesson_id`，避免错误归因。
-- Artifact 仍只记录路径；若 P2 要做产出物评分，先实现 `accept` / `max_size_mb` 和 `data/artifacts/<evidence-id>/`。
-
-### 工程债
-
-- `_script_json` 在 web/build 两份重复；抽成共享 helper。
-- CLI 的 `build --lesson` 未知 ID 抛 `KeyError`；内容/导入错误输出 traceback，而不是 `ERROR code: path: message`。
-- 单文件 HTML 未内联完整 manifest / objectives / 资源列表；P1 只内联正文和练习数据。
-- `web/` 与 `web/static/tb.css` 未进 wheel；P2 打包前移到 package data。
-- `schema` 别名允许 `schema_version` 作为键；P2 前收紧。
-- 证据导出上限 100 万条、导入非原子、`new_event` 不能设置 `supersedes`。
-- CSP 对 `application/json` 内联块可能产生浏览器报告；功能不受影响，P2 观察。
-- 测试补强：黄金课程快照、widget 默认替换、e2e submit → store → export → import、`/assets`、超过 200 条证据的进度页。
-
-### 规格里未实现的 UI
-
-- 首页“继续学习”/内容包列表、按课程/概念聚合的提交数与正确率、证据写入失败 503 降级。
+- [x] 前端内嵌练习 JSON 已移除（P2 Task 0）。
+- [x] 证据 API 校验 `exercise_id` 属于请求的 `lesson_id`（P2 Task 0）。
+- [x] web `_script_json` 重复随数据块一并移除。
+- Artifact 仍只记录路径；产出物评分顺延，见上方 `P2 遗留`。
+- 其余 P1 工程债已合并到上方 P2 遗留。
 
 ---
 
 ## 后续期摘要
 
-### P2 学习闭环
-
-- Mastery：先规则，后 BKT；每个估计可下钻到证据。
-- Scheduler：`py-fsrs`，按概念/练习生成复习卡。
-- Recommender：输出“学什么 + 为什么 + 预计时长”。
-- Dashboard：概念图、掌握度、复习队列、readiness 总分。
+P2 已实现；当前范围、退出标准与遗留以上方 P2 章节为准。
 
 ### P3 内容生产
 

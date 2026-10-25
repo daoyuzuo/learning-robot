@@ -22,7 +22,7 @@ P1 已完成；P2 在追加式证据之上增加掌握度（规则 + BKT）、FS
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)
 
-## 目标结构（P1）
+## 目标结构
 
 ```
 content-packs/      # 可替换的内容包
@@ -67,6 +67,9 @@ tb readiness --pack content-packs/sample-sensors --db data/testbridge.db
 
 # 查看今天学什么、为什么、预计时长
 tb today --pack content-packs/sample-sensors --db data/testbridge.db
+
+# 启动学习界面（Dashboard）
+tb serve content-packs/sample-sensors --port 8000
 ```
 
 打开 http://127.0.0.1:8000 。
