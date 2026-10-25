@@ -9,28 +9,34 @@
 
 ## 当前阶段
 
+**P3.4 已完成（2026-10-26，分支 `p3.4-multi-module-batch`）。** `/studio` 按课程包生产：
+一个包 1–3 个模块、每模块 1–5 课；大纲 HTML 可编辑模块标题、模块概念与课程归属，
+保存时同步 `module.yaml`；包内顺序批量「全部调研 / 全部写课」只跑 pending/failed；
+已完成的课可「重写这一课」替换旧输出。旧草稿（单模块、扁平 outline）按 `M01` 兼容。
+默认 `pytest` 508 passed、3 个 live 取消选择；两个现有包 `tb validate` 0/0，
+`tb quality` 100/100。设计见
+`docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md`。
+
 **P3.2 已完成。** `/studio` 提供“主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”工作台，产物是普通 `tb/1` 包，引擎零改动。P3.2 增加确定性质量门禁：`tb quality` 给出 0–100 质量分，硬错误阻断定稿。规则、分值与验收见
 `docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md`。
 
 **P3.3 已完成。** 新增 OpenAlex 后端、插件化 `SearchRouter`、学术关键词 +
 domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“资源必须来自 A/B 命中”
-的溯源收紧。默认 `pytest` 458 passed、3 个 live 取消选择；live 3 passed。设计见
+的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**当前 P3.4（多模块与批量）设计已批准，待实现。** 一个包 1–3 个模块、每模块
-1–5 课；大纲 HTML 可编辑模块结构；包内顺序批量只跑 pending/failed；单课重写
-替换旧输出。设计见
-`docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md`。
+**下一步 P3.5（内容演进）范围待定义。** 候选：批量重生成、`tb migrate`、内容包整包演进。
+开始前先更新 ROADMAP，并按“改引擎/改契约”流程写 spec 与计划。
 
 **不要提前实现：**
 
+- P3.5 内容演进的具体实现（批量重生成、`tb migrate`）
 - SearXNG / Firecrawl / arXiv 适配器
-- P3.5：内容演进（批量重生成、`tb migrate`）
 - P4：面试 / 公司情报 / 求职管理
 
 除非用户明确要求并先更新 ROADMAP。
 
-**P3.1 / P3.4 附加边界：**
+**P3.1 / P3.4 已实现约束（继续有效）：**
 
 - `src/testbridge/studio/` 不得 import `mastery`、`schedule`、`learning`、`evidence`。
 - 批量只按模块/课顺序执行，不并行；只跑 pending/failed。
