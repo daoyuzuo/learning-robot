@@ -250,5 +250,104 @@ def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
         json=confirm_payload(question_id, graded),
     )
     text = c.get("/progress").text
-    assert "面试" in text
+    assert re.search(r"<td>\s*面试\s*</td>", text)
     assert f"/interview/session/{session_id}/summary" in text
+
+
+def test_three_question_flow_reaches_today(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    for _ in range(3):
+        page = c.get(f"/interview/session/{session_id}").text
+        question_id = page.split('data-question-id="')[1].split('"')[0]
+        c.put(f"/api/interview/session/{session_id}/answer",
+              json={"question_id": question_id, "answer": "我的回答"})
+        graded = c.post(
+            f"/api/interview/session/{session_id}/grade",
+            json={"question_id": question_id},
+        ).json()
+        response = c.post(
+            f"/api/interview/session/{session_id}/confirm",
+            json={
+                "question_id": question_id,
+                "scores": [
+                    {"dimension": item["dimension"], "score": 0.2}
+                    for item in graded["scores"]
+                ],
+            },
+        )
+        assert response.status_code == 200
+    summary = c.get(f"/interview/session/{session_id}/summary")
+    assert summary.status_code == 200
+    today = c.get("/today").text
+    assert "面试失分" in today
+
+
+def test_session_resumes_after_app_restart(tmp_path: Path) -> None:
+    db = tmp_path / "i.db"
+    first = TestClient(create_app(
+        SAMPLE, db, interview_banks=BANKS,
+        interview_llm=FakeClient(), interview_config=CONFIG,
+    ))
+    session_id = start_session(first)
+    page = first.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    first.put(f"/api/interview/session/{session_id}/answer",
+              json={"question_id": question_id, "answer": "重启前的回答"})
+    second = TestClient(create_app(
+        SAMPLE, db, interview_banks=BANKS,
+        interview_llm=FakeClient(), interview_config=CONFIG,
+    ))
+    resumed = second.get(f"/interview/session/{session_id}").text
+    assert question_id in resumed
+    assert "重启前的回答" in resumed
+
+
+class BadJsonClient:
+    def complete(self, system: str, user: str) -> str:
+        return "not json"
+
+
+def test_manual_scoring_flow_writes_evidence(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=BadJsonClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    assert graded["mode"] == "manual"
+    confirmed = c.post(
+        f"/api/interview/session/{session_id}/confirm",
+        json=confirm_payload(question_id, graded, score=0.6),
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["evidence_id"]
+
+
+def test_malformed_duration_is_400(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    session_id = start_session(c)
+    page = c.get(f"/interview/session/{session_id}").text
+    question_id = page.split('data-question-id="')[1].split('"')[0]
+    c.put(f"/api/interview/session/{session_id}/answer",
+          json={"question_id": question_id, "answer": "答案"})
+    graded = c.post(
+        f"/api/interview/session/{session_id}/grade",
+        json={"question_id": question_id},
+    ).json()
+    response = c.post(
+        f"/api/interview/session/{session_id}/confirm",
+        json={
+            "question_id": question_id,
+            "scores": [
+                {"dimension": item["dimension"], "score": 0.6}
+                for item in graded["scores"]
+            ],
+            "duration_ms": {},
+        },
+    )
+    assert response.status_code == 400

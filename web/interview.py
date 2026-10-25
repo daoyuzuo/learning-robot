@@ -208,9 +208,9 @@ def mount_interview(
                 session_id,
                 str(payload.get("question_id") or ""),
                 scores,
-                duration_ms=int(payload.get("duration_ms") or 0),
+                duration_ms=int(payload.get("duration_ms", 0)),
             )
-        except (SessionError, ValueError) as exc:
+        except (SessionError, ValueError, TypeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         session = service.get(session_id)
         return {

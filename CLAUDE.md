@@ -9,10 +9,13 @@
 
 ## 当前阶段
 
-**P4.1 面试闭环：设计已确认，实施待开始（2026-10-26，分支 `p4.1-interview`，基线 `d275f89`）。**
-用户已明确要求启动 P4。实现前必须先读
-`docs/superpowers/specs/2026-10-26-p4.1-interview-loop-design.md`。P4.1 只做技术题、
-成套模拟、确认式评分、面试证据驱动弱项；P4.2（公司/JD）与 P4.3（求职管理）各自另写 spec。
+**P4.1 面试闭环：已完成（2026-10-26，分支 `p4.1-interview`，基线 `d275f89`）。**
+成套技术面试模拟：弱项抽题（3/5 题）、LLM 建议评分、用户确认后写 `kind=interview`
+证据、会话暂停/恢复/放弃、汇总页与 `/progress` 下钻；面试证据权重 0.6、单独计数、
+不进 BKT，面试失分进入 `/today` 弱项。默认 `pytest` 595 passed、3 deselected；
+两个包 `tb validate` 0/0。设计见
+`docs/superpowers/specs/2026-10-26-p4.1-interview-loop-design.md`。P4.2（公司/JD）与
+P4.3（求职管理）各自另写 spec。
 
 **P3.4 已完成（2026-10-26，分支 `p3.4-multi-module-batch`）。** `/studio` 按课程包生产：
 一个包 1–3 个模块、每模块 1–5 课；大纲 HTML 可编辑模块标题、模块概念与课程归属，
@@ -30,7 +33,7 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**P3.5（内容演进）范围待定义，与 P4.1 并行。** 候选：批量重生成、`tb migrate`、
+**P3.5（内容演进）范围待定义。** 候选：批量重生成、`tb migrate`、
 内容包整包演进。开始前先更新 ROADMAP，并按“改引擎/改契约”流程写 spec 与计划。
 
 **不要提前实现：**
@@ -55,7 +58,7 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 - 草稿在 `drafts/`（已 gitignore）；默认 `pytest` 不联网，真实调用需 `TESTBRIDGE_LIVE=1`。
 - 手动选择检索后端时不静默回退；只有 `auto` 才回退。
 
-**P4.1 已实现约束（实施时生效）：**
+**P4.1 已实现约束（继续有效）：**
 
 - 面试领域逻辑在 `src/testbridge/interview/`；页面路由在 `web/interview.py`，
   用 `mount_interview(app)` 追加挂载，不得改 `studio/`。

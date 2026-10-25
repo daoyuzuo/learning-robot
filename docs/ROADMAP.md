@@ -3,9 +3,9 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.1（面试闭环）设计已确认，实施待开始，2026-10-26**
-> 状态：设计定稿（分支 `p4.1-interview`，基线 `d275f89`），实现尚未开始。
-> 用户于 2026-10-26 明确要求启动 P4；P3.5（内容演进）范围仍待定义。
+> **当前期：P4.1（面试闭环）已完成，2026-10-26**
+> 状态：已实现并验收（分支 `p4.1-interview`，基线 `d275f89`）。
+> P3.5（内容演进）范围仍待定义。
 > 设计见 [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)。
 >
 > P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成。P3.4
@@ -308,7 +308,7 @@ quality: 100/100                # exit 0
 
 ---
 
-## P4.1 面试闭环（设计已确认，实施待开始）
+## P4.1 面试闭环（已完成，2026-10-26）
 
 **范围：**
 
@@ -322,23 +322,41 @@ quality: 100/100                # exit 0
 **不做：** 行为题、系统设计题、多轮追问、语音、强制计时、JD 匹配（P4.2）、
 投递复盘（P4.3）、把 `interviews.yaml` 纳入 `tb/1` 校验（P4.1b）。
 
-**退出标准（待实测）：**
+**退出标准（实测，2026-10-26）：**
 
-- [ ] 3 题模拟可从 `/interview` 开始、暂停、恢复、完成并生成汇总
-- [ ] 每题确认后写面试证据，重复确认不重复写
-- [ ] 能下钻到面试证据与原始回答
-- [ ] 面试失分概念进入 `/today` 弱项
-- [ ] 未配置 LLM 时可手动打分完成流程
-- [ ] `pytest` 全绿，P3.4 的 508 个测试无回归
-- [ ] 两个现有包 `tb validate` 仍 0/0
+- [x] 3 题模拟可从 `/interview` 开始、暂停、恢复、完成并生成汇总
+      （`test_three_question_flow_reaches_today`、`test_session_resumes_after_app_restart`、`test_confirm_writes_evidence_and_summary`）
+- [x] 每题确认后写面试证据，重复确认不重复写
+      （`test_confirm_writes_evidence_and_summary`：重复确认返回同一 `evidence_id`）
+- [x] 能下钻到面试证据与原始回答
+      （`test_progress_shows_interview_evidence`：类型列为“面试”并链接会话汇总；确认时回答全文写入 evidence payload）
+- [x] 面试失分概念进入 `/today` 弱项
+      （`test_three_question_flow_reaches_today`：`/today` 出现“面试失分”）
+- [x] 未配置 LLM 时可手动打分完成流程
+      （`test_manual_scoring_flow_writes_evidence`：`mode=manual`，确认后写证据）
+- [x] `pytest` 全绿，P3.4 的 508 个测试无回归（595 passed，3 deselected）
+- [x] 两个现有包 `tb validate` 仍 0/0
 
 **设计：** [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
+
+**验证命令（2026-10-26）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+595 passed, 3 deselected in 34.02s
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+```
 
 ---
 
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4 已实现；P4.1 已定设计、待实施。当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4、P4.1 已实现。当前范围、退出标准与遗留以上方章节为准。
 
 ### P3.5 内容演进（范围待定义，与 P4.1 并行）
 
@@ -355,7 +373,7 @@ P2、P3.1、P3.2、P3.3、P3.4 已实现；P4.1 已定设计、待实施。当�
 
 ### P4 应用整合
 
-- [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已定设计，实施待开始。
+- [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
 - P4.2 公司/JD：概念权重、匹配度；待单独 spec。
 - P4.3 求职管理：投递、复盘；待单独 spec。
 - 能力结论仍只来自 evidence；面试会话与题库属于过程状态，不是第二本账。
