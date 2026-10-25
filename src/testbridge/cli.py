@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 import time
@@ -52,12 +53,75 @@ def _load_learning(pack_path: str, db_path: str, learner_id: str = "local") -> L
     )
 
 
+def _run_quality(
+    pack_dir: Path,
+    research_dir: str | None,
+    budget: int | None,
+    as_json: bool,
+) -> int:
+    from testbridge.quality.evaluate import QualityUnavailable, evaluate_pack
+
+    explicit_research = research_dir is not None
+    research_path = Path(research_dir) if research_dir else None
+
+    draft_path = pack_dir / "draft.json"
+    if draft_path.is_file():
+        try:
+            draft = json.loads(draft_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            draft = {}
+        if research_path is None:
+            research_path = pack_dir / "research"
+        if budget is None and isinstance(draft.get("searches_per_lesson"), int):
+            budget = draft["searches_per_lesson"]
+
+    if explicit_research and (research_path is None or not research_path.is_dir()):
+        print(f"ERROR research_dir: not found: {research_path}")
+        return 2
+
+    try:
+        report = evaluate_pack(
+            pack_dir, research_dir=research_path, budget=budget
+        )
+    except QualityUnavailable as exc:
+        for issue in exc.report.errors:
+            print(f"ERROR {issue.code}: {issue.message}")
+        for issue in exc.report.warnings:
+            print(f"WARN {issue.code}: {issue.message}")
+        print("run tb validate first")
+        return 2
+
+    if as_json:
+        print(json.dumps(report.as_dict(), ensure_ascii=False, indent=2))
+    else:
+        print(f"quality: {report.score}/100")
+        for issue in report.errors:
+            print(f"ERROR {issue.code}: {issue.message}")
+        for issue in report.warnings:
+            print(f"WARN {issue.code}: {issue.message}")
+        print(
+            "provenance: "
+            + ("evaluated" if report.provenance_evaluated else "not evaluated")
+        )
+        print(
+            "research: "
+            + ("evaluated" if report.research_evaluated else "not evaluated")
+        )
+    return 0 if report.ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
 
     validate = sub.add_parser("validate", help="validate a content pack")
     validate.add_argument("pack")
+
+    quality = sub.add_parser("quality", help="check content quality")
+    quality.add_argument("pack")
+    quality.add_argument("--research-dir", default=None)
+    quality.add_argument("--budget", type=int, default=None)
+    quality.add_argument("--json", action="store_true")
 
     build = sub.add_parser("build", help="build standalone lessons")
     build.add_argument("pack")
@@ -123,6 +187,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"WARN {issue.code}: {issue.message}")
         print(f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)")
         return 0 if report.ok else 1
+
+    if args.command == "quality":
+        return _run_quality(
+            Path(args.pack), args.research_dir, args.budget, args.json
+        )
 
     if args.command == "build":
         paths = build_pack(Path(args.pack), Path(args.out), args.lesson)
