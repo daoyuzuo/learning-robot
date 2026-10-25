@@ -70,3 +70,39 @@ def test_quality_explicit_missing_research_dir_is_error(tmp_path: Path, capsys) 
         "quality", str(SAMPLE), "--research-dir", str(tmp_path / "nope"),
     ]) == 2
     assert "not found" in capsys.readouterr().out
+
+
+def test_quality_invalid_pack_exits_2(tmp_path: Path, capsys) -> None:
+    assert main(["quality", str(tmp_path / "nope")]) == 2
+    assert "run tb validate first" in capsys.readouterr().out
+
+
+def test_quality_flags_override_draft(tmp_path: Path, capsys) -> None:
+    pack = tmp_path / "pack"
+    shutil.copytree(SAMPLE, pack)
+    (pack / "draft.json").write_text(
+        json.dumps({"searches_per_lesson": 2}), encoding="utf-8"
+    )
+    (pack / "research").mkdir()
+
+    external = tmp_path / "external"
+    external.mkdir()
+    content = load_pack(pack)
+    hits = [{"url": resource.url, "trust": "A"} for resource in content.resources.values()]
+    for lesson in content.lessons_in_order():
+        (external / f"{lesson.manifest.id}.json").write_text(
+            json.dumps({
+                "lesson_id": lesson.manifest.id,
+                "queries": ["q"],
+                "hits": hits,
+            }),
+            encoding="utf-8",
+        )
+
+    assert main([
+        "quality", str(pack), "--research-dir", str(external), "--budget", "10",
+    ]) == 0
+    out = capsys.readouterr().out
+    assert "research: evaluated" in out
+    assert "research_queries_low" in out
+    assert "research_missing" not in out
