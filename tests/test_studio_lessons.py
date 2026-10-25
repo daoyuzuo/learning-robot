@@ -211,7 +211,13 @@ def test_manifest_concepts_prefer_lesson_plan(tmp_path: Path) -> None:
 
 def test_cross_lesson_id_collisions_are_namespaced(tmp_path: Path) -> None:
     store = setup(tmp_path)
-    output = parse_lesson_json(json.dumps(PAYLOAD), LESSON, {"executor-basics"})
+    payload = {
+        **PAYLOAD,
+        "html": '<article class="tb-lesson">'
+                '<div data-tb-exercise="EX-1"></div>'
+                '<a data-tb-resource="DOC-1"></a></article>',
+    }
+    output = parse_lesson_json(json.dumps(payload), LESSON, {"executor-basics"})
     write_lesson(store, "demo", LESSON, output, namespace=True)
 
     second = LessonPlan(
@@ -226,3 +232,4 @@ def test_cross_lesson_id_collisions_are_namespaced(tmp_path: Path) -> None:
     assert [item["id"] for item in resources] == ["DOC-1", "L-EXEC-002-DOC-1"]
     html = store.read("demo", "modules/M01/lessons/L-EXEC-002.html")
     assert 'data-tb-exercise="L-EXEC-002-EX-1"' in html
+    assert 'data-tb-resource="L-EXEC-002-DOC-1"' in html

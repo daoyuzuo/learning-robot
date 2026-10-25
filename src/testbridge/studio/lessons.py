@@ -210,6 +210,16 @@ def _unique_id(base: str, used: set[str], prefix: str) -> str:
     return f"{candidate}-{index}"
 
 
+def _rewrite_attr(html: str, attribute: str, mapping: dict[str, str]) -> str:
+    for original, new_id in mapping.items():
+        html = re.sub(
+            rf'({attribute}\s*=\s*["\']){re.escape(original)}(["\'])',
+            lambda match, value=new_id: match.group(1) + value + match.group(2),
+            html,
+        )
+    return html
+
+
 def _namespace_collisions(
     lesson: LessonPlan,
     output: LessonOutput,
@@ -232,13 +242,8 @@ def _namespace_collisions(
             resource_map[original] = new_id
     if not exercise_map and not resource_map:
         return output
-    html = output.html
-    for original, new_id in exercise_map.items():
-        html = re.sub(
-            rf'(data-tb-exercise\s*=\s*["\']){re.escape(original)}(["\'])',
-            lambda match, value=new_id: match.group(1) + value + match.group(2),
-            html,
-        )
+    html = _rewrite_attr(output.html, "data-tb-exercise", exercise_map)
+    html = _rewrite_attr(html, "data-tb-resource", resource_map)
     return LessonOutput(
         manifest=output.manifest,
         html=html,
