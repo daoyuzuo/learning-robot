@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}面试中 · TestBridge{% endblock %}
+{% block content %}
+<div class="tb-interview-session"
+     data-interview-session="{{ session.id }}"
+     data-question-id="{{ question.id }}">
+  {% if status == "abandoned" %}
+    <p class="tb-interview-error">会话已结束。</p>
+    <p><a href="/interview">回到面试首页</a></p>
+  {% else %}
+  <p class="tb-meta">{{ index + 1 }} / {{ total }} · 建议 {{ question.minutes }} 分钟</p>
+  <h1>{{ question.title }}</h1>
+  <p>{{ question.prompt }}</p>
+  <p class="tb-meta">概念：{{ question.concepts|join("、") }}</p>
+  <table class="tb-interview-dimensions">
+    <tr><th>维度</th><th>权重</th><th>标准</th></tr>
+    {% for item in question.rubric %}
+    <tr><td>{{ item.dimension }}</td><td>{{ item.weight }}</td><td>{{ item.criteria }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <label class="tb-interview-answer-label" for="tb-interview-answer">你的回答</label>
+  <textarea id="tb-interview-answer" rows="12"
+    {% if answer and answer.status in ["graded", "confirmed"] %}readonly{% endif %}
+  >{{ answer.answer if answer else "" }}</textarea>
+  <p class="tb-meta tb-interview-save">自动保存</p>
+  <p class="tb-interview-error" hidden></p>
+
+  <div class="tb-interview-actions">
+    {% if not answer or answer.status == "answered" %}
+    <button type="button" data-action="grade">提交评分</button>
+    {% endif %}
+    {% if answer and answer.status == "graded" %}
+    <button type="button" data-action="grade">重新评分</button>
+    <button type="button" data-action="confirm">确认本题</button>
+    <button type="button" data-action="reset">重新作答</button>
+    {% endif %}
+    <button type="button" data-action="abandon">放弃本次</button>
+  </div>
+
+  {% if answer and answer.status in ["graded", "confirmed"] %}
+  <section class="tb-interview-card">
+    <h2>{{ "已确认" if answer.status == "confirmed" else "评分建议" }}</h2>
+    {% if answer.llm_summary %}<p>{{ answer.llm_summary }}</p>{% endif %}
+    <table class="tb-interview-dimensions">
+      <tr><th>维度</th><th>建议分</th><th>理由</th><th>你的分数</th></tr>
+      {% for item in answer.llm_scores %}
+      <tr>
+        <td>{{ item.dimension }}</td>
+        <td>{{ item.score }}</td>
+        <td>{{ item.rationale }}</td>
+        <td>
+          {% set confirmed = (answer.confirmed_scores | selectattr("dimension", "equalto", item.dimension) | list) %}
+          {% if answer.status == "confirmed" and confirmed %}
+            {{ confirmed[0].score }}
+          {% else %}
+            <input type="number" min="0" max="1" step="0.1"
+                   value="{{ item.score }}" data-dimension="{{ item.dimension }}">
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/interview.js"></script>
+{% endblock %}

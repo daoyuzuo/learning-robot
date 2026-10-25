@@ -18,9 +18,26 @@
 <p>共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
 {% endif %}
 <table>
-<tr><th>时间</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th></tr>
+<tr><th>时间</th><th>类型</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th><th>详情</th></tr>
 {% for event in events %}
-<tr><td>{{ event.created_at }}</td><td>{{ event.lesson_id or "" }}</td><td>{{ event.exercise_id or "" }}</td><td>{{ event.outcome or "" }}</td><td>{{ event.score if event.score is not none else "" }}</td></tr>
+<tr>
+  <td>{{ event.created_at }}</td>
+  <td>
+    {% if event.kind == "interview" %}面试
+    {% elif event.kind == "self_assess" %}自评
+    {% elif event.kind == "artifact" %}产出物
+    {% else %}练习{% endif %}
+  </td>
+  <td>{{ event.lesson_id or "" }}</td>
+  <td>{{ event.exercise_id or "" }}</td>
+  <td>{{ event.outcome or "" }}</td>
+  <td>{{ event.score if event.score is not none else "" }}</td>
+  <td>
+    {% if event.kind == "interview" and event.session_id %}
+    <a href="/interview/session/{{ event.session_id }}/summary">面试会话</a>
+    {% endif %}
+  </td>
+</tr>
 {% endfor %}
 </table>
 {% endblock %}

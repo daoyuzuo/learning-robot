@@ -1,0 +1,162 @@
+schema: tb-interview/1
+pack: ros2-qos
+questions:
+  - id: q-ros2-comm-01
+    title: 话题、服务、动作怎么选
+    prompt: 传感器数据流、按需查询配置、长时导航任务分别适合哪种通信原语？说明理由。
+    concepts: [ros2-communication-model]
+    level: L2
+    minutes: 6
+    reference_points: [话题适合持续数据流, 服务适合请求响应, 动作适合可反馈可取消的长任务]
+    rubric:
+      - {dimension: 原语匹配, weight: 0.6, criteria: 三种场景各自匹配正确}
+      - {dimension: 理由完整性, weight: 0.4, criteria: 说明耦合、反馈与取消差异}
+  - id: q-ros2-comm-02
+    title: 什么时候不该用话题
+    prompt: 有人把所有交互都做成话题。请指出至少两个会出问题的场景，并说明替代方案。
+    concepts: [ros2-communication-model]
+    level: L2
+    minutes: 6
+    reference_points: [需要返回值, 需要失败感知, 需要取消或进度]
+    rubric:
+      - {dimension: 问题识别, weight: 0.6, criteria: 指出请求响应或长任务场景}
+      - {dimension: 替代方案, weight: 0.4, criteria: 给出服务或动作并解释}
+  - id: q-ros2-comm-03
+    title: 回调组与执行器
+    prompt: 一个节点同时处理高频传感器回调和低频控制命令，如何避免控制命令被饿死？请说明机制。
+    concepts: [ros2-communication-model]
+    level: L3
+    minutes: 8
+    reference_points: [回调组, 执行器类型, 线程模型, 优先级]
+    rubric:
+      - {dimension: 机制说明, weight: 0.5, criteria: 提到回调组与执行器}
+      - {dimension: 隔离方案, weight: 0.3, criteria: 区分互斥与重入}
+      - {dimension: 代价分析, weight: 0.2, criteria: 说明线程与并发代价}
+  - id: q-ros2-qos-01
+    title: 可靠性策略怎么选
+    prompt: 客户要求控制指令绝不丢失，你会怎么配置 Reliability 与 Durability？说明代价。
+    concepts: [dds-qos-policies, qos-compatibility]
+    level: L3
+    minutes: 8
+    reference_points: [RELIABLE, 重传代价, Durability 与晚加入者, 资源占用]
+    rubric:
+      - {dimension: 策略选择, weight: 0.5, criteria: 选对 Reliability 与 Durability}
+      - {dimension: 代价说明, weight: 0.3, criteria: 说明重传、延迟与资源占用}
+      - {dimension: 场景结合, weight: 0.2, criteria: 结合控制指令场景}
+  - id: q-ros2-qos-02
+    title: 历史深度与队列
+    prompt: History 的 depth 设成 1 和设成 100 分别适合什么场景？请结合订阅者处理速度分析。
+    concepts: [dds-qos-policies]
+    level: L2
+    minutes: 6
+    reference_points: [depth 语义, 慢消费者, 丢弃策略, 内存]
+    rubric:
+      - {dimension: 语义准确性, weight: 0.6, criteria: 说明 depth 与队列的关系}
+      - {dimension: 场景匹配, weight: 0.4, criteria: 分别给出合适场景}
+  - id: q-ros2-qos-03
+    title: QoS 不兼容会怎样
+    prompt: 发布者 RELIABLE、订阅者 BEST_EFFORT 时会建立连接吗？反向呢？请给出排查思路。
+    concepts: [dds-qos-policies, qos-compatibility]
+    level: L3
+    minutes: 8
+    reference_points: [offered 与 requested, 兼容矩阵, 无数据现象, 日志与工具]
+    rubric:
+      - {dimension: 兼容性判断, weight: 0.5, criteria: 两个方向都判断正确}
+      - {dimension: 排查步骤, weight: 0.3, criteria: 给出可执行步骤}
+      - {dimension: 根因表达, weight: 0.2, criteria: 说明为何表现为无数据}
+  - id: q-ros2-compat-01
+    title: 为什么订阅不到数据
+    prompt: 节点启动正常、话题名一致，但订阅端收不到数据。请按可能性排序给出排查清单。
+    concepts: [qos-compatibility]
+    level: L2
+    minutes: 8
+    reference_points: [QoS 兼容性, 命名空间, 域 ID, 发现配置, 类型不匹配]
+    rubric:
+      - {dimension: 排查顺序, weight: 0.5, criteria: 从最可能到最不可能}
+      - {dimension: 覆盖度, weight: 0.3, criteria: 覆盖 QoS、域、命名空间等}
+      - {dimension: 验证手段, weight: 0.2, criteria: 每项都有验证方法}
+  - id: q-ros2-compat-02
+    title: 兼容性矩阵怎么读
+    prompt: 解释 offered 与 requested 的关系，并举一个“双方各自合理但不兼容”的例子。
+    concepts: [qos-compatibility]
+    level: L2
+    minutes: 6
+    reference_points: [发布者 offered, 订阅者 requested, 子集关系, 不对称]
+    rubric:
+      - {dimension: 概念准确性, weight: 0.6, criteria: 说明 offered/requested 与兼容条件}
+      - {dimension: 实例质量, weight: 0.4, criteria: 例子真实且解释清楚}
+  - id: q-ros2-compat-03
+    title: 升级 QoS 的回归风险
+    prompt: 团队把默认 QoS 从 BEST_EFFORT 改成 RELIABLE。你会重点回归哪些场景？
+    concepts: [qos-compatibility, dds-qos-policies]
+    level: L3
+    minutes: 8
+    reference_points: [弱网, 高吞吐, 晚加入者, 内存与延迟, 与旧节点互通]
+    rubric:
+      - {dimension: 风险识别, weight: 0.5, criteria: 覆盖带宽、延迟与资源}
+      - {dimension: 回归设计, weight: 0.3, criteria: 给出具体测试场景}
+      - {dimension: 兼容策略, weight: 0.2, criteria: 考虑新旧节点混跑}
+  - id: q-ros2-obs-01
+    title: 怎么证明 QoS 生效了
+    prompt: 你配置了 QoS，但团队不信。请给出可观测证据与采集方法。
+    concepts: [qos-observability]
+    level: L2
+    minutes: 6
+    reference_points: [ros2 topic info --verbose, 运行时查询, 日志, 计数器]
+    rubric:
+      - {dimension: 证据来源, weight: 0.6, criteria: 给出命令或接口}
+      - {dimension: 可复现性, weight: 0.4, criteria: 说明如何固化为检查}
+  - id: q-ros2-obs-02
+    title: 丢包与延迟怎么定位
+    prompt: 端到端出现偶发丢包和高延迟，如何区分是应用、DDS 还是网络问题？
+    concepts: [qos-observability, qos-testing]
+    level: L3
+    minutes: 10
+    reference_points: [分层定位, 计数器, 抓包, 压测, 对比实验]
+    rubric:
+      - {dimension: 分层思路, weight: 0.4, criteria: 应用/DDS/网络三层}
+      - {dimension: 工具与指标, weight: 0.4, criteria: 给出具体观测手段}
+      - {dimension: 结论可证伪, weight: 0.2, criteria: 每步都有判定标准}
+  - id: q-ros2-obs-03
+    title: 监控指标设计
+    prompt: 为机器人通信层设计一组上线监控指标，说明每个指标能回答什么问题。
+    concepts: [qos-observability]
+    level: L2
+    minutes: 8
+    reference_points: [发布频率, 延迟分位, 丢弃计数, 重连次数, 队列深度]
+    rubric:
+      - {dimension: 指标覆盖, weight: 0.5, criteria: 覆盖吞吐、延迟、可靠性}
+      - {dimension: 可解释性, weight: 0.3, criteria: 每个指标对应明确问题}
+      - {dimension: 可落地性, weight: 0.2, criteria: 说明采集方式与成本}
+  - id: q-ros2-test-01
+    title: 通信质量怎么验收
+    prompt: 为一个 ROS 2 机器人系统设计通信质量验收测试，给出指标、场景和通过标准。
+    concepts: [qos-testing]
+    level: L3
+    minutes: 10
+    reference_points: [吞吐, 延迟分位, 丢包率, 弱网与高负载场景, 阈值]
+    rubric:
+      - {dimension: 指标体系, weight: 0.4, criteria: 指标可量化且覆盖关键维度}
+      - {dimension: 场景设计, weight: 0.4, criteria: 覆盖正常、弱网与高负载}
+      - {dimension: 通过标准, weight: 0.2, criteria: 阈值明确且可判定}
+  - id: q-ros2-test-02
+    title: 弱网测试怎么做
+    prompt: 只有一台开发机，如何模拟弱网并验证 QoS 策略？请给出可执行方案。
+    concepts: [qos-testing]
+    level: L3
+    minutes: 8
+    reference_points: [网络损伤工具, 丢包/延迟/抖动, 对照实验, 观测指标]
+    rubric:
+      - {dimension: 方案可执行, weight: 0.5, criteria: 给出具体工具与参数}
+      - {dimension: 对照设计, weight: 0.3, criteria: 有基线与对照}
+      - {dimension: 结果判读, weight: 0.2, criteria: 说明如何判定通过}
+  - id: q-ros2-test-03
+    title: 压测怎么避免自欺
+    prompt: 通信压测很容易测出“假通过”。请列举至少三个常见陷阱和规避方法。
+    concepts: [qos-testing]
+    level: L3
+    minutes: 8
+    reference_points: [发送端过载, 接收队列积压, 时间戳口径, 预热, 数据规模]
+    rubric:
+      - {dimension: 陷阱识别, weight: 0.6, criteria: 至少三个真实陷阱}
+      - {dimension: 规避方法, weight: 0.4, criteria: 每个陷阱都有对应方法}

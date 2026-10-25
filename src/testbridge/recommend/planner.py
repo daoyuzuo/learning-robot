@@ -98,6 +98,7 @@ class Planner:
         items: list[PlanItem] = []
         used_lessons: set[str] = set()
         used_exercises: set[str] = set()
+        planned_concepts: set[str] = set()
         total = 0
 
         review_budget = budget * 0.5
@@ -165,6 +166,7 @@ class Planner:
                 estimated_minutes=minutes, priority=_clamp(raw),
             ))
             used_lessons.add(lesson_id)
+            planned_concepts.add(concept_id)
             total += minutes
 
         weak_candidates: list[tuple[float, int, str]] = []
@@ -172,7 +174,14 @@ class Planner:
             concept = self.pack.concepts.get(concept_id)
             if concept is None:
                 continue
-            if view.exercise_observations + view.other_observations == 0:
+            if concept_id in planned_concepts:
+                continue
+            if (
+                view.exercise_observations
+                + view.other_observations
+                + view.interview_observations
+                == 0
+            ):
                 continue
             if view.estimate >= 0.5:
                 continue
@@ -181,6 +190,7 @@ class Planner:
         for raw, _, concept_id in sorted(
             weak_candidates, key=lambda item: (-item[0], item[1], item[2])
         ):
+            view = self.mastery[concept_id]
             lesson_id = next(
                 (
                     lid
@@ -203,13 +213,19 @@ class Planner:
                     continue
                 minutes = EXERCISE_MINUTES
             else:
-                minutes = self.pack.lessons[lesson_id].manifest.minutes or DEFAULT_LESSON_MINUTES
+                minutes = (
+                    self.pack.lessons[lesson_id].manifest.minutes
+                    or DEFAULT_LESSON_MINUTES
+                )
             if total + minutes > fill_limit:
                 continue
+            if view.exercise_observations + view.other_observations == 0:
+                reason = f"面试失分：{concept_id}（{view.estimate:.2f}）"
+            else:
+                reason = f"掌握度偏低：{concept_id}（{view.estimate:.2f}）"
             items.append(PlanItem(
                 type="weak", concept_ids=[concept_id], lesson_id=lesson_id,
-                exercise_id=exercise_id,
-                reason=f"掌握度偏低：{concept_id}（{self.mastery[concept_id].estimate:.2f}）",
+                exercise_id=exercise_id, reason=reason,
                 estimated_minutes=minutes, priority=_clamp(raw),
             ))
             if lesson_id is None:

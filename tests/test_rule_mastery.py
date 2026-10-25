@@ -45,6 +45,14 @@ def test_multi_concept_event_is_shared() -> None:
     assert result.score < 1.0
 
 
+def test_interview_has_own_bucket() -> None:
+    result = rule_score(
+        [event("interview", "submitted", ["c-one"])], "c-one", NOW
+    )
+    assert result.interview_observations == 1
+    assert result.other_observations == 0
+
+
 def test_levels_and_confidence() -> None:
     assert level_for(0.1) == "L0"
     assert level_for(0.3) == "L1"

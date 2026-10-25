@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}面试汇总 · TestBridge{% endblock %}
+{% block content %}
+<h1>面试汇总</h1>
+{% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
+<p class="tb-meta" data-status="{{ session.status }}">{{ session.created_at }} · {{ status_labels.get(session.status, session.status) }} · {{ session.question_ids|length }} 题</p>
+{% if missing_questions %}
+  <p class="tb-interview-error">题目已不在题库中：{{ missing_questions|join("、") }}</p>
+{% endif %}
+{% if session.status == "running" %}
+  <p><a href="/interview/session/{{ session.id }}">继续作答</a></p>
+{% endif %}
+{% if session.status != "completed" %}
+  <p class="tb-meta">本次尚未完成，以下只统计已确认的题目。</p>
+{% endif %}
+<h2>总分 {{ "%.2f"|format(summary.total) }}</h2>
+<table>
+  <tr><th>题目</th><th>概念</th><th>分数</th><th>回答</th><th>证据</th></tr>
+  {% for answer in summary.answers %}
+  {% set question = questions.get(answer.question_id) %}
+  <tr>
+    <td>{% if question %}{{ question.title }}{% else %}题目已不在题库中{% endif %}</td>
+    <td>{% if question %}{{ question.concepts|join("、") }}{% else %}—{% endif %}</td>
+    <td>{% if answer.question_id in summary.question_totals %}{{ "%.2f"|format(summary.question_totals[answer.question_id]) }}{% else %}—{% endif %}</td>
+    <td>
+      {% if answer.answer %}
+        <details><summary>查看</summary><p>{{ answer.answer }}</p></details>
+      {% else %}—{% endif %}
+    </td>
+    <td>
+      {% if answer.evidence_id and question %}
+        <a href="/progress?concept={{ question.concepts[0] }}">下钻</a>
+      {% elif answer.evidence_id %}
+        已确认
+      {% else %}
+        未确认
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>维度均分</h2>
+<table>
+  <tr><th>维度</th><th>均分</th></tr>
+  {% for dimension, value in summary.dimension_averages.items() %}
+  <tr><td>{{ dimension }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
+  {% endfor %}
+</table>
+{% if summary.weakest_concepts %}
+<p>最低分概念：{{ summary.weakest_concepts|join("、") }}</p>
+{% endif %}
+<p><a href="/interview">再来一次</a> · <a href="/today">回到今日</a></p>
+{% endblock %}

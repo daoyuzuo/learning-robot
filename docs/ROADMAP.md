@@ -3,14 +3,16 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4（应用整合）范围待定义**
-> 状态：P3.5 已完成并合并到 master，2026-10-26
+> **当前期：P4.1（面试闭环）已完成，2026-10-26**
+> 状态：P4.1 已实现并合并到 master（分支 `p4.1-interview`）；P3.5 已完成并合并到 master。
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5 均已完成。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
-> 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。设计见
-> [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)。
-> 下一期是 P4（面试 / 公司情报 / 求职管理），范围尚未定义，需先写 spec 并更新本文件。
+> 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。P4.1 把成套面试模拟
+> 接入同一本能力账本：面试建议分经用户确认后写入 `kind=interview` 证据，驱动掌握度与
+> `/today` 弱项。P4.2（公司/JD）与 P4.3（求职管理）范围待定义。
+> 设计见 [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md) 与
+> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)。
 
 ---
 
@@ -339,17 +341,51 @@ quality: 100/100                # exit 0
       （`test_evolution_returns_conflict_while_running`；`JobRunner` 既有互斥测试不回归）
 - [x] 默认 `pytest` 全绿；P3.4 的 518 个测试无回归，P3.5 完成时全量 564 passed、3 deselected
 
+---
+
+## P4.1 面试闭环（已完成，2026-10-26）
+
+**范围：**
+
+- 题库先落 `interview-banks/<pack-id>.yaml`，目标形态是包内 `interviews.yaml`，两者同构。
+- 成套模拟：默认 3 题、可选 5 题，弱项优先抽题，可手动覆盖概念。
+- 作答 → LLM 逐维建议评分 → 用户审阅改分 → 确认后写 `kind=interview` 证据。
+- 会话可暂停、恢复、放弃；答案提交即落库，确认幂等。
+- 无 LLM 时降级为手动 rubric 评分。
+- 引擎加法：面试权重 0.6、独立计数、不进 BKT；planner 弱项包含面试失分。
+
+**不做：** 行为题、系统设计题、多轮追问、语音、强制计时、JD 匹配（P4.2）、
+投递复盘（P4.3）、把 `interviews.yaml` 纳入 `tb/1` 校验（P4.1b）。
+
+**退出标准（实测，2026-10-26）：**
+
+- [x] 3 题模拟可从 `/interview` 开始、暂停、恢复、完成并生成汇总
+      （`test_three_question_flow_reaches_today`、`test_session_resumes_after_app_restart`、`test_confirm_writes_evidence_and_summary`）
+- [x] 每题确认后写面试证据，重复确认不重复写
+      （`test_confirm_writes_evidence_and_summary`：重复确认返回同一 `evidence_id`）
+- [x] 能下钻到面试证据与原始回答
+      （`test_progress_shows_interview_evidence` + `test_confirm_writes_evidence_and_summary`：
+      类型列链接会话汇总，汇总页“回答”列展示原始回答）
+- [x] 面试失分概念进入 `/today` 弱项
+      （`test_three_question_flow_reaches_today`：`/today` 出现“面试失分”）
+- [x] 未配置 LLM 时可手动打分完成流程
+      （`test_manual_scoring_flow_writes_evidence`：`mode=manual`，确认后写证据）
+- [x] `pytest` 全绿，P3.4 / P3.5 无回归（合并后 662 passed，3 deselected；含最终评审修复波次）
+- [x] 两个现有包 `tb validate` 仍 0/0
+
+**设计：** [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
+
 **验证命令（2026-10-26）：**
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-564 passed, 3 deselected     # exit 0
+662 passed, 3 deselected in 43.29s
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
-0 error(s), 0 warning(s)     # exit 0
+0 error(s), 0 warning(s)        # exit 0
 
 $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
-0 error(s), 0 warning(s)     # exit 0
+0 error(s), 0 warning(s)        # exit 0
 
 $ .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
 quality: 100/100             # exit 0
@@ -359,7 +395,7 @@ quality: 100/100             # exit 0
 
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4、P3.5 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 已实现。当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -368,14 +404,14 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5 已实现；当前范围、退出标准与
 - 质量门禁：引用、可信度、练习覆盖、目标级别。
 - 内容包演进：跨草稿批量重生成已由 P3.5 完成；`tb migrate` 仍未开始。
 
-### P4 应用整合（范围待定义）
+### P4 应用整合
 
-P3.5 已结束，下一期是 P4。开始前需先写 P4 spec 并更新本文件的“当前期”与退出标准。
+P4.1 已完成并合并；P4.2（公司/JD）与 P4.3（求职管理）范围待定义，开始前先写各自 spec。
 
-- 面试：rubric → InterviewScore → Evidence。
-- 公司/JD：概念权重、匹配度。
-- 求职管理：投递、复盘。
-- 所有应用层只读写账本，不另建状态。
+- [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
+- P4.2 公司/JD：概念权重、匹配度；待单独 spec。
+- P4.3 求职管理：投递、复盘；待单独 spec。
+- 能力结论仍只来自 evidence；面试会话与题库属于过程状态，不是第二本账。
 
 ---
 
@@ -387,5 +423,6 @@ P3.5 已结束，下一期是 P4。开始前需先写 P4 spec 并更新本文件
 - P3.3 检索后端：[2026-10-25-p3.3-search-backends-design.md](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - P3.4 多模块与批量：[2026-10-25-p3.4-multi-module-batch-design.md](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
 - P3.5 内容演进：[2026-10-26-p3.5-content-evolution-design.md](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
+- P4.1 面试闭环：[2026-10-26-p4.1-interview-loop-design.md](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

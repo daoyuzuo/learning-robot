@@ -9,7 +9,12 @@ from datetime import datetime
 from testbridge.evidence.store import EvidenceEvent
 from testbridge.learning.timeutil import parse_iso
 
-KIND_WEIGHTS = {"exercise_attempt": 1.0, "self_assess": 0.5, "artifact": 0.7}
+KIND_WEIGHTS = {
+    "exercise_attempt": 1.0,
+    "self_assess": 0.5,
+    "artifact": 0.7,
+    "interview": 0.6,
+}
 HALF_LIFE_DAYS = 30.0
 LEVEL_THRESHOLDS = ((0.90, "L4"), (0.75, "L3"), (0.50, "L2"), (0.25, "L1"))
 
@@ -20,6 +25,7 @@ class RuleResult:
     exercise_observations: int
     other_observations: int
     weight_sum: float
+    interview_observations: int = 0
 
 
 def event_score(event: EvidenceEvent) -> float:
@@ -30,11 +36,14 @@ def event_score(event: EvidenceEvent) -> float:
     )
 
 
-def rule_score(events: Iterable[EvidenceEvent], concept_id: str, now: datetime) -> RuleResult:
+def rule_score(
+    events: Iterable[EvidenceEvent], concept_id: str, now: datetime
+) -> RuleResult:
     numerator = 0.0
     denominator = 0.0
     exercise_observations = 0
     other_observations = 0
+    interview_observations = 0
     for event in events:
         if concept_id not in event.concept_ids:
             continue
@@ -43,6 +52,8 @@ def rule_score(events: Iterable[EvidenceEvent], concept_id: str, now: datetime) 
             continue
         if event.kind == "exercise_attempt":
             exercise_observations += 1
+        elif event.kind == "interview":
+            interview_observations += 1
         else:
             other_observations += 1
         age_days = max(0.0, (now - parse_iso(event.created_at)).total_seconds() / 86400)
@@ -52,7 +63,10 @@ def rule_score(events: Iterable[EvidenceEvent], concept_id: str, now: datetime) 
         numerator += weight * event_score(event)
         denominator += weight
     score = numerator / denominator if denominator else 0.0
-    return RuleResult(score, exercise_observations, other_observations, denominator)
+    return RuleResult(
+        score, exercise_observations, other_observations, denominator,
+        interview_observations,
+    )
 
 
 def level_for(estimate: float) -> str:

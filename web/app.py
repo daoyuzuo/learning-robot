@@ -80,6 +80,9 @@ def create_app(
     studio_search=None,
     studio_config: TutorConfig | None = None,
     studio_inline: bool = True,
+    interview_banks: Path | None = None,
+    interview_llm=None,
+    interview_config: TutorConfig | None = None,
 ) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
@@ -155,6 +158,21 @@ def create_app(
         llm=studio_llm,
         search=studio_search,
         inline=studio_inline,
+    )
+
+    from testbridge.interview.store import InterviewStore
+    from web.interview import mount_interview
+
+    mount_interview(
+        app,
+        templates,
+        pack=pack,
+        banks_root=interview_banks or ROOT / "interview-banks",
+        store=InterviewStore(database),
+        evidence_store=store,
+        learning=learning,
+        config=interview_config if interview_config is not None else studio_cfg,
+        llm=interview_llm if interview_llm is not None else studio_llm,
     )
 
     def ctx(request: Request, **kwargs):
