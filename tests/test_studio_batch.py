@@ -9,6 +9,7 @@ import yaml
 
 from fastapi.testclient import TestClient
 
+from testbridge.contract.validator import validate_pack
 from testbridge.studio.outline import parse_outline_json, write_outline
 from testbridge.studio.search import SearchHit
 from testbridge.tutor.config import TutorConfig
@@ -39,6 +40,42 @@ OUTLINE_JSON = json.dumps({
               "concepts": ["c-one"], "objectives": ["目标二"],
               "exercise_intents": ["选择题"],
               "research_queries": ["query two"]},
+         ]},
+    ],
+})
+
+
+MULTI_OUTLINE_JSON = json.dumps({
+    "pack_title": "双模块包",
+    "concepts": [
+        {"id": "c-one", "title": "概念一", "domain": "ros2",
+         "target_level": "L2", "prerequisites": [], "weight": 1.0,
+         "evidence_criteria": [
+             {"id": "EV-1", "description": "能解释", "level": "L1"},
+         ]},
+    ],
+    "modules": [
+        {"id": "M01", "title": "模块一", "concepts": ["c-one"],
+         "lessons": [
+             {"id": "L-1", "title": "课一", "minutes": 20,
+              "concepts": ["c-one"], "objectives": ["目标一"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["query one"]},
+             {"id": "L-2", "title": "课二", "minutes": 20,
+              "concepts": ["c-one"], "objectives": ["目标二"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["query two"]},
+         ]},
+        {"id": "M02", "title": "模块二", "concepts": ["c-one"],
+         "lessons": [
+             {"id": "L-3", "title": "课三", "minutes": 20,
+              "concepts": ["c-one"], "objectives": ["目标三"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["query three"]},
+             {"id": "L-4", "title": "课四", "minutes": 20,
+              "concepts": ["c-one"], "objectives": ["目标四"],
+              "exercise_intents": ["选择题"],
+              "research_queries": ["query four"]},
          ]},
     ],
 })
@@ -88,11 +125,13 @@ class FakeLlm:
         fail_on_call: int | None = None,
         block: threading.Event | None = None,
         started: threading.Event | None = None,
+        outline: str = OUTLINE_JSON,
     ) -> None:
         self.fixed_ids = fixed_ids
         self.fail_on_call = fail_on_call
         self.block = block
         self.started = started
+        self.outline = outline
         self.lesson_calls = 0
 
     def complete(self, system: str, user: str) -> str:
@@ -101,7 +140,7 @@ class FakeLlm:
                 self.started.set()
             if self.block is not None:
                 self.block.wait(5)
-            return OUTLINE_JSON
+            return self.outline
         self.lesson_calls += 1
         if self.fail_on_call == self.lesson_calls:
             raise RuntimeError("model down")
@@ -386,3 +425,114 @@ def test_draft_page_shows_batch_and_rewrite_controls(tmp_path: Path) -> None:
     assert 'data-batch-status="research"' in page
     assert 'data-batch-status="lessons"' in page
     assert 'data-action="rewrite"' in page
+
+
+def test_multi_module_batch_end_to_end(tmp_path: Path) -> None:
+    llm = FakeLlm(outline=MULTI_OUTLINE_JSON)
+    search = FakeSearch()
+    app = make_app(tmp_path, llm=llm, search=search)
+    store = app.app.state.studio_store
+
+    created = app.post("/studio", data={
+        "draft_id": "demo", "topic": "双模块课程", "level": "L2",
+        "module_count": "2", "lessons_per_module": "2",
+        "searches_per_lesson": "5",
+    })
+
+    assert created.status_code == 200, created.text
+    draft = store.load("demo")
+    assert draft["module_count"] == 2
+    assert draft["lessons_per_module"] == 2
+    assert draft["lesson_count"] == 4
+    assert draft["steps"]["outline"]["status"] == "done"
+
+    lesson_ids = ["L-1", "L-2", "L-3", "L-4"]
+    research = app.post("/api/studio/demo/batch", json={"mode": "research"})
+
+    assert research.status_code == 200, research.text
+    assert research.json()["started"] == lesson_ids
+    draft = store.load("demo")
+    assert draft["steps"]["batch"]["status"] == "done"
+    assert draft["steps"]["batch"]["mode"] == "research"
+    assert draft["steps"]["batch"]["done"] == 4
+    assert draft["steps"]["batch"]["total"] == 4
+    for lesson_id in lesson_ids:
+        assert draft["steps"]["research"][lesson_id]["status"] == "done"
+
+    lessons = app.post("/api/studio/demo/batch", json={"mode": "lessons"})
+
+    assert lessons.status_code == 200, lessons.text
+    assert lessons.json()["started"] == lesson_ids
+    draft = store.load("demo")
+    assert draft["steps"]["batch"]["status"] == "done"
+    assert draft["steps"]["batch"]["mode"] == "lessons"
+    assert draft["steps"]["batch"]["done"] == 4
+    assert draft["steps"]["batch"]["total"] == 4
+    for lesson_id in lesson_ids:
+        assert draft["steps"]["lessons"][lesson_id]["status"] == "done"
+    assert llm.lesson_calls == 4
+
+    validation = app.post(
+        "/api/studio/demo/validate", json={"skip_verify": True}
+    )
+
+    assert validation.status_code == 200, validation.text
+    assert validation.json()["ok"] is True, validation.json()["errors"]
+
+    promoted = app.post(
+        "/api/studio/demo/promote", json={"skip_verify": True}
+    )
+
+    assert promoted.status_code == 200, promoted.text
+    target = tmp_path / "packs" / "demo"
+    report = validate_pack(target)
+    assert report.errors == []
+
+    m01 = yaml.safe_load(store.read("demo", "modules/M01/module.yaml"))
+    m02 = yaml.safe_load(store.read("demo", "modules/M02/module.yaml"))
+    assert m01["id"] == "M01"
+    assert m01["concepts"] == ["c-one"]
+    assert m01["lessons"] == ["L-1", "L-2"]
+    assert m01["order"] == 1
+    assert m02["id"] == "M02"
+    assert m02["concepts"] == ["c-one"]
+    assert m02["lessons"] == ["L-3", "L-4"]
+    assert m02["order"] == 2
+    for module_id, lesson_id in (
+        ("M01", "L-1"), ("M01", "L-2"),
+        ("M02", "L-3"), ("M02", "L-4"),
+    ):
+        lesson_path = (
+            target / "modules" / module_id / "lessons" / f"{lesson_id}.html"
+        )
+        assert lesson_path.is_file()
+        assert f'"module": "{module_id}"' in lesson_path.read_text(
+            encoding="utf-8"
+        )
+
+    assert len(exercises(app)) == 12
+
+    again_research = app.post(
+        "/api/studio/demo/batch", json={"mode": "research"}
+    )
+    again_lessons = app.post(
+        "/api/studio/demo/batch", json={"mode": "lessons"}
+    )
+
+    assert again_research.json() == {"started": []}
+    assert again_lessons.json() == {"started": []}
+    assert llm.lesson_calls == 4
+
+    rewritten = app.post(
+        "/api/studio/demo/lessons",
+        json={"lesson_id": "L-1", "replace": True},
+    )
+
+    assert rewritten.status_code == 200, rewritten.text
+    after = exercises(app)
+    assert len(after) == 12
+    ids = [item["id"] for item in after]
+    assert len(ids) == len(set(ids))
+    assert "EX-1-1" not in ids
+    assert "EX-5-1" in ids
+    assert store.load("demo")["steps"]["lessons"]["L-1"]["status"] == "done"
