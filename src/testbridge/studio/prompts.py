@@ -6,16 +6,19 @@ Model output is untrusted: callers must parse and sanitize it before writing.
 from __future__ import annotations
 
 OUTLINE_SYSTEM = (
-    "你是 TestBridge 的课程设计师。为给定主题设计一个模块。\n"
+    "你是 TestBridge 的课程设计师。为给定主题设计一个多模块课程包。\n"
     "要求：\n"
-    "1. 概念 2–6 个，id 用小写 kebab-case 英文；先修关系无环。\n"
-    "2. 课程节数与用户要求一致，id 形如 L-XXX-001。\n"
-    "3. 每节课给出 1–5 条 objectives、1–3 条 exercise_intents、1–3 条 research_queries。\n"
-    "4. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
-    '{"module_title": "...", "concepts": [{"id", "title", "domain", '
+    "1. 概念 2–6 个（总数不超过 12），id 用小写 kebab-case 英文；先修关系无环。\n"
+    "2. 模块数与每模块课程数严格按用户要求；模块 id 形如 M01，课程 id 形如 L-XXX-001。\n"
+    "3. 每个模块声明 1–4 个概念；每课声明 1–2 个概念，必须属于本模块；"
+    "每个模块概念至少出现在一课。\n"
+    "4. 每课给出 1–5 条 objectives、1–3 条 exercise_intents、1–3 条 research_queries。\n"
+    "5. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
+    '{"pack_title": "...", "concepts": [{"id", "title", "domain", '
     '"target_level", "prerequisites", "weight", "evidence_criteria": '
-    '[{"id", "description", "level"}]}], "lessons": [{"id", "title", '
-    '"minutes", "objectives", "exercise_intents", "research_queries"}]}'
+    '[{"id", "description", "level"}]}], "modules": [{"id", "title", '
+    '"concepts", "lessons": [{"id", "title", "minutes", "concepts", '
+    '"objectives", "exercise_intents", "research_queries"}]}]}'
 )
 
 LESSON_SYSTEM = (
@@ -57,10 +60,13 @@ def render_concepts_text(level: str, concepts: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def render_outline_prompt(topic: str, level: str, lesson_count: int) -> str:
+def render_outline_prompt(
+    topic: str, level: str, module_count: int, lessons_per_module: int
+) -> str:
     return (
-        f"主题：{topic}\n目标级别：{level}\n课程节数：{lesson_count}\n"
-        "请输出模块大纲 JSON。"
+        f"主题：{topic}\n目标级别：{level}\n"
+        f"模块数：{module_count}\n每模块课数：{lessons_per_module}\n"
+        "请输出课程包大纲 JSON。"
     )
 
 

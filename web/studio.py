@@ -153,9 +153,11 @@ def mount_studio(
             draft_id,
             OUTLINE_SYSTEM,
             render_outline_prompt(
-                draft["topic"], draft["level"], draft["lesson_count"]
+                draft["topic"], draft["level"], 1, draft["lesson_count"]
             ),
-            lambda raw: outline_writer.parse_outline_json(raw, draft["lesson_count"]),
+            lambda raw: outline_writer.parse_outline_json(
+                raw, 1, draft["lesson_count"]
+            ),
         )
         write_outline(store, draft_id, parsed)
 

@@ -16,7 +16,9 @@ def test_lesson_prompt_documents_contract_fields() -> None:
 
 def test_outline_prompt_asks_for_json() -> None:
     assert "JSON" in OUTLINE_SYSTEM
-    assert "课程节数：3" in render_outline_prompt("ROS 2", "L2", 3)
+    prompt = render_outline_prompt("ROS 2", "L2", 2, 3)
+    assert "模块数：2" in prompt
+    assert "每模块课数：3" in prompt
 
 
 def test_lesson_prompt_embeds_all_sections() -> None:

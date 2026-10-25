@@ -5,7 +5,7 @@ from __future__ import annotations
 import html as html_lib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
 import yaml
@@ -13,7 +13,9 @@ import yaml
 from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.studio.store import ID_RE, DraftStore
 
-MAX_CONCEPTS = 8
+MAX_CONCEPTS = 12
+MAX_MODULES = 3
+MAX_LESSONS_PER_MODULE = 5
 CONCEPT_FIELDS = (
     "id", "title", "domain", "target_level", "prerequisites", "related",
     "weight", "evidence_criteria", "resources",
@@ -34,6 +36,16 @@ class LessonPlan:
     minutes: int
     objectives: list[str]
     queries: list[str]
+    module_id: str = "M01"
+    concepts: list[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ModulePlan:
+    module_id: str
+    title: str
+    concepts: list[str] | None
+    lessons: list[LessonPlan]
 
 
 def _check_id(value: object, label: str) -> None:
@@ -41,7 +53,9 @@ def _check_id(value: object, label: str) -> None:
         raise OutlineError(f"{label} 不是合法 ID：{value!r}")
 
 
-def parse_outline_json(raw: str, lesson_count: int) -> dict:
+def parse_outline_json(
+    raw: str, module_count: int, lessons_per_module: int
+) -> dict:
     text = raw.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
@@ -52,13 +66,13 @@ def parse_outline_json(raw: str, lesson_count: int) -> dict:
     if not isinstance(data, dict):
         raise OutlineError("大纲必须是 JSON 对象")
 
-    title = data.get("module_title")
-    if not isinstance(title, str) or not title.strip():
-        raise OutlineError("缺少 module_title")
+    pack_title = data.get("pack_title") or data.get("module_title")
+    if not isinstance(pack_title, str) or not pack_title.strip():
+        raise OutlineError("缺少 pack_title")
 
     concepts = data.get("concepts")
     if not isinstance(concepts, list) or not 1 <= len(concepts) <= MAX_CONCEPTS:
-        raise OutlineError("concepts 数量必须在 1–8 之间")
+        raise OutlineError("concepts 数量必须在 1–12 之间")
     concept_ids = []
     for concept in concepts:
         if not isinstance(concept, dict):
@@ -82,23 +96,90 @@ def parse_outline_json(raw: str, lesson_count: int) -> dict:
             if item not in concept_ids:
                 raise OutlineError(f"先修概念不存在：{item}")
 
-    lessons = data.get("lessons")
-    if not isinstance(lessons, list) or len(lessons) != lesson_count:
-        raise OutlineError(f"课程数量必须是 {lesson_count}")
-    lesson_ids = []
-    for lesson in lessons:
-        if not isinstance(lesson, dict):
-            raise OutlineError("lesson 必须是对象")
-        _check_id(lesson.get("id"), "lesson.id")
-        lesson_ids.append(lesson["id"])
-        if not lesson.get("objectives"):
-            raise OutlineError(f"{lesson['id']} 缺少 objectives")
-        minutes = lesson.get("minutes")
-        if not isinstance(minutes, int) or isinstance(minutes, bool) or minutes <= 0:
-            raise OutlineError(f"{lesson['id']} 的 minutes 必须是正整数")
+    raw_modules = data.get("modules")
+    legacy = False
+    if raw_modules is None:
+        raw_lessons = data.get("lessons")
+        if not isinstance(raw_lessons, list):
+            raise OutlineError("缺少 modules 或 lessons")
+        legacy = True
+        raw_modules = [{
+            "id": "M01", "title": pack_title,
+            "concepts": list(concept_ids), "lessons": raw_lessons,
+        }]
+
+    if not isinstance(raw_modules, list) or len(raw_modules) != module_count:
+        raise OutlineError(f"模块数量必须是 {module_count}")
+    if not 1 <= module_count <= MAX_MODULES:
+        raise OutlineError("模块数量必须在 1–3 之间")
+    if not 1 <= lessons_per_module <= MAX_LESSONS_PER_MODULE:
+        raise OutlineError("每模块课数必须在 1–5 之间")
+
+    module_ids: list[str] = []
+    lesson_ids: list[str] = []
+    modules: list[dict] = []
+    for module in raw_modules:
+        if not isinstance(module, dict):
+            raise OutlineError("module 必须是对象")
+        _check_id(module.get("id"), "module.id")
+        module_ids.append(module["id"])
+        title = module.get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise OutlineError(f"{module['id']} 缺少 title")
+        module_concepts = module.get("concepts")
+        if not isinstance(module_concepts, list) or not module_concepts:
+            raise OutlineError(f"{module['id']} 必须声明至少 1 个概念")
+        for concept_id in module_concepts:
+            if concept_id not in concept_ids:
+                raise OutlineError(f"{module['id']} 引用了不存在的概念：{concept_id}")
+        raw_lessons = module.get("lessons")
+        if not isinstance(raw_lessons, list) or len(raw_lessons) != lessons_per_module:
+            raise OutlineError(f"{module['id']} 课程数量必须是 {lessons_per_module}")
+        normalized_lessons = []
+        covered: set[str] = set()
+        for lesson in raw_lessons:
+            if not isinstance(lesson, dict):
+                raise OutlineError("lesson 必须是对象")
+            _check_id(lesson.get("id"), "lesson.id")
+            lesson_ids.append(lesson["id"])
+            if not lesson.get("objectives"):
+                raise OutlineError(f"{lesson['id']} 缺少 objectives")
+            minutes = lesson.get("minutes")
+            if not isinstance(minutes, int) or isinstance(minutes, bool) or minutes <= 0:
+                raise OutlineError(f"{lesson['id']} 的 minutes 必须是正整数")
+            lesson_concepts = list(module_concepts) if legacy else lesson.get("concepts")
+            if not isinstance(lesson_concepts, list) or not lesson_concepts:
+                raise OutlineError(f"{lesson['id']} 必须声明至少 1 个概念")
+            for concept_id in lesson_concepts:
+                if concept_id not in module_concepts:
+                    raise OutlineError(
+                        f"{lesson['id']} 的概念不属于模块 {module['id']}：{concept_id}"
+                    )
+                covered.add(concept_id)
+            normalized_lessons.append({
+                **lesson,
+                "concepts": [str(item) for item in lesson_concepts],
+            })
+        missing = [item for item in module_concepts if item not in covered]
+        if missing:
+            raise OutlineError(
+                f"{module['id']} 的概念没有被任何课覆盖：{missing}"
+            )
+        modules.append({**module, "lessons": normalized_lessons})
+
+    if len(set(module_ids)) != len(module_ids):
+        raise OutlineError("module.id 必须唯一")
     if len(set(lesson_ids)) != len(lesson_ids):
         raise OutlineError("lesson.id 必须唯一")
-    return data
+    return {
+        "pack_title": pack_title,
+        "module_title": pack_title,
+        "concepts": concepts,
+        "modules": modules,
+        "lessons": [
+            lesson for module in modules for lesson in module["lessons"]
+        ],
+    }
 
 
 def render_outline_html(module_title: str, lessons: list[LessonPlan]) -> str:
@@ -213,16 +294,19 @@ def parse_outline_html(html: str) -> list[LessonPlan]:
 
 
 def lesson_plans(parsed: dict) -> list[LessonPlan]:
-    return [
-        LessonPlan(
-            lesson_id=item["id"],
-            title=str(item.get("title") or item["id"]),
-            minutes=int(item.get("minutes") or 20),
-            objectives=[str(value) for value in item.get("objectives") or []],
-            queries=[str(value) for value in item.get("research_queries") or []],
-        )
-        for item in parsed["lessons"]
-    ]
+    plans: list[LessonPlan] = []
+    for module in parsed["modules"]:
+        for item in module["lessons"]:
+            plans.append(LessonPlan(
+                lesson_id=item["id"],
+                title=str(item.get("title") or item["id"]),
+                minutes=int(item.get("minutes") or 20),
+                objectives=[str(value) for value in item.get("objectives") or []],
+                queries=[str(value) for value in item.get("research_queries") or []],
+                module_id=module["id"],
+                concepts=[str(value) for value in item.get("concepts") or []],
+            ))
+    return plans
 
 
 def write_outline(store: DraftStore, draft_id: str, parsed: dict) -> list[LessonPlan]:
