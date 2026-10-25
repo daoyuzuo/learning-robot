@@ -83,3 +83,10 @@ th, td { text-align: left; border-bottom: 1px solid var(--line); padding: .5rem;
 .tb-interview-card { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 .tb-interview-dimensions { width: 100%; border-collapse: collapse; }
 .tb-interview-actions button { margin-right: .5rem; }
+
+.tb-target-error { color: #b91c1c; }
+.tb-target-score { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+.tb-target-form textarea { width: 100%; font: inherit; padding: .5rem; border: 1px solid var(--line); border-radius: 6px; }
+.tb-target-form button { margin-top: .5rem; padding: .45rem .9rem; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.tb-target-weights input { width: 5rem; }
+.tb-target-removed { color: #b45309; }

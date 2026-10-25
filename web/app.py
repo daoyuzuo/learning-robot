@@ -83,6 +83,8 @@ def create_app(
     interview_banks: Path | None = None,
     interview_llm=None,
     interview_config: TutorConfig | None = None,
+    target_llm=None,
+    target_config: TutorConfig | None = None,
 ) -> FastAPI:
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
@@ -173,6 +175,19 @@ def create_app(
         learning=learning,
         config=interview_config if interview_config is not None else studio_cfg,
         llm=interview_llm if interview_llm is not None else studio_llm,
+    )
+
+    from testbridge.career.store import TargetJdStore
+    from web.target import mount_target
+
+    mount_target(
+        app,
+        templates,
+        pack=pack,
+        learning=learning,
+        store=TargetJdStore(database),
+        config=target_config if target_config is not None else studio_cfg,
+        llm=target_llm if target_llm is not None else studio_llm,
     )
 
     def ctx(request: Request, **kwargs):

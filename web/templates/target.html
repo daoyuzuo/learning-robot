@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}目标 · TestBridge{% endblock %}
+{% block content %}
+<h1>目标岗位</h1>
+{% if error %}<p class="tb-target-error">{{ error }}</p>{% endif %}
+{% if target %}
+  <h2>{{ target.target_role or "未命名岗位" }}</h2>
+  <p class="tb-meta">更新于 {{ target.updated_at }}{% if target.model %} · 模型 {{ target.model }}{% endif %}</p>
+  <p class="tb-target-score">岗位匹配度 {{ "%.2f"|format(report.readiness.total) }}</p>
+  {% if report.readiness.gate_active %}
+  <p class="tb-meta">门控：{{ report.readiness.gate_reasons|join("；") }}</p>
+  {% endif %}
+
+  <h2>按模块</h2>
+  <table>
+    <tr><th>模块</th><th>Weighted mastery</th></tr>
+    {% for module_id, value in report.readiness.by_module.items() %}
+    <tr><td>{{ module_id }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>未达标概念</h2>
+  {% if report.gaps %}
+  <table>
+    <tr><th>概念</th><th>权重</th><th>掌握度</th><th>当前</th><th>目标</th><th>差</th></tr>
+    {% for row in report.gaps %}
+    <tr>
+      <td>{{ row.title }}</td><td>{{ row.weight }}</td>
+      <td>{{ "%.2f"|format(row.estimate) }}</td>
+      <td>{{ row.level }}</td><td>{{ row.target_level }}</td><td>{{ row.level_gap }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>JD 相关概念都已达到目标等级。</p>
+  {% endif %}
+
+  <h2>最该补的 3 个</h2>
+  {% if report.top %}
+  <ol>
+    {% for row in report.top %}
+    <li>{{ row.title }}（权重 {{ row.weight }}，差 {{ row.level_gap }} 级）</li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p>暂无。</p>
+  {% endif %}
+
+  {% if report.uncovered %}
+  <h2>内容缺口</h2>
+  <ul>{% for text in report.uncovered %}<li>{{ text }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <details>
+    <summary>JD 原文</summary>
+    <pre>{{ target.source_text }}</pre>
+  </details>
+  <p><a href="/today">去今日计划</a></p>
+{% else %}
+  <p>还没有目标 JD。粘贴一份 JD 开始。</p>
+{% endif %}
+
+<h2>{{ "更新目标 JD" if target else "粘贴 JD" }}</h2>
+<form method="post" action="/target/parse" class="tb-target-form">
+  <textarea name="jd_text" rows="12" required placeholder="粘贴岗位描述"></textarea>
+  <p class="tb-meta">解析会把 JD 文本发送到你配置的模型服务。</p>
+  <button type="submit">解析并预览</button>
+</form>
+{% endblock %}

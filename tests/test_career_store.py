@@ -30,6 +30,26 @@ def test_save_and_get_roundtrip(tmp_path: Path) -> None:
     assert loaded.updated_at
 
 
+def test_save_refreshes_updated_at(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    first = store.save(TargetJd(learner_id="local", source_text="first"))
+    second = store.save(TargetJd(learner_id="local", source_text="second"))
+    assert second.updated_at != first.updated_at
+
+
+def test_roundtrip_preserves_source_and_model(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    store.save(TargetJd(
+        learner_id="local",
+        source_text="招聘时间同步测试工程师",
+        model="fake",
+    ))
+    loaded = store.get()
+    assert loaded is not None
+    assert loaded.source_text == "招聘时间同步测试工程师"
+    assert loaded.model == "fake"
+
+
 def test_save_overwrites_single_row(tmp_path: Path) -> None:
     store = make_store(tmp_path)
     store.save(TargetJd(learner_id="local", source_text="first"))
