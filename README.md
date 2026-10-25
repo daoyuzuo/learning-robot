@@ -11,9 +11,9 @@
 
 ## 当前阶段
 
-**P1：内容契约 + 运行时。**
+**P2：学习闭环。**
 
-只做契约、加载、渲染、练习和证据；不做掌握度算法、AI 内容生成、面试整合。
+P1 已完成；P2 在追加式证据之上增加掌握度（规则 + BKT）、FSRS 复习、readiness、每日计划与 Dashboard。
 
 ## 文档
 
@@ -48,6 +48,25 @@ python -m testbridge.cli build content-packs/sample-sensors --out dist
 
 # 启动学习界面
 python -m testbridge.cli serve content-packs/sample-sensors --port 8000
+```
+
+### 学习闭环（P2）
+
+安装后 `tb` 等价于 `python -m testbridge.cli`：
+
+```bash
+# 设置学习目标（可重复执行，未指定字段保留原值）
+tb goal set --db data/testbridge.db \
+  --target-role embodied-ai-test-engineer --weekly-hours 12 --daily-minutes 45
+
+# 从证据重建派生状态（掌握度 / 复习队列）
+tb rebuild-state --pack content-packs/sample-sensors --db data/testbridge.db
+
+# 查看 readiness 总分、模块分与门控原因
+tb readiness --pack content-packs/sample-sensors --db data/testbridge.db
+
+# 查看今天学什么、为什么、预计时长
+tb today --pack content-packs/sample-sensors --db data/testbridge.db
 ```
 
 打开 http://127.0.0.1:8000 。

@@ -4,7 +4,7 @@
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
 > **当前期：P2（学习闭环）**
-> 状态：设计已认可，开始实施
+> 状态：实现完成，待验收
 >
 > P1（内容契约 + 运行时）已完成并合并到 `master`。
 
@@ -77,7 +77,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
-## P1 范围（当前）
+## P1 范围（已完成）
 
 **做：**
 
@@ -102,13 +102,54 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ## P1 退出标准
 
-- [ ] `tb validate content-packs/sample-sensors` 通过
-- [ ] `pytest` 全绿
-- [ ] 样例课能在壳里打开，练习能提交，反馈正确
-- [ ] Evidence 写入 SQLite，可导出 JSONL，可幂等导入
-- [ ] `tb build` 产出可离线打开的单文件 HTML
-- [ ] 新增一个最小 content pack 不需要改引擎代码
-- [ ] 文档（spec / ROADMAP / CLAUDE.md）与实现一致
+- [x] `tb validate content-packs/sample-sensors` 通过
+- [x] `pytest` 全绿
+- [x] 样例课能在壳里打开，练习能提交，反馈正确
+- [x] Evidence 写入 SQLite，可导出 JSONL，可幂等导入
+- [x] `tb build` 产出可离线打开的单文件 HTML
+- [x] 新增一个最小 content pack 不需要改引擎代码
+- [x] 文档（spec / ROADMAP / CLAUDE.md）与实现一致
+
+---
+
+## P2 范围
+
+**做：**
+
+- Mastery：规则冷启动 + BKT 接管，所有估计可下钻到 Evidence。
+- Review：练习级 FSRS 卡与到期队列。
+- Readiness：权重化总分 + P0 门控。
+- Recommender：每日计划（复习 → 新学 → 补弱），带理由与预计时长。
+- Dashboard：`/today`、`/concepts`、`/review`、`/progress`。
+- CLI：`rebuild-state`、`goal`、`readiness`、`today`。
+- 重建：派生表可由证据重放，增量与全量结果一致。
+
+**不做：** P3/P4（AI 内容生成、资源检索、面试、公司情报）。
+
+---
+
+## P2 退出标准
+
+- [x] `pytest` 全绿，P1 测试无回归
+- [x] 掌握度、复习、readiness、今日计划接口可用
+- [x] 增量 `record` 与全量 `rebuild-state` 对同一证据序列结果一致
+- [x] `tb rebuild-state` 可重复执行，结果幂等
+- [x] `/today` 给出带理由、带预计时长的计划
+- [x] `/concepts` 显示每个概念的 mastery、level、target、到期数
+- [x] `/review` 列出到期卡
+- [x] readiness 有总分、模块分、门控原因
+- [x] 前端不再返回练习答案；跨课程 evidence 被拒绝
+- [x] `tests/test_e2e_p2.py` 覆盖证据 → 重建 → 掌握度 → 复习 → readiness → 计划 → 页面
+
+---
+
+## P2 遗留（P2.1 / 后续）
+
+- 概念页图形化（Mermaid/SVG）；P2 用表格 + 先修关系文本。
+- 独立复习播放器；P2 的 `/review` 列表跳转课程页复用已有表单。
+- BKT 参数校准（P3 用真实数据）。
+- 概念级 FSRS 卡与复习后手动自评。
+- P1 工程债中未随 P2 处理的部分：`tb build --lesson` 未知 ID 抛 `KeyError`；单文件 HTML 未内联完整 manifest / objectives / 资源列表；`web/` 与 `web/static` 未进 wheel；`schema_version` 别名；证据导出 100 万条上限、导入非原子、`new_event` 不支持 `supersedes`；CSP 对 `application/json` 内联块的内联报告；首页“继续学习”/内容包列表、提交聚合统计、证据写入失败 503 降级。
 
 ---
 
