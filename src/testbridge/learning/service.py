@@ -50,23 +50,37 @@ class LearningService:
         ]
 
     def mastery(self, concept_id: str) -> MasteryView:
-        return self._mastery(concept_id, self.now())
-
-    def _mastery(self, concept_id: str, now: datetime) -> MasteryView:
+        now = self.now()
         events = [
             e for e in self.visible_events() if concept_id in e.concept_ids
         ]
+        return self._view(concept_id, events, now)
+
+    def _view(
+        self,
+        concept_id: str,
+        events: list[EvidenceEvent],
+        now: datetime,
+    ) -> MasteryView:
         state = self.store.get_mastery(self.learner_id, concept_id)
         bkt_state = (
             BKTState(state.bkt_p, state.exercise_observations) if state else None
         )
         return estimate(concept_id, events, now, bkt_state=bkt_state)
 
-    def all_mastery(self) -> dict[str, MasteryView]:
-        now = self.now()
+    def all_mastery(self, now: datetime | None = None) -> dict[str, MasteryView]:
+        """Estimate every pack concept from a single evidence read."""
+        now = now or self.now()
+        grouped: dict[str, list[EvidenceEvent]] = {
+            concept_id: [] for concept_id in self.pack.concepts
+        }
+        for event in self.visible_events():
+            for concept_id in dict.fromkeys(event.concept_ids):
+                if concept_id in grouped:
+                    grouped[concept_id].append(event)
         return {
-            concept_id: self._mastery(concept_id, now)
-            for concept_id in self.pack.concepts
+            concept_id: self._view(concept_id, events, now)
+            for concept_id, events in grouped.items()
         }
 
     def record(self, event: EvidenceEvent) -> None:
@@ -102,19 +116,24 @@ class LearningService:
     def due_reviews(self):
         return self.store.due_reviews(self.learner_id, self.now())
 
-    def readiness(self) -> ReadinessView:
+    def readiness(
+        self,
+        views: dict[str, MasteryView] | None = None,
+    ) -> ReadinessView:
         from testbridge.readiness import calculate_readiness
 
-        return calculate_readiness(self.pack, self.goal(), self.all_mastery())
+        return calculate_readiness(
+            self.pack, self.goal(), views if views is not None else self.all_mastery()
+        )
 
-    def today_plan(self) -> DailyPlan:
+    def today_plan(self, views: dict[str, MasteryView] | None = None) -> DailyPlan:
         from testbridge.learning.weights import concept_weights
         from testbridge.recommend.planner import Planner
 
         return Planner(
             self.pack,
             self.goal(),
-            self.all_mastery(),
+            views if views is not None else self.all_mastery(),
             self.due_reviews(),
             concept_weights(self.pack, self.goal()),
         ).plan(self.now())

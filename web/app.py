@@ -78,8 +78,8 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
                 request,
                 modules=modules,
                 lessons_by_module=lessons_by_module,
-                readiness=learning.readiness(),
-                plan=learning.today_plan(),
+                readiness=learning.readiness(views),
+                plan=learning.today_plan(views),
                 due_count=len(learning.due_reviews()),
                 weakest=weakest,
             ),
@@ -99,6 +99,7 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
     @app.get("/progress", response_class=HTMLResponse)
     def progress_page(request: Request, concept: str = ""):
         events = store.list(concept_id=concept or None, limit=200)
+        views = learning.all_mastery()
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
@@ -108,8 +109,8 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
                 selected=concept,
                 total=store.count(),
                 filtered_total=store.count(concept_id=concept) if concept else 0,
-                readiness=learning.readiness(),
-                views=learning.all_mastery(),
+                readiness=learning.readiness(views),
+                views=views,
             ),
         )
 

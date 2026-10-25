@@ -1,3 +1,4 @@
+import sqlite3
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +49,17 @@ def test_review_upsert_and_due_filter(tmp_path: Path) -> None:
     due = store.due_reviews("local", datetime(2026, 10, 25, tzinfo=timezone.utc))
     assert [item.exercise_id for item in due] == ["EX-ONE"]
     assert store.get_review("local", "EX-ONE").concept_ids == ["c-one"]
+
+
+def test_review_state_has_due_index(tmp_path: Path) -> None:
+    path = tmp_path / "learning.db"
+    LearningStore(path)
+    with sqlite3.connect(path) as conn:
+        names = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
+        }
+    assert "idx_review_due" in names
 
 
 def test_replace_all_and_clear(tmp_path: Path) -> None:

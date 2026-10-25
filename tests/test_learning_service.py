@@ -95,6 +95,37 @@ def test_record_is_idempotent(tmp_path: Path) -> None:
     assert svc.store.get_review("local", "EX-SYNC-001") == first_review
 
 
+def test_all_mastery_scans_evidence_once(tmp_path: Path, monkeypatch) -> None:
+    svc = service(tmp_path)
+    item = event("correct")
+    svc.evidence.append(item)
+
+    calls: list[dict] = []
+    original = svc.evidence.list
+    monkeypatch.setattr(
+        svc.evidence, "list",
+        lambda **kwargs: calls.append(kwargs) or original(**kwargs),
+    )
+
+    views = svc.all_mastery()
+
+    assert set(views) == set(svc.pack.concepts)
+    assert len(calls) == 1
+
+
+def test_readiness_accepts_precomputed_views(tmp_path: Path, monkeypatch) -> None:
+    svc = service(tmp_path)
+    views = svc.all_mastery()
+
+    calls: list[dict] = []
+    monkeypatch.setattr(svc.evidence, "list", lambda **kwargs: calls.append(kwargs) or [])
+
+    result = svc.readiness(views)
+
+    assert result.total >= 0.0
+    assert calls == []
+
+
 def test_record_after_correction_matches_correction(tmp_path: Path) -> None:
     svc = service(tmp_path)
     correct = event("correct")
