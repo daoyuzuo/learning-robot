@@ -1,7 +1,5 @@
 (function () {
   const lessonId = document.body.dataset.lessonId || "";
-  const dataEl = document.getElementById("tb-exercise-data");
-  const exercises = dataEl ? JSON.parse(dataEl.textContent) : {};
 
   function collect(form, type) {
     if (type === "single_choice") {

@@ -1,4 +1,3 @@
-import shutil
 import warnings
 from pathlib import Path
 
@@ -15,6 +14,7 @@ from testbridge.evidence.store import EvidenceStore, new_event
 from web.app import create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
+SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
 
 
 def client(tmp_path: Path) -> TestClient:
@@ -83,34 +83,28 @@ def test_unknown_lesson_is_404(tmp_path: Path) -> None:
     assert client(tmp_path).get("/lesson/NOPE").status_code == 404
 
 
-def test_exercise_data_escapes_script_close(tmp_path: Path) -> None:
-    pack = tmp_path / "pack"
-    shutil.copytree(FIXTURE, pack)
-    exercises_file = pack / "exercises.yaml"
-    content = exercises_file.read_text(encoding="utf-8")
-    exercises_file.write_text(
-        content.replace(
-            "prompt: Pick A.",
-            "prompt: 'Pick A. </script><script>alert(1)</script>'",
-        ),
-        encoding="utf-8",
-    )
-
-    response = TestClient(create_app(pack, tmp_path / "test.db")).get("/lesson/L-ONE")
-
-    assert response.status_code == 200
-    body = response.text
-    assert "</script><script>alert(1)" not in body
-    assert "\\u003c/script\\u003e" in body
-    # Only the two template-owned closing tags remain.
-    assert body.count("</script>") == 2
-
-
 def test_runtime_script_is_served(tmp_path: Path) -> None:
     response = client(tmp_path).get("/static/tb-runtime.js")
     assert response.status_code == 200
     assert "/api/evidence" in response.text
     assert "tb-widget-template" in response.text
-    assert "JSON.parse" in response.text
     assert "eval(" not in response.text
     assert "new Function" not in response.text
+
+
+def test_lesson_page_does_not_embed_exercise_data(tmp_path: Path) -> None:
+    c = TestClient(create_app(FIXTURE, tmp_path / "test.db"))
+    response = c.get("/lesson/L-ONE")
+    assert response.status_code == 200
+    assert "tb-exercise-data" not in response.text
+    assert '"answer":' not in response.text
+
+
+def test_cross_lesson_exercise_is_rejected(tmp_path: Path) -> None:
+    c = TestClient(create_app(SAMPLE, tmp_path / "test.db"))
+    response = c.post(
+        "/api/evidence",
+        json={"lesson_id": "L-SYNC-001", "exercise_id": "EX-SYNC-005", "response": "a"},
+    )
+    assert response.status_code == 400
+    assert "exercise not in lesson" in response.text

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -29,16 +28,6 @@ class EvidenceRequest(BaseModel):
     hints_used: int = 0
     duration_ms: int = 0
     session_id: str | None = None
-
-
-def _script_json(value: Any) -> str:
-    """Serialize JSON so it cannot terminate its ``<script>`` container."""
-    serialized = json.dumps(value, ensure_ascii=False)
-    return (
-        serialized.replace("<", "\\u003c")
-        .replace(">", "\\u003e")
-        .replace("&", "\\u0026")
-    )
 
 
 def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> FastAPI:
@@ -84,13 +73,10 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
         if lesson_id not in pack.lessons:
             raise HTTPException(status_code=404, detail="lesson not found")
         view = render_lesson(pack, lesson_id)
-        exercise_data = _script_json(
-            {exercise.id: exercise.model_dump(mode="json") for exercise in view.exercises}
-        )
         return templates.TemplateResponse(
             request=request,
             name="lesson.html",
-            context=ctx(request, view=view, exercise_data=exercise_data),
+            context=ctx(request, view=view),
         )
 
     @app.get("/progress", response_class=HTMLResponse)
@@ -104,8 +90,11 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
 
     @app.post("/api/evidence")
     def submit_evidence(payload: EvidenceRequest):
-        if payload.lesson_id not in pack.lessons:
+        lesson = pack.lessons.get(payload.lesson_id)
+        if lesson is None:
             raise HTTPException(status_code=404, detail="lesson not found")
+        if payload.exercise_id not in lesson.manifest.exercises:
+            raise HTTPException(status_code=400, detail="exercise not in lesson")
         exercise = pack.exercises.get(payload.exercise_id)
         if exercise is None:
             raise HTTPException(status_code=404, detail="exercise not found")
