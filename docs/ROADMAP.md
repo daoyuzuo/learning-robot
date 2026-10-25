@@ -3,14 +3,14 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.4（多模块与批量）已完成，2026-10-26**
-> 状态：已实现（分支 `p3.4-multi-module-batch`）；默认 `pytest` 518 passed、3 deselected，
-> 两个现有包 `tb validate` 0/0，`tb quality` 100/100。下一期 P3.5（内容演进）范围待定义。
+> **当前期：P3.5（内容演进）设计已批准，待实现**
+> 状态：设计完成，2026-10-26
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成。P3.4
-> 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量
-> 与单课重写。设计见
-> [P3.4 多模块与批量](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成并合并
+> 到 `master`。P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、
+> 包内顺序批量与单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。
+> 设计见
+> [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)。
 
 ---
 
@@ -309,11 +309,26 @@ quality: 100/100                # exit 0
 
 P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留以上方章节为准。
 
-### P3.5 内容演进（下一步，范围待定义）
+### P3.5 内容演进（设计已批准，待实现）
 
-- 现有内容包的整体演进：批量重新生成、版本迁移（`tb migrate`）或等价重建脚本。
-- 分期的具体范围与退出标准待 brainstorming + spec 后写入本文件。
-- 仍不做：跨主题批量建包、并行批量、自动发布。
+**范围：**
+
+- `/studio/evolution`：跨草稿选课，顺序重生成。
+- prompt 版本：当前 `studio/2`，旧草稿 `studio/1`，每课记录实际版本。
+- 每课重写前快照旧 HTML/练习/资源；重写后对比数量/题型/级别/资源/版本/HTML 变化。
+- 每个草稿记录整包质量分前后 delta；历史页查看旧快照 vs 当前摘要。
+- 单课失败继续；草稿忙整组失败；进化任务与批量/单课互斥。
+
+**不做：** `tb migrate`、完整行级 diff、快照回滚、重生成已发布 content-packs、取消运行中任务。
+
+**退出标准：**
+
+- [ ] 跨两个草稿勾选 3 课，运行后每课有旧/新快照与 delta
+- [ ] 每个草稿显示质量分前后；历史页可下钻
+- [ ] 单课失败不影响其它
+- [ ] 新写课程记录 `studio/2`，旧课程仍显示 `studio/1`
+- [ ] 进化任务运行中第二个任务 409；同草稿批量/单课互斥
+- [ ] 默认 `pytest` 全绿，现有 518 个测试无回归
 
 ### P3 内容生产
 
@@ -338,5 +353,6 @@ P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留�
 - P3.2 质量门禁：[2026-10-25-p3.2-quality-gates-design.md](superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - P3.3 检索后端：[2026-10-25-p3.3-search-backends-design.md](superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
 - P3.4 多模块与批量：[2026-10-25-p3.4-multi-module-batch-design.md](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
+- P3.5 内容演进：[2026-10-26-p3.5-content-evolution-design.md](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

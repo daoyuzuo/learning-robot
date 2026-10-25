@@ -25,16 +25,25 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**下一步 P3.5（内容演进）范围待定义。** 候选：批量重生成、`tb migrate`、内容包整包演进。
-开始前先更新 ROADMAP，并按“改引擎/改契约”流程写 spec 与计划。
+**当前 P3.5（内容演进）设计已批准，待实现。** 跨草稿选课重生成；prompt 版本
+`studio/2`（旧草稿 `studio/1`）；每课重写前快照旧内容，重写后对比练习/资源/
+级别/版本与整包质量分；历史页可下钻。设计见
+`docs/superpowers/specs/2026-10-26-p3.5-content-evolution-design.md`。
 
 **不要提前实现：**
 
-- P3.5 内容演进的具体实现（批量重生成、`tb migrate`）
+- P3.5 未列入的 `tb migrate`、完整行级 diff、快照回滚
 - SearXNG / Firecrawl / arXiv 适配器
 - P4：面试 / 公司情报 / 求职管理
 
 除非用户明确要求并先更新 ROADMAP。
+
+**P3.5 附加边界：**
+
+- 只处理 `drafts/`，不重生成已发布 `content-packs/`。
+- 快照写入 `drafts/<id>/history/`；失败必须保留旧快照。
+- 进化任务与同草稿批量/单课互斥；不自动定稿、不自动回滚。
+- prompt 版本只做记录与对比，不自动迁移旧草稿。
 
 **P3.1 / P3.4 已实现约束（继续有效）：**
 
