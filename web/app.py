@@ -107,6 +107,7 @@ def create_app(pack_dir: Path | None = None, db_path: Path | None = None) -> Fas
                 events=events,
                 selected=concept,
                 total=store.count(),
+                filtered_total=store.count(concept_id=concept) if concept else 0,
                 readiness=learning.readiness(),
                 views=learning.all_mastery(),
             ),

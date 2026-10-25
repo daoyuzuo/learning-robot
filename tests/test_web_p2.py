@@ -70,6 +70,26 @@ def test_progress_filters_by_concept(tmp_path: Path) -> None:
     assert "sensor-time-sync" in response.text
 
 
+def test_progress_reports_filtered_and_global_totals(tmp_path: Path) -> None:
+    c = client(tmp_path)
+    c.post("/api/evidence", json={
+        "lesson_id": "L-SYNC-001", "exercise_id": "EX-SYNC-001", "response": "c",
+    })
+    c.post("/api/evidence", json={
+        "lesson_id": "L-SYNC-002", "exercise_id": "EX-SYNC-005", "response": ["a", "c", "d"],
+    })
+
+    filtered = c.get("/progress?concept=clock-drift").text
+    assert "已按概念筛选：clock-drift" in filtered
+    assert "本概念 1 条 / 全局 2 条" in filtered
+    assert "EX-SYNC-005" in filtered
+    assert "EX-SYNC-001" not in filtered
+
+    unfiltered = c.get("/progress").text
+    assert "共 2 条证据（显示最近 2 条）" in unfiltered
+    assert "已按概念筛选" not in unfiltered
+
+
 def test_concepts_link_to_evidence(tmp_path: Path) -> None:
     c = client(tmp_path)
     text = c.get("/concepts").text

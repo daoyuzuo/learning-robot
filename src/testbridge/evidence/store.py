@@ -134,12 +134,19 @@ class EvidenceStore:
             rows = conn.execute(sql, params).fetchall()
         return [self._row_to_event(row) for row in rows]
 
-    def count(self, lesson_id: str | None = None) -> int:
-        sql = "SELECT COUNT(*) FROM evidence"
+    def count(
+        self,
+        lesson_id: str | None = None,
+        concept_id: str | None = None,
+    ) -> int:
+        sql = "SELECT COUNT(*) FROM evidence WHERE 1=1"
         params: list[Any] = []
         if lesson_id:
-            sql += " WHERE lesson_id = ?"
+            sql += " AND lesson_id = ?"
             params.append(lesson_id)
+        if concept_id:
+            sql += " AND instr(concept_ids, ?) > 0"
+            params.append(json.dumps(concept_id, ensure_ascii=False))
         with sqlite3.connect(self.path) as conn:
             return int(conn.execute(sql, params).fetchone()[0])
 
