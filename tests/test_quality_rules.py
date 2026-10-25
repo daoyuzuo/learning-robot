@@ -493,3 +493,23 @@ def test_ab_fallback_uses_authority(tmp_path: Path) -> None:
     assert not any(
         issue.code == "quality.lesson_no_ab_source" for issue in result.warnings
     )
+
+
+def test_c_only_hit_is_untrusted_source(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(
+        tmp_path / "pack",
+        hits=[{"url": "https://docs.example/x", "trust": "C"}],
+    )
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.resource_untrusted_source"
+        and issue.resource_id == "DOC-1"
+        for issue in result.errors
+    )
+    assert any(
+        metric.key == "provenance.traceable" and metric.earned == 0
+        for metric in result.metrics
+    )
