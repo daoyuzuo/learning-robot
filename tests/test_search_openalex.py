@@ -61,6 +61,22 @@ def test_search_request_and_mapping() -> None:
     assert hits[0].date == "2025-01-02"
 
 
+def test_publication_year_fallback() -> None:
+    works = [
+        work(publication_date=None, publication_year=2025),
+        work(publication_date=None, publication_year=" 2024 "),
+        work(publication_date=None, publication_year=True),
+        work(publication_date=None),
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"results": works})
+
+    hits = client(handler).search("q")
+
+    assert [hit.date for hit in hits] == ["2025", "2024", None, None]
+
+
 def test_no_mailto_param_when_unset() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert "mailto" not in request.url.params
@@ -102,6 +118,10 @@ def test_authority_mapping() -> None:
     assert authority_for({}) == 1
 
 
+def test_retracted_truthy_value_is_downgraded() -> None:
+    assert authority_for({"type": "article", "is_retracted": 1}) == -1
+
+
 def test_count_is_clamped_to_fifty() -> None:
     seen = {}
 
@@ -114,6 +134,18 @@ def test_count_is_clamped_to_fifty() -> None:
     assert seen["per-page"] == "50"
 
 
+def test_count_zero_is_clamped_to_one() -> None:
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["per-page"] = request.url.params["per-page"]
+        return httpx.Response(200, json={"results": []})
+
+    client(handler).search("q", count=0)
+
+    assert seen["per-page"] == "1"
+
+
 def test_retries_once_on_429() -> None:
     calls = {"n": 0}
 
@@ -121,6 +153,19 @@ def test_retries_once_on_429() -> None:
         calls["n"] += 1
         if calls["n"] == 1:
             return httpx.Response(429, json={})
+        return httpx.Response(200, json={"results": [work()]})
+
+    assert client(handler).search("q")
+    assert calls["n"] == 2
+
+
+def test_retries_once_on_500() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(500, json={})
         return httpx.Response(200, json={"results": [work()]})
 
     assert client(handler).search("q")
@@ -148,6 +193,18 @@ def test_client_error_does_not_retry() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         calls["n"] += 1
         return httpx.Response(401, json={})
+
+    with pytest.raises(SearchError):
+        client(handler).search("q")
+    assert calls["n"] == 1
+
+
+def test_redirect_with_json_is_error() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(302, json={"results": [work()]})
 
     with pytest.raises(SearchError):
         client(handler).search("q")

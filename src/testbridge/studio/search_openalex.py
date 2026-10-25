@@ -61,7 +61,7 @@ def _url_for(work: dict) -> str:
 
 
 def authority_for(work: dict) -> int:
-    if work.get("is_retracted") is True:
+    if work.get("is_retracted"):
         return -1
     work_type = str(work.get("type") or "").lower()
     if work_type in REVIEWED_TYPES:
@@ -76,8 +76,10 @@ def _date_for(work: dict) -> str | None:
     if isinstance(date, str) and date:
         return date
     year = work.get("publication_year")
-    if isinstance(year, int):
-        return f"{year}-01-01"
+    if isinstance(year, int) and not isinstance(year, bool):
+        return str(year)
+    if isinstance(year, str) and year.strip():
+        return year.strip()
     return None
 
 
@@ -120,7 +122,7 @@ class OpenAlexSearch:
         for attempt in range(2):
             try:
                 response = self._client.get(self.base_url + "/works", params=params)
-                if response.status_code < 400:
+                if 200 <= response.status_code < 300:
                     try:
                         data = response.json()
                     except ValueError:
