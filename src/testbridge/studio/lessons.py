@@ -14,12 +14,13 @@ from datetime import datetime, timezone
 import yaml
 from pydantic import ValidationError
 
+from testbridge.contract.loader import load_lesson_file
 from testbridge.contract.models import Exercise, Resource
 from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.studio.outline import LEVELS, LessonPlan
 from testbridge.studio.store import DraftStore
 
-MODULE_ID = "M01"
+DEFAULT_MODULE_ID = "M01"
 ALLOWED_TRUST = {"A", "B"}
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
@@ -155,14 +156,54 @@ def _dump(data: dict) -> str:
     return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
 
 
+def _drop_old_lesson_ids(
+    store: DraftStore,
+    draft_id: str,
+    module_id: str,
+    lesson_id: str,
+    existing_exercises: list,
+    existing_resources: list,
+) -> tuple[list, list]:
+    """For a rewrite, drop IDs owned by the lesson's previous manifest.
+
+    Only IDs recorded in the old lesson file are removed; IDs claimed by other
+    lessons are untouched and still trigger the collision checks.
+    """
+    old_path = (
+        store.path(draft_id)
+        / "modules" / module_id / "lessons" / f"{lesson_id}.html"
+    )
+    if not old_path.is_file():
+        return existing_exercises, existing_resources
+    try:
+        old_manifest, _ = load_lesson_file(old_path)
+    except Exception:
+        return existing_exercises, existing_resources
+    old_exercises = set(old_manifest.exercises)
+    old_resources = set(old_manifest.resources)
+    return (
+        [item for item in existing_exercises if item.get("id") not in old_exercises],
+        [item for item in existing_resources if item.get("id") not in old_resources],
+    )
+
+
 def write_lesson(
     store: DraftStore,
     draft_id: str,
     lesson: LessonPlan,
     output: LessonOutput,
+    *,
+    replace: bool = False,
 ) -> None:
+    module_id = lesson.module_id or DEFAULT_MODULE_ID
     existing_exercises = _load_list(store, draft_id, "exercises.yaml", "exercises")
     existing_resources = _load_list(store, draft_id, "resources.yaml", "resources")
+    if replace:
+        existing_exercises, existing_resources = _drop_old_lesson_ids(
+            store, draft_id, module_id, lesson.lesson_id,
+            existing_exercises, existing_resources,
+        )
+
     known_exercises = {item.get("id") for item in existing_exercises}
     known_resources = {item.get("id") for item in existing_resources}
 
@@ -173,14 +214,18 @@ def write_lesson(
         if resource["id"] in known_resources:
             raise LessonError(f"资源 id 已存在：{resource['id']}")
 
-    module = yaml.safe_load(store.read(draft_id, f"modules/{MODULE_ID}/module.yaml"))
+    module = yaml.safe_load(
+        store.read(draft_id, f"modules/{module_id}/module.yaml")
+    )
     module_concepts = list(module.get("concepts") or [])
     used_concepts: list[str] = []
     for exercise in output.exercises:
         for concept_id in exercise.get("concepts") or []:
             if concept_id not in used_concepts:
                 used_concepts.append(concept_id)
-    manifest_concepts = used_concepts or module_concepts
+    manifest_concepts = (
+        list(lesson.concepts) or used_concepts or module_concepts
+    )
     level = str(store.load(draft_id).get("level") or "L2")
     target_level = level if level in LEVELS else "L2"
 
@@ -188,7 +233,7 @@ def write_lesson(
         "schema": "tb/1",
         "id": lesson.lesson_id,
         "title": output.manifest["title"],
-        "module": MODULE_ID,
+        "module": module_id,
         "concepts": manifest_concepts,
         "target_level": target_level,
         "minutes": output.manifest["minutes"],
@@ -213,12 +258,16 @@ def write_lesson(
         draft_id, "resources.yaml",
         _dump({"schema": "tb/1", "resources": existing_resources + output.resources}),
     )
-    store.write(draft_id, f"modules/{MODULE_ID}/lessons/{lesson.lesson_id}.html", document)
+    store.write(
+        draft_id,
+        f"modules/{module_id}/lessons/{lesson.lesson_id}.html",
+        document,
+    )
 
     lessons = list(module.get("lessons") or [])
     if lesson.lesson_id not in lessons:
         lessons.append(lesson.lesson_id)
         module["lessons"] = lessons
         store.write(
-            draft_id, f"modules/{MODULE_ID}/module.yaml", _dump(module)
+            draft_id, f"modules/{module_id}/module.yaml", _dump(module)
         )
