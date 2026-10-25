@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
+import pytest
 import yaml
 
 from testbridge.studio.evolution import (
@@ -121,7 +123,7 @@ def test_snapshot_records_metrics_and_path(tmp_path: Path) -> None:
         "levels": ["L2"],
         "max_level": "L2",
         "resource_count": 1,
-        "trust": {"A": 1},
+        "trust": {"A": 1, "B": 0, "C": 0, "D": 0},
     } | {"html_hash": snapshot["metrics"]["html_hash"]}
     assert snapshot["metrics"]["exercise_count"] == 1
     assert snapshot["metrics"]["types"] == ["single_choice"]
@@ -200,6 +202,54 @@ def test_latest_snapshot_picks_newest(tmp_path: Path) -> None:
     )
     assert latest_snapshot(store, "demo", "L-2") is None
     assert latest_snapshot(store, "demo", "../evil") is None
+
+
+def test_snapshot_rejects_invalid_draft_id(tmp_path: Path) -> None:
+    store, plan = setup_lesson(tmp_path)
+    snapshot = snapshot_lesson(store, "demo", plan)
+
+    broken = {**snapshot, "draft_id": "../x"}
+    with pytest.raises(ValueError):
+        save_snapshot(store, broken)
+
+    assert latest_snapshot(store, "../x", "L-1") is None
+
+
+def test_save_snapshot_serializes_yaml_dates(tmp_path: Path) -> None:
+    store, plan = setup_lesson(tmp_path)
+    resources = yaml.safe_load(store.read("demo", "resources.yaml"))
+    resources["resources"][0]["last_verified"] = date(2026, 10, 25)
+    store.write(
+        "demo", "resources.yaml",
+        yaml.safe_dump(resources, allow_unicode=True, sort_keys=False),
+    )
+
+    snapshot = snapshot_lesson(store, "demo", plan)
+    assert isinstance(snapshot["resources"][0]["last_verified"], date)
+    saved = save_snapshot(store, snapshot)
+
+    assert saved.startswith("history/L-1/")
+    loaded = latest_snapshot(store, "demo", "L-1")
+    assert loaded["resources"][0]["last_verified"] == "2026-10-25"
+
+
+def test_save_snapshot_normalizes_z_timestamp(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2", lesson_count=1,
+                 searches_per_lesson=5, model="m")
+    snapshot = {
+        "schema": "studio-snapshot/1", "draft_id": "demo",
+        "lesson_id": "L-1", "created_at": "2026-10-26T09:30:00Z",
+        "prompt_version": "studio/2", "metrics": {},
+    }
+
+    saved = save_snapshot(store, snapshot)
+
+    assert saved == "history/L-1/20261026T093000000000Z.json"
+
+    snapshot["created_at"] = "not-a-time"
+    with pytest.raises(ValueError):
+        save_snapshot(store, snapshot)
 
 
 def test_draft_quality_is_none_for_incomplete_pack(tmp_path: Path) -> None:

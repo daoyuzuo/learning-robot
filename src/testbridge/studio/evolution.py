@@ -80,7 +80,7 @@ def _read_lesson(
     types = sorted({
         str(item.get("type") or "") for item in exercises if item.get("type")
     })
-    trust: dict[str, int] = {}
+    trust: dict[str, int] = {"A": 0, "B": 0, "C": 0, "D": 0}
     for item in resources:
         name = str(item.get("trust") or "?")
         trust[name] = trust.get(name, 0) + 1
@@ -134,13 +134,20 @@ def snapshot_lesson(
 
 
 def _stamp(created_at: str) -> str:
+    if not isinstance(created_at, str):
+        raise TypeError(f"created_at 必须是字符串：{created_at!r}")
+    text = (
+        created_at[:-1] + "+00:00"
+        if created_at.endswith("Z")
+        else created_at
+    )
     try:
-        value = datetime.fromisoformat(created_at)
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    except (TypeError, ValueError):
-        return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        value = datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise ValueError(f"created_at 不是合法时间：{created_at!r}") from exc
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
 
 def save_snapshot(store: DraftStore, snapshot: dict) -> str:
@@ -148,13 +155,17 @@ def save_snapshot(store: DraftStore, snapshot: dict) -> str:
 
     Returns the path relative to the draft directory.
     """
+    draft_id = str(snapshot["draft_id"])
     lesson_id = str(snapshot["lesson_id"])
+    if not ID_RE.fullmatch(draft_id):
+        raise ValueError(f"草稿 ID 不合法：{draft_id}")
     if not ID_RE.fullmatch(lesson_id):
         raise ValueError(f"课程 ID 不合法：{lesson_id}")
     relative = f"history/{lesson_id}/{_stamp(snapshot['created_at'])}.json"
     store.write(
-        snapshot["draft_id"], relative,
-        json.dumps(snapshot, ensure_ascii=False, indent=2),
+        draft_id, relative,
+        # Hand-edited YAML may load unquoted dates as ``datetime.date``.
+        json.dumps(snapshot, ensure_ascii=False, indent=2, default=str),
     )
     return relative
 
@@ -163,7 +174,9 @@ def latest_snapshot(
     store: DraftStore, draft_id: str, lesson_id: str
 ) -> dict | None:
     """Return the newest snapshot for a lesson, or ``None`` if none exist."""
-    if not ID_RE.fullmatch(lesson_id):
+    if not ID_RE.fullmatch(str(draft_id)) or not ID_RE.fullmatch(
+        str(lesson_id)
+    ):
         return None
     root = store.path(draft_id) / "history" / lesson_id
     if not root.is_dir():
