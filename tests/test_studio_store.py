@@ -1,0 +1,96 @@
+from pathlib import Path
+
+import pytest
+
+from testbridge.studio.store import DraftError, DraftNotFound, DraftStore
+
+
+def make_store(tmp_path: Path) -> DraftStore:
+    return DraftStore(tmp_path / "drafts")
+
+
+def create(store: DraftStore, draft_id: str = "demo-pack") -> dict:
+    return store.create(
+        draft_id=draft_id, topic="ROS 2 执行器", level="L3",
+        lesson_count=2, searches_per_lesson=20,
+        model="deepseek-chat", prompt_version="studio/1",
+    )
+
+
+def test_create_writes_draft_json(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    draft = create(store)
+
+    assert draft["schema"] == "studio/1"
+    assert draft["steps"]["outline"]["status"] == "pending"
+    assert draft["steps"]["research"] == {}
+    assert (tmp_path / "drafts" / "demo-pack" / "draft.json").is_file()
+    assert store.load("demo-pack")["topic"] == "ROS 2 执行器"
+
+
+def test_rejects_bad_and_duplicate_ids(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    with pytest.raises(DraftError):
+        store.create(
+            draft_id="../evil", topic="x", level="L2", lesson_count=1,
+            searches_per_lesson=5, model="m", prompt_version="v",
+        )
+    create(store)
+    with pytest.raises(DraftError):
+        create(store)
+
+
+def test_set_step_updates_draft_and_timestamp(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    create(store)
+
+    store.set_step("demo-pack", "outline", status="done")
+
+    draft = store.load("demo-pack")
+    assert draft["steps"]["outline"]["status"] == "done"
+    assert draft["steps"]["outline"]["at"]
+    assert draft["updated_at"]
+
+
+def test_set_lesson_step_creates_entry(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    create(store)
+
+    store.set_step(
+        "demo-pack", "research", status="running", lesson_id="L-1", extra={"queries": 3}
+    )
+
+    assert store.load("demo-pack")["steps"]["research"]["L-1"]["status"] == "running"
+    assert store.load("demo-pack")["steps"]["research"]["L-1"]["queries"] == 3
+
+
+def test_mark_interrupted_flips_running(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    create(store)
+    store.set_step("demo-pack", "outline", status="running")
+
+    assert store.mark_interrupted() == 1
+    step = store.load("demo-pack")["steps"]["outline"]
+    assert step["status"] == "failed"
+    assert step["error"] == "interrupted"
+
+
+def test_write_and_read_files(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    create(store)
+
+    store.write("demo-pack", "outline.html", "<article>x</article>")
+
+    assert store.read("demo-pack", "outline.html") == "<article>x</article>"
+
+
+def test_load_missing_raises(tmp_path: Path) -> None:
+    with pytest.raises(DraftNotFound):
+        make_store(tmp_path).load("nope")
+
+
+def test_list_returns_drafts_sorted(tmp_path: Path) -> None:
+    store = make_store(tmp_path)
+    create(store, "b-pack")
+    create(store, "a-pack")
+    assert [draft["id"] for draft in store.list()] == ["a-pack", "b-pack"]
