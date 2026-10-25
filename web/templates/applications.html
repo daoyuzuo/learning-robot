@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}求职 · TestBridge{% endblock %}
+{% block content %}
+<h1>求职</h1>
+{% if error %}<p class="tb-app-error">{{ error }}</p>{% endif %}
+
+<p class="tb-app-counts">
+  {% for status in statuses %}{{ status }} {{ counts[status] }}{% if not loop.last %} · {% endif %}{% endfor %}
+</p>
+
+{% if due %}
+<h2>到期跟进</h2>
+<table>
+  <tr><th>公司</th><th>岗位</th><th>动作</th><th>日期</th><th>状态</th></tr>
+  {% for item in due %}
+  <tr>
+    <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
+    <td>{{ item.role }}</td><td>{{ item.next_action }}</td>
+    <td>{{ item.next_action_at }}</td><td>{{ item.status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<h2>全部投递</h2>
+<p class="tb-meta">
+  <a href="/applications">全部</a>
+  {% for status in statuses %} · <a href="/applications?status={{ status }}">{{ status }}</a>{% endfor %}
+</p>
+{% if items %}
+<table>
+  <tr><th>公司</th><th>岗位</th><th>状态</th><th>投递日期</th><th>下一步</th><th>更新</th></tr>
+  {% for item in items %}
+  <tr>
+    <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
+    <td>{{ item.role }}</td><td>{{ item.status }}</td>
+    <td>{{ item.applied_at or "" }}</td>
+    <td>{{ item.next_action }}{% if item.next_action_at %}（{{ item.next_action_at }}）{% endif %}</td>
+    <td>{{ item.updated_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>还没有投递记录。</p>
+{% endif %}
+
+<h2>新增投递</h2>
+<form method="post" action="/applications" class="tb-app-form">
+  <label>公司 <input type="text" name="company" maxlength="200" required value="{{ form.company or '' }}"></label>
+  <label>岗位 <input type="text" name="role" maxlength="200" required value="{{ form.role or '' }}"></label>
+  <label>渠道 <input type="text" name="source" maxlength="100" value="{{ form.source or '' }}"></label>
+  <label>状态
+    <select name="status">
+      {% for status in statuses %}<option value="{{ status }}" {% if (form.status or 'draft') == status %}selected{% endif %}>{{ status }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>投递日期 <input type="date" name="applied_at" value="{{ form.applied_at or '' }}"></label>
+  <label>下一步 <input type="text" name="next_action" maxlength="200" value="{{ form.next_action or '' }}"></label>
+  <label>跟进日期 <input type="date" name="next_action_at" value="{{ form.next_action_at or '' }}"></label>
+  <label>笔记 <textarea name="notes" rows="4">{{ form.notes or '' }}</textarea></label>
+  <button type="submit">保存投递</button>
+</form>
+{% endblock %}

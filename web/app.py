@@ -190,6 +190,13 @@ def create_app(
         llm=target_llm if target_llm is not None else studio_llm,
     )
 
+    from testbridge.career.applications import ApplicationStore
+    from web.applications import mount_applications
+
+    mount_applications(
+        app, templates, store=ApplicationStore(database),
+    )
+
     def ctx(request: Request, **kwargs):
         return {"request": request, "pack": pack, "learning": learning, **kwargs}
 
