@@ -10,6 +10,7 @@ warnings.filterwarnings(
 
 from fastapi.testclient import TestClient
 
+from testbridge.learning.store import ReviewState
 from web.app import create_app
 
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
@@ -85,9 +86,35 @@ def test_progress_reports_filtered_and_global_totals(tmp_path: Path) -> None:
     assert "EX-SYNC-005" in filtered
     assert "EX-SYNC-001" not in filtered
 
+    other = c.get("/progress?concept=sensor-time-sync").text
+    assert "本概念 1 条 / 全局 2 条" in other
+    assert "EX-SYNC-001" in other
+    assert "EX-SYNC-005" not in other
+
     unfiltered = c.get("/progress").text
     assert "共 2 条证据（显示最近 2 条）" in unfiltered
     assert "已按概念筛选" not in unfiltered
+
+
+def test_review_lists_due_cards(tmp_path: Path) -> None:
+    app = create_app(SAMPLE, tmp_path / "test.db")
+    app.state.learning.store.upsert_review(ReviewState(
+        learner_id="local", exercise_id="EX-SYNC-001",
+        concept_ids=["sensor-time-sync"], due="2020-01-01T00:00:00+00:00",
+        stability=1.0, difficulty=5.0, reps=1, lapses=0, state="Review",
+        last_review=None,
+        card_json={
+            "card_id": 1, "state": 2, "step": 0, "stability": 1.0,
+            "difficulty": 5.0, "due": "2020-01-01T00:00:00+00:00",
+            "last_review": None,
+        },
+    ))
+
+    text = TestClient(app).get("/review").text
+
+    assert "EX-SYNC-001" in text
+    assert "2020-01-01" in text
+    assert 'href="/lesson/L-SYNC-001"' in text
 
 
 def test_concepts_link_to_evidence(tmp_path: Path) -> None:
