@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.lesson_id }} · 演进历史{% endblock %}
+{% block content %}
+<p class="tb-breadcrumb"><a href="/studio/evolution">演进</a> / {{ draft.id }} / {{ plan.lesson_id }}</p>
+<h1>{{ plan.lesson_id }} · {{ plan.title }}</h1>
+<p class="tb-meta">{{ draft.id }} · 模块 {{ plan.module_id }} · 只读对比，不提供恢复</p>
+{% if not before %}
+<p class="tb-warn">暂无快照。运行一次演进后，这里会显示最近一次与当前内容不同的快照，以及当前内容摘要。</p>
+{% else %}
+<div class="tb-history-grid">
+  <section class="tb-history-col">
+    <h2>{% if same_as_current %}当前内容与最近快照一致{% else %}上一版快照{% endif %} <span class="tb-status">{{ before.get("prompt_version") or "studio/1" }}</span></h2>
+    <p class="tb-meta">记录于 {{ before.get("created_at", "") }}</p>
+    {% set metrics = before.get("metrics") or {} %}
+    {% set trust = metrics.get("trust") or {} %}
+    <ul class="tb-history-metrics">
+      <li>练习 {{ metrics.get("exercise_count", 0) }} 道</li>
+      <li>题型 {{ (metrics.get("types") or [])|join("、") or "—" }}</li>
+      <li>最高级别 {{ metrics.get("max_level") or "—" }}</li>
+      <li>资源 {{ metrics.get("resource_count", 0) }} 个</li>
+      <li>资源可信 {% if trust %}{% for key, value in trust.items() %}{{ key }} {{ value }}{% if not loop.last %} · {% endif %}{% endfor %}{% else %}—{% endif %}</li>
+    </ul>
+    {% if before.get("exercises") %}
+    <h3>练习题干</h3>
+    <ul class="tb-history-items">
+      {% for item in before.get("exercises") %}
+      <li>{{ item.get("id", "") }} · {{ item.get("type", "") }} · {{ item.get("prompt", "") }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if before.get("resources") %}
+    <h3>资源</h3>
+    <ul class="tb-history-items">
+      {% for item in before.get("resources") %}
+      <li>{{ item.get("title", "") }} · {{ item.get("url", "") }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="tb-history-col">
+    <h2>当前内容 <span class="tb-status">{{ current.get("prompt_version") or "studio/1" }}</span></h2>
+    {% set live = current.get("metrics") or {} %}
+    {% set live_trust = live.get("trust") or {} %}
+    <ul class="tb-history-metrics">
+      <li>练习 {{ live.get("exercise_count", 0) }} 道</li>
+      <li>题型 {{ (live.get("types") or [])|join("、") or "—" }}</li>
+      <li>最高级别 {{ live.get("max_level") or "—" }}</li>
+      <li>资源 {{ live.get("resource_count", 0) }} 个</li>
+      <li>资源可信 {% if live_trust %}{% for key, value in live_trust.items() %}{{ key }} {{ value }}{% if not loop.last %} · {% endif %}{% endfor %}{% else %}—{% endif %}</li>
+    </ul>
+    {% if current.get("exercises") %}
+    <h3>练习题干</h3>
+    <ul class="tb-history-items">
+      {% for item in current.get("exercises") %}
+      <li>{{ item.get("id", "") }} · {{ item.get("type", "") }} · {{ item.get("prompt", "") }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if current.get("resources") %}
+    <h3>资源</h3>
+    <ul class="tb-history-items">
+      {% for item in current.get("resources") %}
+      <li>{{ item.get("title", "") }} · {{ item.get("url", "") }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

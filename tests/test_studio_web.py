@@ -391,6 +391,11 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
     lesson = app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
     assert lesson.status_code == 200
 
+    draft = app.app.state.studio_store.load("demo")
+    entry = draft["steps"]["lessons"]["L-EXEC-001"]
+    assert entry["prompt_version"] == "studio/2"
+    assert entry["written_at"]
+
     validation = app.post("/api/studio/demo/validate", json={"skip_verify": True})
     assert validation.status_code == 200
     assert validation.json()["ok"] is True, validation.json()

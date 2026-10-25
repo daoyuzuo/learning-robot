@@ -6,18 +6,30 @@ or evidence. Model output and search results are untrusted input.
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from testbridge.quality.evaluate import QualityUnavailable
 from testbridge.studio import lessons as lesson_writer
 from testbridge.studio import outline as outline_writer
 from testbridge.studio import research as research_runner
+from testbridge.studio.evolution import (
+    EvolutionBusy,
+    EvolutionJob,
+    compare_snapshots,
+    draft_quality,
+    list_snapshots,
+    save_snapshot,
+    snapshot_lesson,
+    timestamp_now,
+)
 from testbridge.studio.gates import (
     PromoteError,
     promote,
@@ -44,7 +56,8 @@ from testbridge.studio.prompts import (
 )
 from testbridge.studio.search import SearchProvider
 from testbridge.studio.search_router import SearchRoute, SearchRouter
-from testbridge.studio.store import DraftError, DraftStore
+from testbridge.studio.store import ID_RE, DraftError, DraftStore
+from testbridge.studio.version import PROMPT_VERSION
 from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
 
@@ -53,6 +66,30 @@ LEVELS = {"L1", "L2", "L3", "L4"}
 
 class OutlineBody(BaseModel):
     html: str
+
+
+class EvolutionTarget(BaseModel):
+    draft_id: str
+    lesson_id: str
+
+
+class EvolutionBody(BaseModel):
+    # Empty default so a body without ``targets`` is a 400 invalid_request
+    # from the route, not a framework-level 422.
+    targets: list[EvolutionTarget] = Field(default_factory=list)
+
+
+def _snapshot_summary(snapshot: dict) -> dict:
+    """Return the fields the evolution UI compares, without the raw HTML."""
+    metrics = snapshot.get("metrics") or {}
+    return {
+        "prompt_version": snapshot.get("prompt_version"),
+        "exercise_count": metrics.get("exercise_count", 0),
+        "types": list(metrics.get("types") or []),
+        "max_level": metrics.get("max_level", ""),
+        "resource_count": metrics.get("resource_count", 0),
+        "trust": dict(metrics.get("trust") or {}),
+    }
 
 
 def mount_studio(
@@ -69,7 +106,9 @@ def mount_studio(
     store = DraftStore(drafts_root)
     store.mark_interrupted()
     runner = JobRunner(store, inline=inline)
+    evolution = EvolutionJob(store, runner)
     app.state.studio_store = store
+    app.state.evolution = evolution
     router = APIRouter()
 
     def ctx(request: Request, **kwargs):
@@ -236,6 +275,128 @@ def mount_studio(
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
         )
         lesson_writer.write_lesson(store, draft_id, plan, output, replace=replace)
+        store.set_step(
+            draft_id, "lessons", lesson_id=lesson_id,
+            extra={
+                "prompt_version": PROMPT_VERSION,
+                "written_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    def evolve_draft(draft_id: str, lesson_ids: list[str]) -> dict:
+        """Rewrite selected lessons of one draft and snapshot before/after.
+
+        The batch lock is held by :class:`EvolutionJob` through
+        ``run_batch_now``. A lesson that cannot be snapshotted is left
+        untouched, so a rewrite never destroys the only copy of its content.
+        """
+        plans = {plan.lesson_id: plan for plan in outline_plans(draft_id)}
+        total = len(lesson_ids)
+        store.set_step(
+            draft_id, "batch", status="running",
+            extra={"mode": "evolve", "done": 0, "total": total},
+        )
+        quality_before = draft_quality(store, draft_id)
+        results: list[dict] = []
+        failures = 0
+        for index, lesson_id in enumerate(lesson_ids, start=1):
+            evolution.note_lesson(draft_id, lesson_id)
+            plan = plans.get(lesson_id)
+            result: dict[str, Any]
+            if plan is None:
+                failures += 1
+                result = {
+                    "lesson_id": lesson_id, "ok": False,
+                    "error": "lesson not found",
+                }
+            else:
+                result = {"lesson_id": lesson_id, "ok": False, "error": None}
+                try:
+                    before = snapshot_lesson(store, draft_id, plan)
+                    before_path = save_snapshot(store, before)
+                except Exception as exc:  # noqa: BLE001 - keep other lessons
+                    failures += 1
+                    result["error"] = str(exc)
+                    store.set_step(
+                        draft_id, "lessons", status="failed",
+                        error=str(exc), lesson_id=lesson_id,
+                    )
+                else:
+                    result["before"] = _snapshot_summary(before)
+                    result["snapshot_before"] = before_path
+                    store.set_step(
+                        draft_id, "lessons", status="running", lesson_id=lesson_id
+                    )
+                    try:
+                        generate_lesson(draft_id, lesson_id, replace=True)
+                    except Exception as exc:  # noqa: BLE001 - keep going
+                        failures += 1
+                        result["error"] = str(exc)
+                        store.set_step(
+                            draft_id, "lessons", status="failed",
+                            error=str(exc), lesson_id=lesson_id,
+                        )
+                    else:
+                        try:
+                            after = snapshot_lesson(store, draft_id, plan)
+                            after_path = save_snapshot(store, after)
+                        except Exception as exc:  # noqa: BLE001 - keep going
+                            failures += 1
+                            result["error"] = str(exc)
+                            store.set_step(
+                                draft_id, "lessons", status="failed",
+                                error=str(exc), lesson_id=lesson_id,
+                            )
+                        else:
+                            result.update({
+                                "ok": True,
+                                "after": _snapshot_summary(after),
+                                "changed": compare_snapshots(before, after),
+                                "snapshot_after": after_path,
+                            })
+                            store.set_step(
+                                draft_id, "lessons", status="done",
+                                lesson_id=lesson_id,
+                            )
+            results.append(result)
+            # Count the attempt itself, including snapshot failures and
+            # lessons that are missing from the outline.
+            evolution.note_lesson(draft_id, lesson_id, completed=True)
+            store.set_step(
+                draft_id, "batch",
+                extra={"mode": "evolve", "done": index, "total": total},
+            )
+
+        report = {
+            "draft_id": draft_id,
+            "error": None,
+            "quality_before": quality_before,
+            "quality_after": draft_quality(store, draft_id),
+            "lessons": results,
+        }
+        try:
+            store.write(
+                draft_id,
+                f"history/evolution-{timestamp_now()}.json",
+                json.dumps(
+                    report, ensure_ascii=False, indent=2, default=str
+                ),
+            )
+        except OSError as exc:
+            report["error"] = f"报告写入失败：{exc}"
+
+        batch_extra = {"mode": "evolve", "done": total, "total": total}
+        if failures or report["error"]:
+            store.set_step(
+                draft_id, "batch", status="failed",
+                error=f"{failures} 课失败" if failures else report["error"],
+                extra=batch_extra,
+            )
+        else:
+            store.set_step(
+                draft_id, "batch", status="done", extra=batch_extra
+            )
+        return report
 
     @router.get("/studio", response_class=HTMLResponse)
     def studio_list(request: Request):
@@ -243,6 +404,104 @@ def mount_studio(
             request=request, name="studio_list.html",
             context=ctx(request, drafts=store.list()),
         )
+
+    @router.get("/studio/evolution", response_class=HTMLResponse)
+    def studio_evolution(request: Request):
+        groups = [
+            {"draft": draft, "modules": outline_modules(draft["id"])}
+            for draft in store.list()
+        ]
+        return templates.TemplateResponse(
+            request=request, name="studio_evolution.html",
+            context=ctx(request, drafts=groups),
+        )
+
+    @router.get("/api/studio/evolution/status")
+    def evolution_status():
+        return evolution.status()
+
+    @router.post("/api/studio/evolution")
+    def start_evolution(body: EvolutionBody):
+        require_enabled()
+        if not body.targets:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_request",
+                    "message": "请选择至少一门课",
+                },
+            )
+
+        wanted: dict[str, set[str]] = {}
+        draft_order: list[str] = []
+        seen: set[tuple[str, str]] = set()
+        plan_cache: dict[str, list[str]] = {}
+
+        def plan_ids(draft_id: str) -> list[str]:
+            if draft_id not in plan_cache:
+                plan_cache[draft_id] = [
+                    plan.lesson_id for plan in outline_plans(draft_id)
+                ]
+            return plan_cache[draft_id]
+
+        for target in body.targets:
+            key = (target.draft_id, target.lesson_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            if not ID_RE.fullmatch(target.draft_id) or not ID_RE.fullmatch(
+                target.lesson_id
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "invalid_target",
+                        "message": "草稿或课程 ID 不合法",
+                    },
+                )
+            if not store.exists(target.draft_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "invalid_target",
+                        "message": f"草稿不存在：{target.draft_id}",
+                    },
+                )
+            if target.lesson_id not in plan_ids(target.draft_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "invalid_target",
+                        "message": f"课程不存在：{target.lesson_id}",
+                    },
+                )
+            if target.draft_id not in wanted:
+                wanted[target.draft_id] = set()
+                draft_order.append(target.draft_id)
+            wanted[target.draft_id].add(target.lesson_id)
+
+        groups = [
+            (
+                draft_id,
+                [
+                    lesson_id for lesson_id in plan_ids(draft_id)
+                    if lesson_id in wanted[draft_id]
+                ],
+            )
+            for draft_id in draft_order
+        ]
+        total = sum(len(lesson_ids) for _, lesson_ids in groups)
+        try:
+            evolution.start(groups, evolve_draft, inline=runner.inline)
+        except EvolutionBusy:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "evolution_running",
+                    "message": "演进任务进行中",
+                },
+            ) from None
+        return {"started": total}
 
     @router.post("/studio")
     def studio_create(
@@ -269,7 +528,7 @@ def mount_studio(
                 lesson_count=lesson_count,
                 searches_per_lesson=searches_per_lesson,
                 model=config.model if config else "unconfigured",
-                prompt_version="studio/1",
+                prompt_version=PROMPT_VERSION,
                 search_backend=search_backend,
             )
         except DraftError as exc:
@@ -294,6 +553,45 @@ def mount_studio(
                 ),
                 modules=outline_modules(draft_id),
                 lessons=[plan.lesson_id for plan in outline_plans(draft_id)],
+            ),
+        )
+
+    @router.get("/studio/{draft_id}/history/{lesson_id}", response_class=HTMLResponse)
+    def studio_history(request: Request, draft_id: str, lesson_id: str):
+        draft = draft_or_404(draft_id)
+        plan = next(
+            (item for item in outline_plans(draft_id) if item.lesson_id == lesson_id),
+            None,
+        )
+        if plan is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "lesson_not_found", "message": "课程不存在"},
+            )
+        current = snapshot_lesson(store, draft_id, plan)
+        current_hash = (current.get("metrics") or {}).get("html_hash")
+        snapshots = list_snapshots(store, draft_id, lesson_id)
+        older = next(
+            (
+                snapshot for snapshot in snapshots
+                if (snapshot.get("metrics") or {}).get("html_hash")
+                != current_hash
+            ),
+            None,
+        )
+        before = older if older is not None else (
+            snapshots[0] if snapshots else None
+        )
+        same_as_current = older is None and before is not None
+        return templates.TemplateResponse(
+            request=request, name="studio_history.html",
+            context=ctx(
+                request,
+                draft=draft,
+                plan=plan,
+                before=before,
+                current=current,
+                same_as_current=same_as_current,
             ),
         )
 

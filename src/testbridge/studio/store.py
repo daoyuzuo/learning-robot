@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from testbridge.studio.version import PROMPT_VERSION
+
 SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 STEPS = ("outline", "research", "lessons", "validation", "promote", "batch")
@@ -72,7 +74,7 @@ class DraftStore:
         lesson_count: int | None = None,
         searches_per_lesson: int,
         model: str,
-        prompt_version: str,
+        prompt_version: str = PROMPT_VERSION,
         search_backend: str = "auto",
     ) -> dict:
         if not ID_RE.fullmatch(draft_id):

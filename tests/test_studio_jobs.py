@@ -98,6 +98,48 @@ def test_batch_callback_can_fail_batch(tmp_path: Path) -> None:
     assert step["error"] == "1 课失败"
 
 
+def test_run_batch_now_sets_status(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+
+    def work() -> dict:
+        store.set_step("demo", "batch", extra={"done": 1})
+        return {"report": True}
+
+    result = runner.run_batch_now("demo", work)
+
+    assert result == {"report": True}
+    step = store.load("demo")["steps"]["batch"]
+    assert step["status"] == "done"
+    assert step["done"] == 1
+
+
+def test_run_batch_now_marks_failed_and_releases(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+
+    def boom() -> None:
+        raise RuntimeError("bad")
+
+    with pytest.raises(RuntimeError, match="bad"):
+        runner.run_batch_now("demo", boom)
+    assert store.load("demo")["steps"]["batch"]["status"] == "failed"
+    assert store.load("demo")["steps"]["batch"]["error"] == "bad"
+    # The draft lock was released, so the next batch can start.
+    assert runner.run_batch_now("demo", lambda: "ok") == "ok"
+
+
+def test_run_batch_now_preserves_callback_failed_status(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+
+    def work() -> str:
+        store.set_step("demo", "batch", status="failed", error="1 课失败")
+        return "report"
+
+    assert runner.run_batch_now("demo", work) == "report"
+    step = store.load("demo")["steps"]["batch"]
+    assert step["status"] == "failed"
+    assert step["error"] == "1 课失败"
+
+
 def test_failed_batch_start_releases_batch_lock(tmp_path: Path) -> None:
     store = BrokenStepStore(tmp_path / "drafts")
     store.create(

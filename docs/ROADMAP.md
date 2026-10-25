@@ -3,14 +3,14 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.5（内容演进）设计已批准，待实现**
-> 状态：设计完成，2026-10-26
+> **当前期：P4（应用整合）范围待定义**
+> 状态：P3.5 已完成并合并到 master，2026-10-26
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成并合并
-> 到 `master`。P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、
-> 包内顺序批量与单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。
-> 设计见
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5 均已完成。
+> P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
+> 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。设计见
 > [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)。
+> 下一期是 P4（面试 / 公司情报 / 求职管理），范围尚未定义，需先写 spec 并更新本文件。
 
 ---
 
@@ -305,39 +305,72 @@ quality: 100/100                # exit 0
 
 ---
 
-## 后续期摘要
-
-P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留以上方章节为准。
-
-### P3.5 内容演进（设计已批准，待实现）
+## P3.5 内容演进（已完成，2026-10-26）
 
 **范围：**
 
-- `/studio/evolution`：跨草稿选课，顺序重生成。
-- prompt 版本：当前 `studio/2`，旧草稿 `studio/1`，每课记录实际版本。
-- 每课重写前快照旧 HTML/练习/资源；重写后对比数量/题型/级别/资源/版本/HTML 变化。
-- 每个草稿记录整包质量分前后 delta；历史页查看旧快照 vs 当前摘要。
+- `/studio/evolution`：跨草稿选课，按草稿分组、组内按大纲顺序串行重生成。
+- prompt 版本：当前 `studio/2`，旧草稿 `studio/1`；每课记录实际版本与写入时间。
+- 每课重写前快照旧 HTML/练习/资源到 `drafts/<id>/history/<lesson_id>/`；重写后记录
+  练习数/题型/级别/资源数/trust/HTML/版本变化。结果页展示练习/资源数与质量分 delta，
+  级别与 trust 在历史页对比。
+- 每个草稿记录整包质量分前后 delta；报告写 `history/evolution-<时间戳>.json`。
+- 历史页 `/studio/<id>/history/<lesson_id>` 展示“最近一次与当前内容不同的快照 vs 当前”摘要。
 - 单课失败继续；草稿忙整组失败；进化任务与批量/单课互斥。
 
 **不做：** `tb migrate`、完整行级 diff、快照回滚、重生成已发布 content-packs、取消运行中任务。
 
-**退出标准：**
+**退出标准（实测，2026-10-26）：**
 
-- [ ] 跨两个草稿勾选 3 课，运行后每课有旧/新快照与 delta
-- [ ] 每个草稿显示质量分前后；历史页可下钻
-- [ ] 单课失败不影响其它
-- [ ] 新写课程记录 `studio/2`，旧课程仍显示 `studio/1`
-- [ ] 进化任务运行中第二个任务 409；同草稿批量/单课互斥
-- [ ] 默认 `pytest` 全绿，现有 518 个测试无回归
+- [x] 跨两个草稿勾选 3 课，运行后每课有旧/新快照与 delta
+      （手工验收：`demo` L-1/L-2 + `other` L-2；`started=3`、`status=done`、
+      `done/total=3/3`；每课各 1 份 `snapshot_before` / `snapshot_after`，
+      `prompt_version` 由 `studio/1` 变 `studio/2`）
+- [x] 每个草稿显示质量分前后；历史页可下钻
+      （`test_evolution_api_rewrites_targets_across_drafts`：两草稿 `quality_before/after` 非空；
+      `test_history_page_shows_snapshot_and_current`：左侧 `studio/1`、右侧 `studio/2`）
+- [x] 单课失败不影响其它
+      （`test_evolution_continues_after_one_lesson_fails`、
+      `test_evolution_does_not_rewrite_when_before_snapshot_fails`）
+- [x] 新写课程记录 `studio/2`，旧课程仍显示 `studio/1`
+      （`test_evolution_records_prompt_version_and_batch_step`、
+      `test_evolution_page_lists_drafts_and_lessons`）
+- [x] 进化任务运行中第二个任务 409；同草稿批量/单课互斥
+      （`test_evolution_returns_conflict_while_running`；`JobRunner` 既有互斥测试不回归）
+- [x] 默认 `pytest` 全绿；P3.4 的 518 个测试无回归，P3.5 完成时全量 564 passed、3 deselected
+
+**验证命令（2026-10-26）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+564 passed, 3 deselected     # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)     # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)     # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
+quality: 100/100             # exit 0
+```
+
+---
+
+## 后续期摘要
+
+P2、P3.1、P3.2、P3.3、P3.4、P3.5 已实现；当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
 - 资源检索：SearXNG / Firecrawl / arXiv 顺延（OpenAlex 已于 P3.3 完成）。
 - AI 起草：按 `tb/1` 生成内容包，必须通过 validator。
 - 质量门禁：引用、可信度、练习覆盖、目标级别。
-- 内容包演进：`tb migrate` 或批量重新生成。
+- 内容包演进：跨草稿批量重生成已由 P3.5 完成；`tb migrate` 仍未开始。
 
-### P4 应用整合
+### P4 应用整合（范围待定义）
+
+P3.5 已结束，下一期是 P4。开始前需先写 P4 spec 并更新本文件的“当前期”与退出标准。
 
 - 面试：rubric → InterviewScore → Evidence。
 - 公司/JD：概念权重、匹配度。
