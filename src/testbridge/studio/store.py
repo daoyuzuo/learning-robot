@@ -14,7 +14,7 @@ from pathlib import Path
 
 SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
-STEPS = ("outline", "research", "lessons", "validation", "promote")
+STEPS = ("outline", "research", "lessons", "validation", "promote", "batch")
 SEARCH_BACKENDS = ("auto", "deepseek", "openalex")
 MAX_MODULES = 3
 MAX_LESSONS_PER_MODULE = 5
@@ -118,6 +118,10 @@ class DraftStore:
                 "lessons": {},
                 "validation": _step(),
                 "promote": _step(),
+                "batch": {
+                    "status": "pending", "error": None, "at": None,
+                    "mode": None, "done": 0, "total": 0,
+                },
             },
         }
         self.path(draft_id).mkdir(parents=True, exist_ok=True)
@@ -125,10 +129,13 @@ class DraftStore:
         return draft
 
     def load(self, draft_id: str) -> dict:
-        target = self.path(draft_id) / "draft.json"
-        if not target.is_file():
-            raise DraftNotFound(draft_id)
-        return json.loads(target.read_text(encoding="utf-8"))
+        # Serialize reads with writes: Windows rejects replacing a file that
+        # another thread is reading, and batch jobs write while the UI polls.
+        with self._lock:
+            target = self.path(draft_id) / "draft.json"
+            if not target.is_file():
+                raise DraftNotFound(draft_id)
+            return json.loads(target.read_text(encoding="utf-8"))
 
     def save(self, draft: dict) -> None:
         with self._lock:
@@ -163,7 +170,7 @@ class DraftStore:
     ) -> dict:
         with self._lock:
             draft = self.load(draft_id)
-            container = draft["steps"][step]
+            container = draft["steps"].setdefault(step, {})
             if lesson_id is not None:
                 entry = container.setdefault(lesson_id, _step())
             else:

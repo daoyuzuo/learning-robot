@@ -213,7 +213,9 @@ def mount_studio(
         path = store.path(draft_id) / f"research/{lesson_id}.json"
         return path.read_text(encoding="utf-8") if path.is_file() else ""
 
-    def generate_lesson(draft_id: str, lesson_id: str) -> None:
+    def generate_lesson(
+        draft_id: str, lesson_id: str, *, replace: bool = False
+    ) -> None:
         plan = lesson_plan(draft_id, lesson_id)
         concept_ids = {item["id"] for item in concepts(draft_id)}
         output = generate(
@@ -226,7 +228,7 @@ def mount_studio(
             ),
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
         )
-        lesson_writer.write_lesson(store, draft_id, plan, output)
+        lesson_writer.write_lesson(store, draft_id, plan, output, replace=replace)
 
     @router.get("/studio", response_class=HTMLResponse)
     def studio_list(request: Request):
@@ -310,7 +312,16 @@ def mount_studio(
 
     @router.put("/api/studio/{draft_id}/outline")
     def save_outline(draft_id: str, body: OutlineBody):
-        draft_or_404(draft_id)
+        draft = draft_or_404(draft_id)
+        batch = draft["steps"].get("batch") or {}
+        if batch.get("status") == "running":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "step_running",
+                    "message": "批量任务进行中，暂不能保存大纲",
+                },
+            )
         try:
             modules = save_outline_html(store, draft_id, body.html)
         except OutlineError as exc:
@@ -324,7 +335,7 @@ def mount_studio(
             "modules": [module.module_id for module in modules],
         }
 
-    def start_lessons(draft_id: str, kind: str, body: dict | None, handler) -> list[str]:
+    def start_lessons(draft_id: str, kind: str, body: dict | None, make_job) -> list[str]:
         draft_or_404(draft_id)
         require_enabled()
         lesson_id = (body or {}).get("lesson_id")
@@ -336,7 +347,7 @@ def mount_studio(
             for target in targets:
                 runner.start(
                     draft_id, kind,
-                    lambda target=target: handler(draft_id, target),
+                    lambda target=target: make_job(target),
                     lesson_id=target,
                 )
         except JobBusy:
@@ -348,12 +359,96 @@ def mount_studio(
 
     @router.post("/api/studio/{draft_id}/research")
     def start_research(draft_id: str, body: dict | None = None):
-        targets = start_lessons(draft_id, "research", body, generate_research)
+        targets = start_lessons(
+            draft_id, "research", body,
+            lambda target: generate_research(draft_id, target),
+        )
         return {"started": targets}
 
     @router.post("/api/studio/{draft_id}/lessons")
     def start_lesson_writing(draft_id: str, body: dict | None = None):
-        targets = start_lessons(draft_id, "lessons", body, generate_lesson)
+        replace = bool((body or {}).get("replace"))
+        targets = start_lessons(
+            draft_id, "lessons", body,
+            lambda target: generate_lesson(draft_id, target, replace=replace),
+        )
+        return {"started": targets}
+
+    @router.post("/api/studio/{draft_id}/batch")
+    def start_batch(draft_id: str, body: dict | None = None):
+        draft_or_404(draft_id)
+        require_enabled()
+        mode = (body or {}).get("mode")
+        if mode not in {"research", "lessons"}:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_request",
+                    "message": "mode 必须是 research 或 lessons",
+                },
+            )
+        draft = store.load(draft_id)
+        plans = outline_plans(draft_id)
+        targets = [
+            plan.lesson_id for plan in plans
+            if draft["steps"][mode].get(plan.lesson_id, {}).get("status")
+            in {"pending", "failed"}
+        ]
+        if not targets:
+            return {"started": []}
+
+        def run_batch() -> None:
+            failures = 0
+            store.set_step(
+                draft_id, "batch", status="running",
+                extra={"mode": mode, "done": 0, "total": len(targets)},
+            )
+            for index, lesson_id in enumerate(targets, start=1):
+                status = draft["steps"][mode].get(lesson_id, {}).get("status")
+                replace = mode == "lessons" and status == "failed"
+                store.set_step(
+                    draft_id, mode, status="running", lesson_id=lesson_id
+                )
+                try:
+                    if mode == "research":
+                        generate_research(draft_id, lesson_id)
+                    else:
+                        generate_lesson(draft_id, lesson_id, replace=replace)
+                except Exception as exc:  # noqa: BLE001 - keep going
+                    failures += 1
+                    store.set_step(
+                        draft_id, mode, status="failed",
+                        error=str(exc), lesson_id=lesson_id,
+                    )
+                else:
+                    store.set_step(
+                        draft_id, mode, status="done", lesson_id=lesson_id
+                    )
+                store.set_step(
+                    draft_id, "batch",
+                    extra={"mode": mode, "done": index, "total": len(targets)},
+                )
+            if failures:
+                store.set_step(
+                    draft_id, "batch", status="failed",
+                    error=f"{failures} 课失败",
+                    extra={"mode": mode, "done": len(targets),
+                           "total": len(targets)},
+                )
+            else:
+                store.set_step(
+                    draft_id, "batch", status="done",
+                    extra={"mode": mode, "done": len(targets),
+                           "total": len(targets)},
+                )
+
+        try:
+            runner.start_batch(draft_id, run_batch)
+        except JobBusy:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "step_running", "message": "任务进行中"},
+            ) from None
         return {"started": targets}
 
     @router.post("/api/studio/{draft_id}/validate")

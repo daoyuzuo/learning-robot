@@ -15,6 +15,8 @@
   </section>
   <section class="tb-step" data-step="research">
     <h2>2 调研</h2>
+    <p><button type="button" data-action="batch-research" {% if not enabled %}disabled{% endif %}>全部调研</button>
+       <span class="tb-batch" data-batch-status="research"></span></p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>
     <ul>
@@ -30,6 +32,8 @@
   </section>
   <section class="tb-step" data-step="lessons">
     <h2>3 写课</h2>
+    <p><button type="button" data-action="batch-lessons" {% if not enabled %}disabled{% endif %}>全部写课</button>
+       <span class="tb-batch" data-batch-status="lessons"></span></p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>
     <ul>
