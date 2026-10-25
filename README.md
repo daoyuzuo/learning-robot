@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-内容试点已完成（`content-packs/ros2-qos`）；P2.2 增加可选的 AI 追问面板。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）。
 
 ## AI 追问（可选）
 
@@ -31,6 +31,24 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 
 提交任意练习后，反馈区会出现「让 AI 讲讲」。有 rubric 的题型（简答、自评）会附带参考评分，
 记为 `llm_review` 证据，标注模型名；它不参与掌握度、复习排期与 readiness。
+
+## 内容工作台（P3.1）
+
+启动 Web 后打开 http://127.0.0.1:8000/studio ：
+
+1. 新建草稿（主题 / 级别 / 课数 / 每课检索次数）
+2. 直接编辑大纲（HTML）
+3. 按课调研（DeepSeek Search）
+4. 按课写课
+5. 校验（离线 validate + 资源可达性）
+6. 定稿到 `content-packs/`
+
+草稿在 `drafts/`（已 gitignore）；密钥仍走 `TESTBRIDGE_LLM_*` 环境变量。
+真实调用的测试需显式开启：
+
+```bash
+TESTBRIDGE_LIVE=1 .venv/Scripts/python -m pytest -m live
+```
 
 ## 文档
 

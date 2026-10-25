@@ -35,7 +35,10 @@ def _load_app(pack_dir: Path, db_path: Path) -> FastAPI:
         sys.path.insert(0, str(root))
     from web.app import create_app
 
-    return create_app(pack_dir, db_path)
+    return create_app(
+        pack_dir, db_path,
+        studio_llm=None, studio_search=None, studio_inline=False,
+    )
 
 
 def build_tutor_client(config: TutorConfig) -> LlmClient:

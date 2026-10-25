@@ -9,14 +9,21 @@
 
 ## 当前阶段
 
-**P2.3 已完成并合并到 `master`。** 课程页有 AI 追问与答后讲评；`llm_review` 只是旁注证据，不得进入 mastery / BKT / FSRS。下一步：定义 P3 范围。
+**P3.1 已完成并合并到 `master`。** `/studio` 提供“主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”工作台，产物是普通 `tb/1` 包，引擎零改动。下一步：定义 P3 其余范围。
 
 **不要提前实现：**
 
-- P3：AI 内容生成 / 资源抓取
+- P3 其余：批量重生成、`tb migrate`、多模块包
 - P4：面试 / 公司情报 / 求职管理
 
 除非用户明确要求并先更新 ROADMAP。
+
+**P3.1 附加边界：**
+
+- `src/testbridge/studio/` 不得 import `mastery`、`schedule`、`learning`、`evidence`。
+- 模型输出与检索结果按不可信输入处理：先解析、再 `sanitize_fragment`、后落盘。
+- 密钥只从 `TESTBRIDGE_LLM_*` 环境变量读取，不落盘、不回显、不写日志。
+- 草稿在 `drafts/`（已 gitignore）；默认 `pytest` 不联网，真实调用需 `TESTBRIDGE_LIVE=1`。
 
 ## 不可破坏的边界
 

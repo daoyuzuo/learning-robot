@@ -3,11 +3,12 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P2.3（答后讲评）**
+> **当前期：P3.1（内容生产工作台）**
 > 状态：完成，已合并到 `master`
 >
-> P1、P2、P2.1、内容试点、P2.2 均已完成。P2.3 增加提交后的 AI 讲评与参考评分：
-> 参考评分记 `llm_review`，不参与掌握度与调度。下一步：定义 P3 范围。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4 均已完成。P3.1 把
+> “主题 → 大纲 → 调研 → 写课 → 校验 → 定稿”固化为 `/studio` 前端工作台，
+> 产物仍是普通 `tb/1` 内容包，引擎零改动。下一步：定义 P3 其余范围。
 
 ---
 
@@ -180,9 +181,34 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
+## P3.1 内容生产工作台（已完成，2026-10-25）
+
+**做：**
+
+- `/studio` 与 `/studio/<id>`：草稿列表、五步工作区。
+- 大纲：模型生成、contenteditable 直接编辑、保存时净化。
+- 调研：每课可配检索预算，DeepSeek Search/Fetch，档案只读。
+- 写课：模型输出 → 课程 HTML / 练习 / 资源，YAML 合并。
+- 门禁：离线 `validate` + 资源可达性；定稿只拷贝内容文件。
+- 后台线程 + `draft.json` 状态轮询；重启把 `running` 记为 `failed`。
+- 默认测试全假、不联网；`TESTBRIDGE_LIVE=1` 才跑真实调用。
+
+**不做：** 批量重生成、`tb migrate`、多模块包、多人协作、草稿版本历史。
+
+**退出标准：**
+
+- [x] 全程页面完成：新建 → 编辑大纲 → 调研 → 写课 → 校验 → 定稿
+- [x] 定稿后的包通过 `tb validate`，可在 `/lesson/<id>` 打开
+- [x] `studio/` 不 import mastery / schedule / learning / evidence
+- [x] 密钥只从环境变量读取，不落盘、不回显
+- [x] 默认 `pytest` 全绿且不联网；P2 的测试无回归
+- [x] `drafts/` 已 gitignore
+
+---
+
 ## 后续期摘要
 
-P2 已实现；当前范围、退出标准与遗留以上方 P2 章节为准。
+P2、P3.1 已实现；当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -203,5 +229,6 @@ P2 已实现；当前范围、退出标准与遗留以上方 P2 章节为准。
 ## 文档索引
 
 - 总设计：[2026-10-24-teaching-engine-design.md](superpowers/specs/2026-10-24-teaching-engine-design.md)
+- P3.1 内容工作台：[2026-10-25-p3.1-content-studio-design.md](superpowers/specs/2026-10-25-p3.1-content-studio-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)
