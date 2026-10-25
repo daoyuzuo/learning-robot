@@ -14,18 +14,15 @@ import json
 import threading
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 
 import yaml
 
 from testbridge.contract.loader import load_lesson_file
 from testbridge.contract.models import LEVEL_ORDER
 from testbridge.quality.evaluate import QualityUnavailable, evaluate_draft
+from testbridge.studio.jobs import JobBusy, JobRunner
 from testbridge.studio.outline import LessonPlan
 from testbridge.studio.store import ID_RE, DraftStore
-
-if TYPE_CHECKING:
-    from testbridge.studio.jobs import JobRunner
 
 SNAPSHOT_SCHEMA = "studio-snapshot/1"
 EMPTY_METRICS: dict = {
@@ -236,6 +233,16 @@ class EvolutionBusy(Exception):
     """An evolution job is already running."""
 
 
+def _valid_report(result: object) -> bool:
+    """Return whether a callback report has the expected shape."""
+    if not isinstance(result, dict):
+        return False
+    lessons = result.get("lessons")
+    return isinstance(lessons, list) and all(
+        isinstance(item, dict) for item in lessons
+    )
+
+
 class EvolutionJob:
     """Process several drafts under their batch locks and track progress.
 
@@ -272,41 +279,57 @@ class EvolutionJob:
 
         def run() -> None:
             failures = 0
-            for draft_id, lessons in groups:
+            try:
+                for draft_id, lessons in groups:
+                    with self._lock:
+                        self._state["current"] = {
+                            "draft_id": draft_id, "lesson_id": None,
+                        }
+                    try:
+                        result = self.runner.run_batch_now(
+                            draft_id,
+                            lambda draft_id=draft_id, lessons=lessons: (
+                                process_draft(draft_id, lessons)
+                            ),
+                        )
+                    except JobBusy:
+                        result = {
+                            "draft_id": draft_id,
+                            "error": "草稿正在执行其他任务",
+                            "lessons": [],
+                        }
+                    except Exception as exc:  # noqa: BLE001 - continue
+                        result = {
+                            "draft_id": draft_id,
+                            "error": str(exc),
+                            "lessons": [],
+                        }
+                    if not _valid_report(result):
+                        result = {
+                            "draft_id": draft_id,
+                            "error": "草稿结果格式无效",
+                            "lessons": [],
+                        }
+                    with self._lock:
+                        self._state["results"].append(result)
+                        self._state["done"] += len(result["lessons"])
+                        self._state["current"] = None
+                    if result.get("error") or any(
+                        not item.get("ok") for item in result["lessons"]
+                    ):
+                        failures += 1
+            except Exception as exc:  # noqa: BLE001 - never stay running
                 with self._lock:
-                    self._state["current"] = {
-                        "draft_id": draft_id, "lesson_id": None,
-                    }
-                try:
-                    result = self.runner.run_batch_now(
-                        draft_id,
-                        lambda draft_id=draft_id, lessons=lessons: (
-                            process_draft(draft_id, lessons)
-                        ),
-                    )
-                except Exception as exc:  # noqa: BLE001 - other drafts continue
-                    result = {
-                        "draft_id": draft_id, "error": str(exc), "lessons": [],
-                    }
-                if not isinstance(result, dict):
-                    result = {
-                        "draft_id": draft_id,
-                        "error": "草稿结果格式无效",
-                        "lessons": [],
-                    }
-                with self._lock:
-                    self._state["results"].append(result)
-                    self._state["done"] += len(lessons)
+                    if self._state["status"] == "running":
+                        self._state["status"] = "failed"
+                        self._state["error"] = str(exc)
                     self._state["current"] = None
-                if result.get("error") or any(
-                    not item.get("ok") for item in result.get("lessons", [])
-                ):
-                    failures += 1
-            with self._lock:
-                self._state["status"] = "failed" if failures else "done"
-                self._state["error"] = (
-                    f"{failures} 个草稿失败" if failures else None
-                )
+            else:
+                with self._lock:
+                    self._state["status"] = "failed" if failures else "done"
+                    self._state["error"] = (
+                        f"{failures} 个草稿失败" if failures else None
+                    )
 
         if inline:
             run()

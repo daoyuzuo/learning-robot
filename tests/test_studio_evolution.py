@@ -307,6 +307,24 @@ def _wait_status(
     raise AssertionError(f"job did not reach {wanted}: {job.status()}")
 
 
+def _wait_step(
+    store: DraftStore,
+    draft_id: str,
+    step: str,
+    wanted: str,
+    timeout: float = 5.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        entry = store.load(draft_id)["steps"][step]
+        if entry.get("status") == wanted:
+            return
+        time.sleep(0.01)
+    raise AssertionError(
+        f"{step} did not reach {wanted}: {store.load(draft_id)['steps'][step]}"
+    )
+
+
 def test_evolution_job_status_starts_idle(tmp_path: Path) -> None:
     store, _ = setup_lesson(tmp_path)
     job = EvolutionJob(store, JobRunner(store, inline=True))
@@ -400,15 +418,41 @@ def test_evolution_job_continues_after_busy_draft(tmp_path: Path) -> None:
         job.start([("demo", ["L-1"]), ("other", ["L-2"])], process, inline=True)
     finally:
         release.set()
+    _wait_step(store, "demo", "outline", "done")
 
     state = job.status()
     assert seen == ["other"]
     assert state["status"] == "failed"
-    assert state["done"] == 2
+    assert state["done"] == 1
     assert state["error"] == "1 个草稿失败"
-    assert state["results"][0]["draft_id"] == "demo"
-    assert "running" in state["results"][0]["error"]
+    assert state["results"][0] == {
+        "draft_id": "demo",
+        "error": "草稿正在执行其他任务",
+        "lessons": [],
+    }
     assert state["results"][1] == _draft_report("other", ["L-2"])
+
+
+@pytest.mark.parametrize("lessons", [None, [None], "L-1"])
+def test_evolution_job_survives_malformed_report(
+    tmp_path: Path, lessons: object
+) -> None:
+    store, _ = setup_lesson(tmp_path)
+    job = EvolutionJob(store, JobRunner(store, inline=True))
+
+    def process(draft_id, lesson_ids):
+        return {"draft_id": draft_id, "error": None, "lessons": lessons}
+
+    job.start([("demo", ["L-1"])], process, inline=True)
+
+    state = job.status()
+    assert state["status"] == "failed"
+    assert state["done"] == 0
+    assert state["results"] == [{
+        "draft_id": "demo",
+        "error": "草稿结果格式无效",
+        "lessons": [],
+    }]
 
 
 def test_evolution_job_status_is_a_copy(tmp_path: Path) -> None:
