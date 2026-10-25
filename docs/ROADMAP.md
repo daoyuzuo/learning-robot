@@ -3,10 +3,11 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P3.4（多模块与批量）设计已批准，待实现**
-> 状态：设计完成，2026-10-25
+> **当前期：P3.4（多模块与批量）已完成，2026-10-26**
+> 状态：已实现（分支 `p3.4-multi-module-batch`）；默认 `pytest` 518 passed、3 deselected，
+> 两个现有包 `tb validate` 0/0，`tb quality` 100/100。下一期 P3.5（内容演进）范围待定义。
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3 均已完成。P3.4
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4 均已完成。P3.4
 > 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量
 > 与单课重写。设计见
 > [P3.4 多模块与批量](superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)。
@@ -259,7 +260,7 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 ---
 
-## P3.4 多模块与批量（设计已批准，待实现）
+## P3.4 多模块与批量（已完成，2026-10-26）
 
 **范围：**
 
@@ -271,22 +272,48 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 
 **不做：** 跨主题批量建包、并行批量、取消运行中的批量、自动发布。
 
-**退出标准：**
+**退出标准（实测，2026-10-26）：**
 
-- [ ] 2 模块 × 2 课生成 → 校验 → 定稿，`tb validate` 0/0
-- [ ] `module.yaml` concepts/lessons/order 正确
-- [ ] 大纲编辑后 module.yaml 同步
-- [ ] 批量只跑待办；失败继续；进度可见
-- [ ] 单课重写替换旧输出
-- [ ] 旧草稿可继续使用
-- [ ] 批量与单课互斥返回 409
-- [ ] 默认 `pytest` 全绿，现有 458 个测试无回归
+- [x] 2 模块 × 2 课生成 → 校验 → 定稿，`tb validate` 0/0
+      （`test_multi_module_batch_end_to_end`：4 课全部 done，定稿包 `validate_pack().errors == []`）
+- [x] `module.yaml` concepts/lessons/order 正确
+      （M01 `concepts=["c-one"]`、`lessons=["L-1","L-2"]`、`order=1`；M02 `lessons=["L-3","L-4"]`、`order=2`）
+- [x] 大纲编辑后 module.yaml 同步（`test_save_outline_rewrites_module_yaml_and_rekeys`）
+- [x] 批量只跑待办；失败继续；进度可见
+      （`test_batch_research_runs_every_pending_lesson`、`test_batch_returns_empty_when_nothing_is_pending`、
+      `test_batch_lessons_continues_after_failure`、`test_draft_page_shows_batch_and_rewrite_controls`）
+- [x] 单课重写替换旧输出（`test_single_lesson_rewrite_uses_replace`：旧 `EX-1-*` 释放，练习数不变且 ID 唯一）
+- [x] 旧草稿可继续使用（`tests/test_studio_multi_legacy.py` 3 个测试：旧 store 字段、扁平 outline 保存、缺字段跑大纲）
+- [x] 批量与单课互斥返回 409（`test_batch_rejected_while_single_job_runs`、`test_single_job_rejected_while_batch_runs`）
+- [x] 默认 `pytest` 全绿，现有 458 个测试无回归（518 passed，3 deselected）
+
+**验证命令（2026-10-26）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+518 passed, 3 deselected
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+
+$ .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
+quality: 100/100                # exit 0
+```
 
 ---
 
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3 已实现；当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4 已实现；当前范围、退出标准与遗留以上方章节为准。
+
+### P3.5 内容演进（下一步，范围待定义）
+
+- 现有内容包的整体演进：批量重新生成、版本迁移（`tb migrate`）或等价重建脚本。
+- 分期的具体范围与退出标准待 brainstorming + spec 后写入本文件。
+- 仍不做：跨主题批量建包、并行批量、自动发布。
 
 ### P3 内容生产
 

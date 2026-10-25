@@ -62,11 +62,24 @@
     });
   }
 
+  function paintBatch(batch) {
+    document.querySelectorAll("[data-batch-status]").forEach((node) => {
+      if (!batch || !batch.mode || node.dataset.batchStatus !== batch.mode) {
+        node.textContent = "";
+        return;
+      }
+      node.textContent = batch.status === "failed"
+        ? "失败：" + (batch.error || "")
+        : "完成 " + (batch.done || 0) + "/" + (batch.total || 0);
+    });
+  }
+
   function paint(payload) {
     document.querySelectorAll("[data-status-for]").forEach((node) => {
       const entry = payload.steps[node.dataset.statusFor] || {};
       node.textContent = entry.status || "pending";
     });
+    paintBatch(payload.steps.batch);
     ["research", "lessons"].forEach((step) => {
       Object.entries(payload.steps[step] || {}).forEach(([lesson, entry]) => {
         paintLesson(step, lesson, entry);
@@ -85,7 +98,9 @@
       const payload = await call("/api/studio/" + draftId);
       paint(payload);
       const busy = JSON.stringify(payload.steps).includes('"running"');
-      if (!busy && timer) {
+      if (busy) {
+        startPolling();
+      } else if (timer) {
         clearInterval(timer);
         timer = null;
       }
@@ -117,6 +132,20 @@
         }
         if (action === "regen-outline") {
           await call("/api/studio/" + draftId + "/outline", { method: "POST" });
+        } else if (action === "batch-research" || action === "batch-lessons") {
+          await call("/api/studio/" + draftId + "/batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: action === "batch-research" ? "research" : "lessons",
+            }),
+          });
+        } else if (action === "rewrite") {
+          await call("/api/studio/" + draftId + "/lessons", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lesson_id: lesson, replace: true }),
+          });
         } else if (action === "research") {
           await call("/api/studio/" + draftId + "/research", {
             method: "POST",
@@ -157,4 +186,8 @@
       }
     });
   });
+
+  // Refresh once on load so a reload mid/after a batch shows progress and
+  // rewrite controls; polling continues only while a step is running.
+  poll();
 })();

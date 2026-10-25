@@ -11,7 +11,7 @@
 
 ## 当前阶段
 
-P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由（默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`）。
+P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由；P3.4 支持一个包 1–3 个模块、每模块 1–5 课的模块化大纲、顺序批量与单课重写（默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`）。
 
 ## AI 追问（可选）
 
@@ -32,16 +32,21 @@ export TESTBRIDGE_LLM_MODEL=deepseek-chat
 提交任意练习后，反馈区会出现「让 AI 讲讲」。有 rubric 的题型（简答、自评）会附带参考评分，
 记为 `llm_review` 证据，标注模型名；它不参与掌握度、复习排期与 readiness。
 
-## 内容工作台（P3.1）
+## 内容工作台（P3.1–P3.4）
 
 启动 Web 后打开 http://127.0.0.1:8000/studio ：
 
-1. 新建草稿（主题 / 级别 / 课数 / 每课检索次数 / 检索源）
-2. 直接编辑大纲（HTML）
-3. 按课调研（OpenAlex / DeepSeek Search，可自动路由）
-4. 按课写课
+1. 新建草稿（主题 / 级别 / 模块数 1–3 / 每模块课数 1–5 / 每课检索次数 / 检索源）
+2. 直接编辑大纲（HTML）：可改模块标题、模块概念与课程归属；保存后重写 `module.yaml`
+3. 按课调研（OpenAlex / DeepSeek Search，可自动路由），或点「全部调研」顺序跑完所有待办课
+4. 按课写课，或点「全部写课」顺序跑完所有待办课；已完成的课显示「重写这一课」
 5. 校验（离线 validate + 资源可达性）
 6. 定稿到 `content-packs/`
+
+「全部调研 / 全部写课」只跑 `pending` / `failed` 的课，按模块与课的顺序串行执行；
+单课失败不中断后续课，批量结束时汇总为 `failed`。已完成的课用「重写这一课」替换旧的
+练习与资源，不产生重复 ID。批量与单课任务互斥（运行中返回 409），批量不会自动定稿。
+旧草稿（单模块、扁平 outline、无模块字段）仍按单模块 `M01` 继续可用。
 
 草稿在 `drafts/`（已 gitignore）；密钥仍走 `TESTBRIDGE_LLM_*` 环境变量。
 真实调用的测试需显式开启：
@@ -93,6 +98,7 @@ tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 - [ROS2 QoS 内容试点](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)
 - [P3.2 质量门禁设计](docs/superpowers/specs/2026-10-25-p3.2-quality-gates-design.md)
 - [P3.3 检索后端设计](docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md)
+- [P3.4 多模块与批量设计](docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
 - [路线图](docs/ROADMAP.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)

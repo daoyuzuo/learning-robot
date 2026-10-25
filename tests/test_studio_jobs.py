@@ -6,6 +6,11 @@ from testbridge.studio.jobs import JobBusy, JobRunner
 from testbridge.studio.store import DraftStore
 
 
+class BrokenStepStore(DraftStore):
+    def set_step(self, *args, **kwargs) -> dict:
+        raise RuntimeError("disk full")
+
+
 def make(tmp_path: Path) -> tuple[DraftStore, JobRunner]:
     store = DraftStore(tmp_path / "drafts")
     store.create(
@@ -50,3 +55,72 @@ def test_busy_job_is_rejected(tmp_path: Path) -> None:
 
     runner.start("demo", "outline", slow)
     assert started["done"] is True
+
+
+def test_batch_blocks_single_job(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+    started = {"done": False}
+
+    def batch() -> None:
+        with pytest.raises(JobBusy):
+            runner.start("demo", "outline", lambda: None)
+        started["done"] = True
+
+    runner.start_batch("demo", batch)
+    assert started["done"] is True
+    assert store.load("demo")["steps"]["batch"]["status"] == "done"
+
+
+def test_single_job_blocks_batch(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+    started = {"done": False}
+
+    def single() -> None:
+        with pytest.raises(JobBusy):
+            runner.start_batch("demo", lambda: None)
+        started["done"] = True
+
+    runner.start("demo", "outline", single)
+    assert started["done"] is True
+    assert store.load("demo")["steps"]["outline"]["status"] == "done"
+
+
+def test_batch_callback_can_fail_batch(tmp_path: Path) -> None:
+    store, runner = make(tmp_path)
+
+    def batch() -> None:
+        store.set_step("demo", "batch", status="failed", error="1 课失败")
+
+    runner.start_batch("demo", batch)
+
+    step = store.load("demo")["steps"]["batch"]
+    assert step["status"] == "failed"
+    assert step["error"] == "1 课失败"
+
+
+def test_failed_batch_start_releases_batch_lock(tmp_path: Path) -> None:
+    store = BrokenStepStore(tmp_path / "drafts")
+    store.create(
+        draft_id="demo", topic="t", level="L2", lesson_count=1,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    runner = JobRunner(store, inline=True)
+
+    with pytest.raises(RuntimeError, match="disk full"):
+        runner.start_batch("demo", lambda: None)
+    with pytest.raises(RuntimeError, match="disk full"):
+        runner.start_batch("demo", lambda: None)
+
+
+def test_failed_single_start_releases_job_key(tmp_path: Path) -> None:
+    store = BrokenStepStore(tmp_path / "drafts")
+    store.create(
+        draft_id="demo", topic="t", level="L2", lesson_count=1,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    runner = JobRunner(store, inline=True)
+
+    with pytest.raises(RuntimeError, match="disk full"):
+        runner.start("demo", "outline", lambda: None)
+    with pytest.raises(RuntimeError, match="disk full"):
+        runner.start("demo", "outline", lambda: None)

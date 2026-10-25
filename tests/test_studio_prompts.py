@@ -1,3 +1,4 @@
+from testbridge.studio.outline import LessonPlan, render_lesson_outline
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
@@ -16,7 +17,17 @@ def test_lesson_prompt_documents_contract_fields() -> None:
 
 def test_outline_prompt_asks_for_json() -> None:
     assert "JSON" in OUTLINE_SYSTEM
-    assert "课程节数：3" in render_outline_prompt("ROS 2", "L2", 3)
+    prompt = render_outline_prompt("ROS 2", "L2", 2, 3)
+    assert "模块数：2" in prompt
+    assert "每模块课数：3" in prompt
+
+
+def test_outline_prompt_caps_module_concepts_by_lesson_count() -> None:
+    one = render_outline_prompt("ROS 2", "L2", 1, 1)
+    two = render_outline_prompt("ROS 2", "L2", 1, 2)
+
+    assert "每模块概念上限：2" in one
+    assert "每模块概念上限：4" in two
 
 
 def test_lesson_prompt_embeds_all_sections() -> None:
@@ -37,3 +48,20 @@ def test_concepts_text_includes_target_levels() -> None:
     )
     assert "课程目标级别：L3" in text
     assert "target_level=L2" in text
+
+
+def test_lesson_outline_scopes_to_target_lesson() -> None:
+    plan = LessonPlan(
+        "L-1", "课一", 20, ["目标"], ["query"],
+        module_id="M01", concepts=["c-one"],
+    )
+
+    html = render_lesson_outline(plan)
+
+    assert '<section class="tb-outline-lesson" id="L-1">' in html
+    assert "c-one" in html
+    assert "c-two" not in html
+
+
+def test_lesson_system_restricts_exercises_to_lesson_concepts() -> None:
+    assert "子集" in LESSON_SYSTEM

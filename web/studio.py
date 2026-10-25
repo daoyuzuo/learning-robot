@@ -14,7 +14,6 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 
-from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.quality.evaluate import QualityUnavailable
 from testbridge.studio import lessons as lesson_writer
 from testbridge.studio import outline as outline_writer
@@ -28,7 +27,14 @@ from testbridge.studio.gates import (
 )
 from testbridge.studio.jobs import JobBusy, JobRunner
 from testbridge.studio.lessons import LessonError
-from testbridge.studio.outline import OutlineError, parse_outline_html, write_outline
+from testbridge.studio.outline import (
+    OutlineError,
+    flatten_modules,
+    parse_outline_html,
+    render_lesson_outline,
+    save_outline_html,
+    write_outline,
+)
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
@@ -99,9 +105,15 @@ def mount_studio(
     def concepts(draft_id: str) -> list[dict]:
         return list(_yaml(draft_id, "concepts.yaml").get("concepts") or [])
 
-    def concepts_text(draft_id: str) -> str:
+    def concepts_text(
+        draft_id: str, selected: list[str] | None = None
+    ) -> str:
         draft = store.load(draft_id)
-        return render_concepts_text(draft.get("level") or "L2", concepts(draft_id))
+        items = concepts(draft_id)
+        if selected:
+            wanted = set(selected)
+            items = [item for item in items if item.get("id") in wanted]
+        return render_concepts_text(draft.get("level") or "L2", items)
 
     def route_for(draft: dict, titles: list[str], domains: list[str]) -> SearchRoute:
         if hasattr(search, "route"):
@@ -113,11 +125,14 @@ def mount_studio(
             )
         return SearchRoute("custom", search)
 
-    def outline_plans(draft_id: str) -> list:
+    def outline_modules(draft_id: str) -> list:
         try:
             return parse_outline_html(store.read(draft_id, "outline.html"))
         except (FileNotFoundError, OutlineError):
             return []
+
+    def outline_plans(draft_id: str) -> list:
+        return flatten_modules(outline_modules(draft_id))
 
     def add_usage(draft_id: str, *, searches: int = 0, llm_calls: int = 0) -> None:
         draft = store.load(draft_id)
@@ -149,13 +164,19 @@ def mount_studio(
 
     def generate_outline(draft_id: str) -> None:
         draft = store.load(draft_id)
+        module_count = int(draft.get("module_count") or 1)
+        lessons_per_module = int(
+            draft.get("lessons_per_module") or draft.get("lesson_count") or 1
+        )
         parsed = generate(
             draft_id,
             OUTLINE_SYSTEM,
             render_outline_prompt(
-                draft["topic"], draft["level"], draft["lesson_count"]
+                draft["topic"], draft["level"], module_count, lessons_per_module
             ),
-            lambda raw: outline_writer.parse_outline_json(raw, draft["lesson_count"]),
+            lambda raw: outline_writer.parse_outline_json(
+                raw, module_count, lessons_per_module
+            ),
         )
         write_outline(store, draft_id, parsed)
 
@@ -199,20 +220,22 @@ def mount_studio(
         path = store.path(draft_id) / f"research/{lesson_id}.json"
         return path.read_text(encoding="utf-8") if path.is_file() else ""
 
-    def generate_lesson(draft_id: str, lesson_id: str) -> None:
+    def generate_lesson(
+        draft_id: str, lesson_id: str, *, replace: bool = False
+    ) -> None:
         plan = lesson_plan(draft_id, lesson_id)
         concept_ids = {item["id"] for item in concepts(draft_id)}
         output = generate(
             draft_id,
             LESSON_SYSTEM,
             render_lesson_prompt(
-                store.read(draft_id, "outline.html"),
-                concepts_text(draft_id),
+                render_lesson_outline(plan),
+                concepts_text(draft_id, plan.concepts),
                 research_text(draft_id, lesson_id),
             ),
             lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
         )
-        lesson_writer.write_lesson(store, draft_id, plan, output)
+        lesson_writer.write_lesson(store, draft_id, plan, output, replace=replace)
 
     @router.get("/studio", response_class=HTMLResponse)
     def studio_list(request: Request):
@@ -227,7 +250,9 @@ def mount_studio(
         draft_id: str = Form(...),
         topic: str = Form(...),
         level: str = Form("L2"),
-        lesson_count: int = Form(3),
+        module_count: int = Form(1),
+        lessons_per_module: int | None = Form(None),
+        lesson_count: int | None = Form(None),
         searches_per_lesson: int = Form(20),
         search_backend: str = Form("auto"),
     ):
@@ -239,7 +264,10 @@ def mount_studio(
         try:
             store.create(
                 draft_id=draft_id, topic=topic, level=level,
-                lesson_count=lesson_count, searches_per_lesson=searches_per_lesson,
+                module_count=module_count,
+                lessons_per_module=lessons_per_module,
+                lesson_count=lesson_count,
+                searches_per_lesson=searches_per_lesson,
                 model=config.model if config else "unconfigured",
                 prompt_version="studio/1",
                 search_backend=search_backend,
@@ -264,6 +292,7 @@ def mount_studio(
                     outline_path.read_text(encoding="utf-8")
                     if outline_path.is_file() else ""
                 ),
+                modules=outline_modules(draft_id),
                 lessons=[plan.lesson_id for plan in outline_plans(draft_id)],
             ),
         )
@@ -290,35 +319,30 @@ def mount_studio(
 
     @router.put("/api/studio/{draft_id}/outline")
     def save_outline(draft_id: str, body: OutlineBody):
-        draft_or_404(draft_id)
-        clean = sanitize_fragment(body.html)
+        draft = draft_or_404(draft_id)
+        batch = draft["steps"].get("batch") or {}
+        if batch.get("status") == "running":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "step_running",
+                    "message": "批量任务进行中，暂不能保存大纲",
+                },
+            )
         try:
-            plans = parse_outline_html(clean)
+            modules = save_outline_html(store, draft_id, body.html)
         except OutlineError as exc:
             raise HTTPException(
                 status_code=400,
                 detail={"code": "invalid_outline", "message": exc.message},
             ) from None
-        store.write(draft_id, "outline.html", clean)
-        draft = store.load(draft_id)
-        for step in ("research", "lessons"):
-            container = draft["steps"][step]
-            draft["steps"][step] = {
-                plan.lesson_id: container.get(
-                    plan.lesson_id,
-                    (
-                        {"status": "pending", "error": None, "at": None,
-                         "queries": 0, "hits": 0}
-                        if step == "research"
-                        else {"status": "pending", "error": None, "at": None}
-                    ),
-                )
-                for plan in plans
-            }
-        store.save(draft)
-        return {"lessons": [plan.lesson_id for plan in plans]}
+        lessons = [plan.lesson_id for plan in flatten_modules(modules)]
+        return {
+            "lessons": lessons,
+            "modules": [module.module_id for module in modules],
+        }
 
-    def start_lessons(draft_id: str, kind: str, body: dict | None, handler) -> list[str]:
+    def start_lessons(draft_id: str, kind: str, body: dict | None, make_job) -> list[str]:
         draft_or_404(draft_id)
         require_enabled()
         lesson_id = (body or {}).get("lesson_id")
@@ -330,7 +354,7 @@ def mount_studio(
             for target in targets:
                 runner.start(
                     draft_id, kind,
-                    lambda target=target: handler(draft_id, target),
+                    lambda target=target: make_job(target),
                     lesson_id=target,
                 )
         except JobBusy:
@@ -342,12 +366,111 @@ def mount_studio(
 
     @router.post("/api/studio/{draft_id}/research")
     def start_research(draft_id: str, body: dict | None = None):
-        targets = start_lessons(draft_id, "research", body, generate_research)
+        targets = start_lessons(
+            draft_id, "research", body,
+            lambda target: generate_research(draft_id, target),
+        )
         return {"started": targets}
 
     @router.post("/api/studio/{draft_id}/lessons")
     def start_lesson_writing(draft_id: str, body: dict | None = None):
-        targets = start_lessons(draft_id, "lessons", body, generate_lesson)
+        draft_or_404(draft_id)
+        payload = body or {}
+        replace = bool(payload.get("replace"))
+        if replace and not payload.get("lesson_id"):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_request",
+                    "message": "replace 需要指定 lesson_id",
+                },
+            )
+        targets = start_lessons(
+            draft_id, "lessons", payload,
+            lambda target: generate_lesson(draft_id, target, replace=replace),
+        )
+        return {"started": targets}
+
+    @router.post("/api/studio/{draft_id}/batch")
+    def start_batch(draft_id: str, body: dict | None = None):
+        draft_or_404(draft_id)
+        require_enabled()
+        mode = (body or {}).get("mode")
+        if mode not in {"research", "lessons"}:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_request",
+                    "message": "mode 必须是 research 或 lessons",
+                },
+            )
+        draft = store.load(draft_id)
+        plans = outline_plans(draft_id)
+        targets = [
+            plan.lesson_id for plan in plans
+            if draft["steps"][mode].get(plan.lesson_id, {}).get("status")
+            in {"pending", "failed"}
+        ]
+        if not targets:
+            if (draft["steps"].get("batch") or {}).get("status") == "running":
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "step_running", "message": "任务进行中"},
+                )
+            return {"started": []}
+
+        def run_batch() -> None:
+            failures = 0
+            store.set_step(
+                draft_id, "batch", status="running",
+                extra={"mode": mode, "done": 0, "total": len(targets)},
+            )
+            for index, lesson_id in enumerate(targets, start=1):
+                status = draft["steps"][mode].get(lesson_id, {}).get("status")
+                replace = mode == "lessons" and status == "failed"
+                store.set_step(
+                    draft_id, mode, status="running", lesson_id=lesson_id
+                )
+                try:
+                    if mode == "research":
+                        generate_research(draft_id, lesson_id)
+                    else:
+                        generate_lesson(draft_id, lesson_id, replace=replace)
+                except Exception as exc:  # noqa: BLE001 - keep going
+                    failures += 1
+                    store.set_step(
+                        draft_id, mode, status="failed",
+                        error=str(exc), lesson_id=lesson_id,
+                    )
+                else:
+                    store.set_step(
+                        draft_id, mode, status="done", lesson_id=lesson_id
+                    )
+                store.set_step(
+                    draft_id, "batch",
+                    extra={"mode": mode, "done": index, "total": len(targets)},
+                )
+            if failures:
+                store.set_step(
+                    draft_id, "batch", status="failed",
+                    error=f"{failures} 课失败",
+                    extra={"mode": mode, "done": len(targets),
+                           "total": len(targets)},
+                )
+            else:
+                store.set_step(
+                    draft_id, "batch", status="done",
+                    extra={"mode": mode, "done": len(targets),
+                           "total": len(targets)},
+                )
+
+        try:
+            runner.start_batch(draft_id, run_batch)
+        except JobBusy:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "step_running", "message": "任务进行中"},
+            ) from None
         return {"started": targets}
 
     @router.post("/api/studio/{draft_id}/validate")

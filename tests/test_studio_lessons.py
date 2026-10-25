@@ -81,3 +81,129 @@ def test_low_trust_resource_is_rejected() -> None:
     payload = {**PAYLOAD, "resources": [{**PAYLOAD["resources"][0], "trust": "C"}]}
     with pytest.raises(LessonError):
         parse_lesson_json(json.dumps(payload), LESSON, {"executor-basics"})
+
+
+def test_write_lesson_uses_module_id(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(draft_id="demo", topic="t", level="L2",
+                 lesson_count=2, searches_per_lesson=5,
+                 model="m", prompt_version="studio/1")
+    store.write("demo", "modules/M02/module.yaml", yaml.safe_dump({
+        "schema": "tb/1", "id": "M02", "title": "M2", "priority": "P1",
+        "concepts": ["executor-basics"], "lessons": ["L-EXEC-001"], "order": 2,
+    }, allow_unicode=True, sort_keys=False))
+    lesson = LessonPlan("L-EXEC-001", "课", 20, ["o"], [],
+                        module_id="M02", concepts=["executor-basics"])
+    output = parse_lesson_json(json.dumps(PAYLOAD), lesson, {"executor-basics"})
+
+    write_lesson(store, "demo", lesson, output)
+
+    assert store.read("demo", "modules/M02/lessons/L-EXEC-001.html")
+    manifest = yaml.safe_load(
+        store.read("demo", "modules/M02/lessons/L-EXEC-001.html")
+        .split("</script>")[0]
+        .split(">", 1)[1]
+    )
+    assert manifest["module"] == "M02"
+
+
+def test_replace_removes_old_ids(tmp_path: Path) -> None:
+    store = setup(tmp_path)
+    output = parse_lesson_json(json.dumps(PAYLOAD), LESSON, {"executor-basics"})
+    write_lesson(store, "demo", LESSON, output)
+
+    replacement = {
+        **PAYLOAD,
+        "html": '<article class="tb-lesson"><div data-tb-exercise="EX-2"></div></article>',
+        "exercises": [{**PAYLOAD["exercises"][0], "id": "EX-2"}],
+        "resources": [{**PAYLOAD["resources"][0], "id": "DOC-2"}],
+    }
+    new_output = parse_lesson_json(
+        json.dumps(replacement), LESSON, {"executor-basics"}
+    )
+
+    write_lesson(store, "demo", LESSON, new_output, replace=True)
+
+    exercises = yaml.safe_load(store.read("demo", "exercises.yaml"))["exercises"]
+    resources = yaml.safe_load(store.read("demo", "resources.yaml"))["resources"]
+    assert [item["id"] for item in exercises] == ["EX-2"]
+    assert [item["id"] for item in resources] == ["DOC-2"]
+
+
+def test_replace_finds_lesson_after_module_move(tmp_path: Path) -> None:
+    store = setup(tmp_path)
+    write_lesson(
+        store, "demo", LESSON,
+        parse_lesson_json(json.dumps(PAYLOAD), LESSON, {"executor-basics"}),
+    )
+    store.write("demo", "modules/M02/module.yaml", yaml.safe_dump({
+        "schema": "tb/1", "id": "M02", "title": "M2", "priority": "P1",
+        "concepts": ["executor-basics"], "lessons": ["L-EXEC-001"], "order": 2,
+    }, allow_unicode=True, sort_keys=False))
+    moved = LessonPlan("L-EXEC-001", "课", 20, ["o"], [],
+                       module_id="M02", concepts=["executor-basics"])
+    replacement = {
+        **PAYLOAD,
+        "html": '<article class="tb-lesson"><div data-tb-exercise="EX-M2"></div></article>',
+        "exercises": [{**PAYLOAD["exercises"][0], "id": "EX-M2"}],
+        "resources": [{**PAYLOAD["resources"][0], "id": "DOC-M2"}],
+    }
+
+    write_lesson(
+        store, "demo", moved,
+        parse_lesson_json(json.dumps(replacement), moved, {"executor-basics"}),
+        replace=True,
+    )
+
+    exercises = yaml.safe_load(store.read("demo", "exercises.yaml"))["exercises"]
+    resources = yaml.safe_load(store.read("demo", "resources.yaml"))["resources"]
+    assert [item["id"] for item in exercises] == ["EX-M2"]
+    assert [item["id"] for item in resources] == ["DOC-M2"]
+    assert store.read("demo", "modules/M01/lessons/L-EXEC-001.html")
+
+
+def test_replace_still_rejects_other_lessons_ids(tmp_path: Path) -> None:
+    store = setup(tmp_path)
+    write_lesson(
+        store, "demo", LESSON,
+        parse_lesson_json(json.dumps(PAYLOAD), LESSON, {"executor-basics"}),
+    )
+    second = LessonPlan("L-EXEC-002", "第二课", 20, ["o"], [],
+                        concepts=["executor-basics"])
+    second_payload = {
+        **PAYLOAD,
+        "html": '<article class="tb-lesson"><div data-tb-exercise="EX-2"></div></article>',
+        "exercises": [{**PAYLOAD["exercises"][0], "id": "EX-2"}],
+        "resources": [{**PAYLOAD["resources"][0], "id": "DOC-2"}],
+    }
+    write_lesson(
+        store, "demo", second,
+        parse_lesson_json(json.dumps(second_payload), second, {"executor-basics"}),
+    )
+    clash = {
+        **PAYLOAD,
+        "exercises": [{**PAYLOAD["exercises"][0], "id": "EX-2"}],
+    }
+
+    with pytest.raises(LessonError):
+        write_lesson(
+            store, "demo", LESSON,
+            parse_lesson_json(json.dumps(clash), LESSON, {"executor-basics"}),
+            replace=True,
+        )
+
+
+def test_manifest_concepts_prefer_lesson_plan(tmp_path: Path) -> None:
+    store = setup(tmp_path)
+    lesson = LessonPlan("L-EXEC-001", "课", 20, ["o"], [],
+                        concepts=["plan-a", "plan-b"])
+    output = parse_lesson_json(json.dumps(PAYLOAD), lesson, {"executor-basics"})
+
+    write_lesson(store, "demo", lesson, output)
+
+    manifest = yaml.safe_load(
+        store.read("demo", "modules/M01/lessons/L-EXEC-001.html")
+        .split("</script>")[0]
+        .split(">", 1)[1]
+    )
+    assert manifest["concepts"] == ["plan-a", "plan-b"]

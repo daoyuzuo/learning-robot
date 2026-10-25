@@ -27,6 +27,7 @@ class JobRunner:
         self.store = store
         self.inline = inline
         self._running: set[tuple[str, str, str | None]] = set()
+        self._batch_running: set[str] = set()
         self._lock = threading.Lock()
 
     def start(
@@ -41,13 +42,21 @@ class JobRunner:
             raise ValueError(f"unknown job kind: {kind}")
         key = (draft_id, kind, lesson_id)
         with self._lock:
+            if draft_id in self._batch_running:
+                raise JobBusy("batch is already running")
             if key in self._running:
                 raise JobBusy(f"{kind} is already running")
             self._running.add(key)
 
-        self.store.set_step(
-            draft_id, STEP_FOR_KIND[kind], status="running", lesson_id=lesson_id
-        )
+        try:
+            self.store.set_step(
+                draft_id, STEP_FOR_KIND[kind], status="running",
+                lesson_id=lesson_id,
+            )
+        except Exception:
+            with self._lock:
+                self._running.discard(key)
+            raise
 
         def run() -> None:
             try:
@@ -64,6 +73,48 @@ class JobRunner:
             finally:
                 with self._lock:
                     self._running.discard(key)
+
+        if self.inline:
+            run()
+        else:
+            threading.Thread(target=run, daemon=True).start()
+
+    def start_batch(self, draft_id: str, fn: Callable[[], None]) -> None:
+        """Run ``fn`` as the only job of ``draft_id``.
+
+        The callback owns per-lesson status and may mark the batch failed; the
+        wrapper only fills in ``done`` when the callback left it running.
+        """
+        with self._lock:
+            if draft_id in self._batch_running:
+                raise JobBusy("batch is already running")
+            if any(item[0] == draft_id for item in self._running):
+                raise JobBusy("a step is already running")
+            self._batch_running.add(draft_id)
+
+        try:
+            self.store.set_step(draft_id, "batch", status="running")
+        except Exception:
+            with self._lock:
+                self._batch_running.discard(draft_id)
+            raise
+
+        def run() -> None:
+            try:
+                fn()
+            except Exception as exc:  # noqa: BLE001 - status carries the error
+                self.store.set_step(
+                    draft_id, "batch", status="failed", error=str(exc)
+                )
+            else:
+                if (
+                    self.store.load(draft_id)["steps"]["batch"].get("status")
+                    == "running"
+                ):
+                    self.store.set_step(draft_id, "batch", status="done")
+            finally:
+                with self._lock:
+                    self._batch_running.discard(draft_id)
 
         if self.inline:
             run()

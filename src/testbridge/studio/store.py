@@ -9,15 +9,17 @@ from __future__ import annotations
 import json
 import re
 import threading
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 SCHEMA = "studio/1"
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
-STEPS = ("outline", "research", "lessons", "validation", "promote")
+STEPS = ("outline", "research", "lessons", "validation", "promote", "batch")
 SEARCH_BACKENDS = ("auto", "deepseek", "openalex")
-MIN_LESSONS = 1
-MAX_LESSONS = 5
+MAX_MODULES = 3
+MAX_LESSONS_PER_MODULE = 5
 MIN_SEARCHES = 1
 MAX_SEARCHES = 50
 
@@ -65,7 +67,9 @@ class DraftStore:
         draft_id: str,
         topic: str,
         level: str,
-        lesson_count: int,
+        module_count: int = 1,
+        lessons_per_module: int | None = None,
+        lesson_count: int | None = None,
         searches_per_lesson: int,
         model: str,
         prompt_version: str,
@@ -73,8 +77,18 @@ class DraftStore:
     ) -> dict:
         if not ID_RE.fullmatch(draft_id):
             raise DraftError("invalid_id", "草稿 ID 只能包含字母、数字和连字符")
-        if not MIN_LESSONS <= lesson_count <= MAX_LESSONS:
-            raise DraftError("invalid_lesson_count", "课数必须在 1–5 之间")
+        if lessons_per_module is None:
+            lessons_per_module = lesson_count or 1
+        if lesson_count is None:
+            lesson_count = module_count * lessons_per_module
+        if not 1 <= module_count <= MAX_MODULES:
+            raise DraftError("invalid_module_count", "模块数必须在 1–3 之间")
+        if not 1 <= lessons_per_module <= MAX_LESSONS_PER_MODULE:
+            raise DraftError(
+                "invalid_lessons_per_module", "每模块课数必须在 1–5 之间"
+            )
+        if lesson_count != module_count * lessons_per_module:
+            raise DraftError("invalid_lesson_count", "总课数与模块数不匹配")
         if not MIN_SEARCHES <= searches_per_lesson <= MAX_SEARCHES:
             raise DraftError("invalid_search_budget", "每课检索次数必须在 1–50 之间")
         if search_backend not in SEARCH_BACKENDS:
@@ -90,6 +104,8 @@ class DraftStore:
             "id": draft_id,
             "topic": topic,
             "level": level,
+            "module_count": module_count,
+            "lessons_per_module": lessons_per_module,
             "lesson_count": lesson_count,
             "searches_per_lesson": searches_per_lesson,
             "model": model,
@@ -104,6 +120,10 @@ class DraftStore:
                 "lessons": {},
                 "validation": _step(),
                 "promote": _step(),
+                "batch": {
+                    "status": "pending", "error": None, "at": None,
+                    "mode": None, "done": 0, "total": 0,
+                },
             },
         }
         self.path(draft_id).mkdir(parents=True, exist_ok=True)
@@ -111,10 +131,13 @@ class DraftStore:
         return draft
 
     def load(self, draft_id: str) -> dict:
-        target = self.path(draft_id) / "draft.json"
-        if not target.is_file():
-            raise DraftNotFound(draft_id)
-        return json.loads(target.read_text(encoding="utf-8"))
+        # Serialize reads with writes: Windows rejects replacing a file that
+        # another thread is reading, and batch jobs write while the UI polls.
+        with self._lock:
+            target = self.path(draft_id) / "draft.json"
+            if not target.is_file():
+                raise DraftNotFound(draft_id)
+            return json.loads(target.read_text(encoding="utf-8"))
 
     def save(self, draft: dict) -> None:
         with self._lock:
@@ -127,15 +150,28 @@ class DraftStore:
             temporary.replace(target)
 
     def list(self) -> list[dict]:
-        if not self.root.is_dir():
-            return []
-        drafts = []
-        for item in sorted(self.root.iterdir()):
-            if (item / "draft.json").is_file():
-                drafts.append(json.loads(
-                    (item / "draft.json").read_text(encoding="utf-8")
-                ))
-        return sorted(drafts, key=lambda draft: draft["id"])
+        with self._lock:
+            if not self.root.is_dir():
+                return []
+            drafts = []
+            for item in sorted(self.root.iterdir()):
+                if (item / "draft.json").is_file():
+                    drafts.append(json.loads(
+                        (item / "draft.json").read_text(encoding="utf-8")
+                    ))
+            return sorted(drafts, key=lambda draft: draft["id"])
+
+    def update(self, draft_id: str, mutator: Callable[[dict], Any]) -> Any:
+        """Load, mutate and save a draft while holding the store lock.
+
+        Mutators must re-check any state they depend on: the lock makes the
+        check and the following write one atomic step.
+        """
+        with self._lock:
+            draft = self.load(draft_id)
+            result = mutator(draft)
+            self.save(draft)
+            return result
 
     def set_step(
         self,
@@ -149,7 +185,7 @@ class DraftStore:
     ) -> dict:
         with self._lock:
             draft = self.load(draft_id)
-            container = draft["steps"][step]
+            container = draft["steps"].setdefault(step, {})
             if lesson_id is not None:
                 entry = container.setdefault(lesson_id, _step())
             else:
