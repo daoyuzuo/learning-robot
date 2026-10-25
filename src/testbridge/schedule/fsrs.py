@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from fsrs import Card, Rating, Scheduler
 
 from testbridge.evidence.store import EvidenceEvent
@@ -39,7 +41,16 @@ def review_event(
     previous: ReviewState | None = None,
     learner_id: str = "local",
 ) -> ReviewState:
-    card = Card.from_dict(previous.card_json) if previous else Card()
+    if previous:
+        card = Card.from_dict(previous.card_json)
+    else:
+        card_id = int.from_bytes(
+            hashlib.blake2b(
+                f"{learner_id}:{exercise_id}".encode(), digest_size=8
+            ).digest(),
+            "big",
+        )
+        card = Card(card_id=card_id)
     rating = rating_for(event)
     reps = (previous.reps if previous else 0) + 1
     lapses = previous.lapses if previous else 0
