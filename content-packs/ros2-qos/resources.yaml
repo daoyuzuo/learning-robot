@@ -1,0 +1,51 @@
+schema: tb/1
+resources:
+  - id: DOC-ROS2-COMM
+    title: Topics — ROS 2 Documentation (Jazzy)
+    url: https://docs.ros.org/en/jazzy/Concepts/Basic/About-Topics.html
+    type: official-doc
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-25
+    coverage: [ros2-communication-model]
+    why: 说明话题是单向、多对多的数据流，并给出与服务和动作的对照，是选择通信机制的一手依据。
+
+  - id: DOC-QOS-SETTINGS
+    title: Quality of Service settings — ROS 2 Documentation (Jazzy)
+    url: https://docs.ros.org/en/jazzy/Concepts/Intermediate/About-Quality-of-Service-Settings.html
+    type: official-doc
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-25
+    coverage: [dds-qos-policies, qos-compatibility]
+    why: 六类策略的定义、默认 profile，以及 Request vs Offered 兼容规则；兼容性问题只认这份表。
+
+  - id: DOC-DDS-SPEC
+    title: Data Distribution Service (DDS) Version 1.4
+    url: https://www.omg.org/spec/DDS/1.4/
+    type: standard
+    trust: A
+    license: OMG
+    last_verified: 2026-10-25
+    coverage: [dds-qos-policies]
+    why: QoS 策略在 DDS 层的原始定义，用来判断 ROS 2 文档没写清的边界语义。
+
+  - id: DOC-ROS2-TOPIC-CLI
+    title: Understanding topics — ROS 2 Tutorials (Jazzy)
+    url: https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Topics/Understanding-ROS2-Topics.html
+    type: tutorial
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-25
+    coverage: [qos-observability]
+    why: ros2 topic list / info / echo / hz / bw 的用法，排查“收不到数据”时的第一组命令。
+
+  - id: DOC-QOS-TUTORIAL
+    title: Quality of Service — ROS 2 Demo Tutorial (Jazzy)
+    url: https://docs.ros.org/en/jazzy/Tutorials/Demos/Quality-of-Service.html
+    type: tutorial
+    trust: A
+    license: Apache-2.0
+    last_verified: 2026-10-25
+    coverage: [qos-testing]
+    why: 官方 demo 直接演示不兼容 QoS 下收不到消息的现象，可照着复现测试用例。

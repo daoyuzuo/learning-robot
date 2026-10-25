@@ -1,0 +1,10 @@
+schema: tb/1
+widgets:
+  - id: W-QOS-QUEUE
+    type: parameter-svg
+    title: 处理间隔与队列积压
+    spec:
+      template: assets/widgets/qos-queue.svg
+      parameters:
+        - {id: drain, label: 订阅端处理间隔(倍), min: 0.5, max: 2.0, default: 1.0}
+    caption: 把处理间隔调大，看两个消费标记之间堆了多少条消息；积压超过 KEEP_LAST 的 depth 时，最早的消息会被丢弃。

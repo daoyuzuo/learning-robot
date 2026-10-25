@@ -1,0 +1,9 @@
+schema: tb/1
+id: ros2-qos
+version: 0.1.0
+title: "ROS 2 通信与 QoS：测试视角"
+description: 面向具身智能测试岗的 ROS 2 通信入门：从话题边界到 QoS 兼容，再到可执行的验收方法。
+language: zh-CN
+license: CC-BY-4.0
+authors: [testbridge]
+created: 2026-10-25

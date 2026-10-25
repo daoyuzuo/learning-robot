@@ -1,0 +1,83 @@
+<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-QOS-002",
+  "title": "QoS 策略与兼容性",
+  "module": "M01",
+  "concepts": ["dds-qos-policies", "qos-compatibility"],
+  "target_level": "L3",
+  "minutes": 25,
+  "objectives": [
+    "说出六类 QoS 策略各自约束什么",
+    "用 Request vs Offered 规则判断一对 QoS 是否兼容",
+    "解释不兼容时“不报错、只是不连接”的现象"
+  ],
+  "prerequisites": ["ros2-communication-model"],
+  "exercises": ["EX-QOS-002", "EX-QOS-003", "EX-QOS-005"],
+  "resources": ["DOC-QOS-SETTINGS", "DOC-DDS-SPEC"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>QoS 策略与兼容性</h1>
+
+  <section>
+    <p>QoS 是发布/订阅之间的“服务等级合同”。它不改变消息内容，只改变这条链路在丢包、延迟、重启时的行为。默认值能覆盖大多数 demo，但一到真机就会暴露问题：传感器流被可靠传输拖慢、后加入的节点收不到历史状态、订阅端静默地一条消息都不收。</p>
+  </section>
+
+  <section>
+    <h2>六类策略</h2>
+    <table>
+      <thead>
+        <tr><th>策略</th><th>约束什么</th><th>常见取值</th><th>默认</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>reliability</td><td>丢了要不要重传</td><td>RELIABLE / BEST_EFFORT</td><td>RELIABLE</td></tr>
+        <tr><td>durability</td><td>晚加入的订阅者能不能收到历史</td><td>TRANSIENT_LOCAL / VOLATILE</td><td>VOLATILE</td></tr>
+        <tr><td>history + depth</td><td>本地队列保留多少条</td><td>KEEP_LAST(n) / KEEP_ALL</td><td>KEEP_LAST(10)</td></tr>
+        <tr><td>deadline</td><td>相邻两条之间允许的最大间隔</td><td>时长 / default</td><td>default</td></tr>
+        <tr><td>lifespan</td><td>一条消息最多存活多久</td><td>时长 / default</td><td>default</td></tr>
+        <tr><td>liveliness</td><td>多久没心跳算发布者失联</td><td>AUTOMATIC / MANUAL，带租期</td><td>system default</td></tr>
+      </tbody>
+    </table>
+    <p>容易混的两对：<strong>history/depth 管数量，lifespan 管时间</strong>；<strong>deadline 管“来晚没”，liveliness 管“人还在没”</strong>。</p>
+  </section>
+
+  <div data-tb-widget="W-QOS-QUEUE"></div>
+
+  <section>
+    <h2>兼容性：Request vs Offered</h2>
+    <p>订阅端<strong>请求</strong>它愿意接受的最低质量，发布端<strong>提供</strong>它能给出的最高质量。只有请求的每一项都不比提供的更严格，连接才建立。</p>
+    <ul>
+      <li>发布 RELIABLE、订阅 BEST_EFFORT：兼容（订阅要求更低）。</li>
+      <li>发布 BEST_EFFORT、订阅 RELIABLE：不兼容（订阅要求更高）。</li>
+      <li>发布 TRANSIENT_LOCAL、订阅 VOLATILE：兼容。</li>
+      <li>发布 VOLATILE、订阅 TRANSIENT_LOCAL：不兼容。</li>
+    </ul>
+  </section>
+
+  <aside data-tb-block="callout" data-variant="warning">
+    <p>不兼容不会报错：两个节点都正常运行，只是它们之间不建立连接。日志里通常什么都没有，表现就是“订阅端一条也收不到”。这是 QoS 问题最典型的误判来源。</p>
+  </aside>
+
+  <section>
+    <h2>常用 profile</h2>
+    <p>传感器数据用“best effort + 较小队列”，因为丢一帧的代价小于延迟的代价；状态类、配置类话题用“reliable + transient local”，让后启动的节点也能拿到最新状态。</p>
+    <pre data-tb-block="code" data-language="python"><code>from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+
+sensor_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT)
+state_qos = QoSProfile(
+    depth=1,
+    reliability=ReliabilityPolicy.RELIABLE,
+    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+)</code></pre>
+  </section>
+
+  <div data-tb-exercise="EX-QOS-002"></div>
+  <div data-tb-exercise="EX-QOS-003"></div>
+  <div data-tb-exercise="EX-QOS-005"></div>
+
+  <section data-tb-block="resources">
+    <a data-tb-resource="DOC-QOS-SETTINGS"></a>
+    <a data-tb-resource="DOC-DDS-SPEC"></a>
+  </section>
+</article>

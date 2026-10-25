@@ -1,0 +1,97 @@
+schema: tb/1
+exercises:
+  - id: EX-QOS-001
+    type: single_choice
+    concepts: [ros2-communication-model]
+    level: L1
+    prompt: 机器人要“导航到目标点并持续回报剩余距离”，哪种通信机制最合适？
+    options:
+      - {id: a, text: 话题（topic）}
+      - {id: b, text: 服务（service）}
+      - {id: c, text: 动作（action）}
+      - {id: d, text: 参数（parameter）}
+    answer: c
+    explanation: 长任务、有中间反馈、可取消，三者同时成立时用 action。topic 没有“完成”语义，service 是一问一答且阻塞到返回，参数是配置项而不是任务。
+    hints:
+      - {level: 1, text: 先看这个调用有没有“任务完成 / 取消”这层语义。}
+      - {level: 2, text: 需要中间反馈的调用，不是一问一答。}
+    difficulty: 2
+
+  - id: EX-QOS-002
+    type: single_choice
+    concepts: [dds-qos-policies]
+    level: L2
+    prompt: 100 Hz 的激光雷达点云，允许偶尔丢帧，但发布端不能被拖慢。发布端 reliability 应该选？
+    options:
+      - {id: a, text: RELIABLE}
+      - {id: b, text: BEST_EFFORT}
+      - {id: c, text: 由订阅端决定}
+      - {id: d, text: 与丢帧无关，随便选}
+    answer: b
+    explanation: BEST_EFFORT 不重传、不等确认，丢帧但不拖慢发布；RELIABLE 在网络抖动时会重传，可能让发布节奏变差。订阅端只能请求，不能把发布端从 BEST_EFFORT 拔高到 RELIABLE。
+    hints:
+      - {level: 1, text: 先问：丢一帧的代价大，还是延迟的代价大？}
+      - {level: 2, text: 重传意味着发布端要等确认。}
+    difficulty: 2
+
+  - id: EX-QOS-003
+    type: multi_choice
+    concepts: [qos-compatibility]
+    level: L2
+    prompt: 下列哪些发布 / 订阅组合不会建立连接？（选出所有符合的）
+    options:
+      - {id: a, text: 发布 RELIABLE + 订阅 BEST_EFFORT}
+      - {id: b, text: 发布 BEST_EFFORT + 订阅 RELIABLE}
+      - {id: c, text: 发布 TRANSIENT_LOCAL + 订阅 VOLATILE}
+      - {id: d, text: 发布 VOLATILE + 订阅 TRANSIENT_LOCAL}
+    answer: [b, d]
+    explanation: 规则是“订阅请求的每一项都不得比发布提供的更严格”。b 和 d 里订阅要求的质量高于发布能提供的，因此不连接；a 和 c 是订阅要求更低，兼容。
+    hints:
+      - {level: 1, text: 把“订阅要的”和“发布给的”逐项比一次。}
+      - {level: 2, text: 只有订阅比发布更严格时才会失败。}
+    difficulty: 3
+
+  - id: EX-QOS-004
+    type: short_answer
+    concepts: [qos-observability]
+    level: L2
+    prompt: 订阅节点在运行，但一直收不到数据。写出你的排查步骤，至少包含两个可执行的命令或检查点。
+    answer:
+      accepted: ["ros2 topic info", "--verbose", "offered", "requested", "ros2 topic hz", "ros2 topic list", "兼容", "命名空间"]
+      min_hits: 3
+    rubric:
+      - {dimension: 观测, weight: 0.5, criteria: 用 ros2 topic info --verbose 对比 offered 与 requested}
+      - {dimension: 判断, weight: 0.3, criteria: 指出 QoS 不兼容或话题名 / 命名空间不一致}
+      - {dimension: 验证, weight: 0.2, criteria: 给出修复后的验证方式}
+    hints:
+      - {level: 1, text: 先确认两端说的是不是同一个话题。}
+      - {level: 2, text: 再比对两端声明的 QoS，而不是猜。}
+    difficulty: 3
+
+  - id: EX-QOS-005
+    type: self_assess
+    concepts: [dds-qos-policies]
+    level: L2
+    prompt: 用自己的话解释 depth 与 lifespan 的区别：它们分别在什么时候起作用？
+    rubric:
+      - {dimension: 机制, weight: 0.5, criteria: depth 限制队列里保留几条，lifespan 限制一条消息最多存活多久}
+      - {dimension: 场景, weight: 0.5, criteria: 能各举一个该调大 depth / 该调短 lifespan 的场景}
+    hints:
+      - {level: 1, text: 一个是数量上限，一个是时间上限。}
+
+  - id: EX-QOS-006
+    type: single_choice
+    concepts: [qos-testing]
+    level: L3
+    prompt: 要判定订阅端的处理是否满足 deadline，最直接的做法是？
+    options:
+      - {id: a, text: 看 ros2 topic hz 的平均频率是否达标}
+      - {id: b, text: 在订阅端设置 deadline，统计 deadline miss 事件}
+      - {id: c, text: 把 reliability 改成 RELIABLE 再观察}
+      - {id: d, text: 比较 ros2 topic bw 的带宽曲线}
+    answer: b
+    explanation: deadline 约束的是“相邻两次到达之间的最大间隔”，由 DDS 自己判定并回调；平均频率达标不代表没有长间隔。RELIABLE 和带宽都不回答“有没有超时”。
+    hints:
+      - {level: 1, text: 平均值会掩盖最坏情况。}
+      - {level: 2, text: deadline 有专门的超时事件，不需要你手工计时。}
+    difficulty: 4

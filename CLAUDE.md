@@ -9,7 +9,7 @@
 
 ## 当前阶段
 
-**P2.1：P2 收尾，已完成并合并到 `master`。** 下一步二选一：内容试点（ROS2 通信/QoS 或 EtherCAT）或 P3 内容生产流水线；先做内容试点，再定 P3 范围。
+**内容试点已完成并合并到 `master`。** 产出 `content-packs/ros2-qos`（3 课 / 6 题 / 5 资源 / 1 交互图），契约缺口见[试点设计](docs/superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)第 10 节。下一步据此定义 P3 范围。
 
 **不要提前实现：**
 
@@ -53,6 +53,9 @@
 ## 工作方式
 
 - 先看现有目录和测试，再改；不要凭记忆重建。
+- **流程按改动类型分层：**
+  - 改引擎、改契约、跨模块接口、新增题型/渲染器 → brainstorming + spec + writing-plans。
+  - 只新增或修改内容包（`content-packs/` 下纯数据）→ 直接写，`tb validate` 与测试即验收；spec 可选，不写实施计划。
 - 改动跨模块时，先更新 spec/ROADMAP，再写代码。
 - 新增内容包必须能通过 `tb validate`，且不要求改引擎代码。
 - 宣称完成前，实际运行校验和测试，并在回复中给出输出。

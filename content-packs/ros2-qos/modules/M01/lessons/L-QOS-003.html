@@ -1,0 +1,70 @@
+<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-QOS-003",
+  "title": "QoS 观测与测试",
+  "module": "M01",
+  "concepts": ["qos-compatibility", "qos-observability", "qos-testing"],
+  "target_level": "L3",
+  "minutes": 25,
+  "objectives": [
+    "用 ros2 topic info --verbose 读出两端实际生效的 QoS",
+    "设计一个制造不兼容并证明它不连通的测试",
+    "用序号或时间戳统计丢包与延迟，并给出判定阈值"
+  ],
+  "prerequisites": ["ros2-communication-model", "dds-qos-policies"],
+  "exercises": ["EX-QOS-004", "EX-QOS-006"],
+  "resources": ["DOC-ROS2-TOPIC-CLI", "DOC-QOS-TUTORIAL"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>QoS 观测与测试</h1>
+
+  <section>
+    <p>上一节课的结论是：QoS 不兼容时不报错。这一节课解决“那怎么发现”。核心思路只有一条——<strong>不要猜，读两端实际生效的配置，再用可计数的指标验证</strong>。</p>
+  </section>
+
+  <section>
+    <h2>第一步：读配置</h2>
+    <pre data-tb-block="code" data-language="bash"><code>ros2 topic info /scan --verbose</code></pre>
+    <p>输出会分三块：发布者、订阅者、以及每一端声明的 QoS。你要比对的就是 publisher 的 <code>offered</code> 和 subscriber 的 <code>requested</code>。只要有一项请求比提供更严格，这条连接就不会建立——即使两边都“在运行”。</p>
+    <p>如果没有 <code>--verbose</code>，你只能看到“有几个发布者、几个订阅者”，看不到它们是否真的连上了。这是排查时最容易省错的一步。</p>
+  </section>
+
+  <section>
+    <h2>第二步：确认数据在动</h2>
+    <pre data-tb-block="code" data-language="bash"><code>ros2 topic hz /scan
+ros2 topic bw /scan</code></pre>
+    <p><code>hz</code> 给频率，<code>bw</code> 给带宽。它们证明“这条链路确实在传消息”，但不证明“订阅端处理得过来”。频率正常而队列溢出，是真实存在的组合。</p>
+  </section>
+
+  <section>
+    <h2>第三步：设计不兼容实验</h2>
+    <ol>
+      <li>让发布端用 BEST_EFFORT，订阅端用 RELIABLE。</li>
+      <li>确认两端节点都在，<code>ros2 node list</code> 能看到。</li>
+      <li>用 <code>ros2 topic info --verbose</code> 读出 offered / requested，截图或记录。</li>
+      <li>断言：订阅端收到的消息数为 0，且没有任何错误日志。</li>
+      <li>把订阅端改成 BEST_EFFORT，重跑，断言消息数大于 0。</li>
+    </ol>
+    <p>第 4 步是这类测试的关键：它验证的不是“能收到”，而是“不兼容时确实不连通”——这条断言才能防止回归。</p>
+  </section>
+
+  <aside data-tb-block="callout" data-variant="tip">
+    <p>把消息序号（sequence id）放进 payload，丢包率就是“收到条数 / 最大序号”的补数；不要用时间窗口去估算，那会把手写的抖动混进结论。</p>
+  </aside>
+
+  <section>
+    <h2>第四步：判定质量</h2>
+    <p>可用的三个指标：<strong>丢包率</strong>（序号缺口）、<strong>端到端延迟</strong>（发送时间戳与接收时间戳之差）、<strong>deadline 违约次数</strong>（相邻两条间隔超过阈值的事件）。前两个要自己算，第三个由 DDS 的 deadline 事件直接给。</p>
+    <p>阈值必须写在测试用例里，而不是“看起来还行”。例如：延迟 P99 不超过 50 ms，deadline 违约次数为 0。</p>
+  </section>
+
+  <div data-tb-exercise="EX-QOS-004"></div>
+  <div data-tb-exercise="EX-QOS-006"></div>
+
+  <section data-tb-block="resources">
+    <a data-tb-resource="DOC-ROS2-TOPIC-CLI"></a>
+    <a data-tb-resource="DOC-QOS-TUTORIAL"></a>
+  </section>
+</article>

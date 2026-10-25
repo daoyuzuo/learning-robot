@@ -1,0 +1,15 @@
+schema: tb/1
+id: M01
+title: ROS 2 通信与 QoS
+priority: P0
+concepts:
+  - ros2-communication-model
+  - dds-qos-policies
+  - qos-compatibility
+  - qos-observability
+  - qos-testing
+lessons:
+  - L-QOS-001
+  - L-QOS-002
+  - L-QOS-003
+order: 1

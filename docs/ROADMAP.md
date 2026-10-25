@@ -3,11 +3,13 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P2.1（P2 收尾）**
-> 状态：完成，合并到 `master`
+> **当前期：内容试点（P3 前置）**
+> 状态：完成，已合并到 `master`
 >
-> P1（内容契约 + 运行时）与 P2（学习闭环）已完成。下一步二选一：
-> 内容试点（ROS2 通信/QoS 或 EtherCAT）或 P3 内容生产流水线。
+> P1（内容契约 + 运行时）、P2（学习闭环）、P2.1（收尾）均已完成。
+> 内容试点产出 `content-packs/ros2-qos`（3 课 / 6 题 / 5 资源 / 1 交互图），
+> 契约缺口记录在[试点设计](superpowers/specs/2026-10-25-ros2-qos-content-pilot-design.md)第 10 节。
+> 下一步：据此定义 P3 范围。
 
 ---
 

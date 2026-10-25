@@ -1,0 +1,69 @@
+<script type="application/json" id="tb-manifest">
+{
+  "schema": "tb/1",
+  "id": "L-QOS-001",
+  "title": "通信模型：话题、服务、动作",
+  "module": "M01",
+  "concepts": ["ros2-communication-model"],
+  "target_level": "L2",
+  "minutes": 18,
+  "objectives": [
+    "按调用语义（单向流 / 一问一答 / 长任务带反馈）选对通信机制",
+    "说明 QoS 只作用于发布/订阅的原因"
+  ],
+  "prerequisites": [],
+  "exercises": ["EX-QOS-001"],
+  "resources": ["DOC-ROS2-COMM"]
+}
+</script>
+<article class="tb-lesson">
+  <h1>通信模型：话题、服务、动作</h1>
+
+  <section>
+    <p>ROS 2 有三套通信机制。选错机制时，代码通常照样能跑，只是行为没法验证：你以为是“丢包”，其实是调用语义选错了。测试岗最常见的返工，是拿话题去承载一个需要“完成 / 取消”语义的任务。</p>
+    <table>
+      <thead>
+        <tr><th>机制</th><th>语义</th><th>典型用途</th><th>有没有“完成”</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>话题 topic</td><td>单向、多对多、持续</td><td>传感器数据、状态广播</td><td>没有</td></tr>
+        <tr><td>服务 service</td><td>一问一答，阻塞到返回</td><td>查询配置、触发一次性动作</td><td>有，但没有中间过程</td></tr>
+        <tr><td>动作 action</td><td>长任务，可反馈、可取消</td><td>导航、抓取、标定</td><td>有，且过程可观测</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>判断顺序</h2>
+    <ol>
+      <li>是不是持续产生的数据流？是 → 话题。</li>
+      <li>是不是一次调用、要一个结果，且很快返回？是 → 服务。</li>
+      <li>是不是要跑一段时间、中途要进度、还可能中途取消？是 → 动作。</li>
+    </ol>
+    <p>这条顺序的原因是：只有话题是“发出去就不管”的模型，所以只有它能承载高频、可丢的数据。</p>
+  </section>
+
+  <aside data-tb-block="callout" data-variant="warning">
+    <p>用话题实现“任务完成”语义，就得自己定义 done 消息、自己处理丢消息导致的“永远不完成”。这类缺陷在测试里会表现为随机超时，而不是稳定失败。</p>
+  </aside>
+
+  <section>
+    <h2>QoS 的适用边界</h2>
+    <p>QoS 是发布/订阅模型的属性：它约束“这条数据流要多可靠、留多久、多久没来算异常”。服务和动作另有自己的可靠性约束（服务默认 reliable，动作建立在服务和话题之上），所以调 QoS 只对话题链路直接生效。</p>
+    <p>这也解释了排查顺序：链路收不到数据，先确认两端是不是同一个话题，再比 QoS；而不是一上来就改缓冲区。</p>
+  </section>
+
+  <section>
+    <h2>先跑起来</h2>
+    <pre data-tb-block="code" data-language="bash"><code>ros2 run demo_nodes_cpp talker
+ros2 topic list
+ros2 topic echo /chatter</code></pre>
+    <p>三个终端分别执行：发布、列话题、订阅。能收到就说明话题链路本身是通的，接下来才轮到 QoS。</p>
+  </section>
+
+  <div data-tb-exercise="EX-QOS-001"></div>
+
+  <section data-tb-block="resources">
+    <a data-tb-resource="DOC-ROS2-COMM"></a>
+  </section>
+</article>

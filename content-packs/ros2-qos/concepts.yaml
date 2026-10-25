@@ -1,0 +1,77 @@
+schema: tb/1
+concepts:
+  - id: ros2-communication-model
+    title: 话题、服务、动作的边界
+    domain: ros2
+    target_level: L2
+    prerequisites: []
+    weight: 1.0
+    evidence_criteria:
+      - id: EV-COMM-CHOOSE
+        description: 能按调用语义（单向流 / 一问一答 / 长任务带反馈）选对通信机制
+        level: L2
+      - id: EV-COMM-QOS-SCOPE
+        description: 能说明 QoS 作用于发布/订阅，以及为什么服务和动作需要另一套约束
+        level: L2
+    resources: [DOC-ROS2-COMM]
+
+  - id: dds-qos-policies
+    title: DDS QoS 策略
+    domain: ros2
+    target_level: L3
+    prerequisites: [ros2-communication-model]
+    weight: 1.2
+    evidence_criteria:
+      - id: EV-QOS-POLICY
+        description: 能说出 reliability、durability、history/depth 的语义与默认值
+        level: L2
+      - id: EV-QOS-TIMING
+        description: 能解释 deadline、lifespan、liveliness 各约束什么，超时后发生什么
+        level: L3
+    resources: [DOC-QOS-SETTINGS, DOC-DDS-SPEC]
+
+  - id: qos-compatibility
+    title: offered 与 requested 兼容性
+    domain: ros2
+    target_level: L2
+    prerequisites: [dds-qos-policies]
+    weight: 1.0
+    evidence_criteria:
+      - id: EV-COMPAT-RULE
+        description: 能用“订阅请求不得比发布提供更严格”判断一对 QoS 是否兼容
+        level: L2
+      - id: EV-COMPAT-SYMPTOM
+        description: 能解释不兼容时不会报错，只是不建立连接
+        level: L2
+    resources: [DOC-QOS-SETTINGS]
+
+  - id: qos-observability
+    title: QoS 观测手段
+    domain: ros2
+    target_level: L2
+    prerequisites: [qos-compatibility]
+    weight: 0.8
+    evidence_criteria:
+      - id: EV-OBS-CLI
+        description: 能用 ros2 topic info --verbose 读出 offered 与 requested 的 QoS
+        level: L2
+      - id: EV-OBS-RATE
+        description: 能用 ros2 topic hz / bw 判断链路是否真的在传数据
+        level: L2
+    resources: [DOC-ROS2-TOPIC-CLI]
+
+  - id: qos-testing
+    title: 通信质量测试方法
+    domain: ros2
+    target_level: L3
+    prerequisites: [qos-compatibility, qos-observability]
+    related: [qos-observability]
+    weight: 1.2
+    evidence_criteria:
+      - id: EV-TEST-MISMATCH
+        description: 能设计一个制造 QoS 不兼容并证明它不连通的实验
+        level: L2
+      - id: EV-TEST-QUALITY
+        description: 能用序号或时间戳统计丢包与延迟，并给出判定阈值
+        level: L3
+    resources: [DOC-QOS-TUTORIAL]
