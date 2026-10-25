@@ -3,17 +3,19 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.2（公司/JD 匹配）已完成，2026-10-26**
-> 状态：已实现（分支 `p4.2-company-jd`）；P4.1 与 P3.5 已合并到 master。下一步 P4.3 范围待定义。
+> **当前期：P4.3（求职管理）设计已确认，实施中，2026-10-26**
+> 状态：设计定稿（分支 `p4.3-job-applications`）；P4.2 已完成并合并到 master。
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1 均已完成。
+> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 均已完成。
 > P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
 > 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。P4.1 把成套面试模拟
 > 接入同一本能力账本：面试建议分经用户确认后写入 `kind=interview` 证据，驱动掌握度与
-> `/today` 弱项。P4.2 把 JD 映射为概念权重并给出岗位匹配报告；P4.3（求职管理）待定义。
+> `/today` 弱项。P4.2 把 JD 映射为概念权重并给出岗位匹配报告；P4.3 把投递、状态、跟进
+> 与复盘做成本地记录。
 > 设计见 [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)、
-> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md) 与
-> [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)。
+> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)、
+> [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md) 与
+> [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)。
 
 ---
 
@@ -446,9 +448,36 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 ---
 
+## P4.3 求职管理（设计已确认，实施中）
+
+**范围：**
+
+- `application` 单表：公司、岗位、渠道、状态、投递日期、下一步动作与日期、笔记。
+- 状态：`draft / applied / screening / interviewing / offer / rejected / withdrawn`；
+  结束态不再计入到期跟进，但不禁止继续编辑。
+- `/applications`：列表、状态筛选、状态计数、到期跟进、创建表单。
+- `/applications/{id}`：详情、编辑、快捷撤回。
+- 纯本地 SQLite、无 LLM、引擎零改动；投递记录不影响 readiness/mastery/planner。
+- 不提供删除；用 `withdrawn` 结束并保留历史。
+
+**不做：** 自动投递、招聘网站爬虫、邮件/日历集成、多用户、与面试会话的强关联。
+
+**退出标准（待实测）：**
+
+- [ ] `/applications` 可创建、列表、筛选、编辑、撤回
+- [ ] 到期跟进正确显示；结束态与未来项不显示
+- [ ] 公司/岗位/笔记正确转义
+- [ ] 非法状态/日期/空必填被拒绝（400）并保留输入
+- [ ] 全量测试通过，两个包 `tb validate` 0/0
+- [ ] 引擎模块不 import `career`；readiness/mastery 不受投递记录影响
+
+**设计：** [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)
+
+---
+
 ## 后续期摘要
 
-P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现。当前范围、退出标准与遗留以上方章节为准。
+P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现；P4.3 实施中。当前范围、退出标准与遗留以上方章节为准。
 
 ### P3 内容生产
 
@@ -459,12 +488,12 @@ P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2 已实现。当前范围、�
 
 ### P4 应用整合
 
-P4.1 已合并到 master；P4.2 已完成（分支 `p4.2-company-jd`，待合并）；P4.3（求职管理）范围待定义。
+P4.1 与 P4.2 已合并到 master；P4.3 实施中。
 
 - [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)：已完成。
 - [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)：已完成。
-- P4.3 求职管理：投递、复盘；待单独 spec。
-- 能力结论仍只来自 evidence；面试会话、题库与 JD 属于过程状态，不是第二本账。
+- [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)：实施中。
+- 能力结论仍只来自 evidence；面试会话、题库、JD 与投递记录属于过程状态，不是第二本账。
 
 ---
 
@@ -478,5 +507,6 @@ P4.1 已合并到 master；P4.2 已完成（分支 `p4.2-company-jd`，待合并
 - P3.5 内容演进：[2026-10-26-p3.5-content-evolution-design.md](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
 - P4.1 面试闭环：[2026-10-26-p4.1-interview-loop-design.md](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
 - P4.2 公司/JD 匹配：[2026-10-26-p4.2-company-jd-design.md](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)
+- P4.3 求职管理：[2026-10-26-p4.3-job-applications-design.md](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

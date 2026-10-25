@@ -9,6 +9,12 @@
 
 ## 当前阶段
 
+**P4.3 求职管理：设计已确认，实施中（2026-10-26，分支 `p4.3-job-applications`）。**
+`/applications` 与 `/applications/{id}`：投递记录（公司、岗位、渠道、状态、投递日期、
+下一步动作与日期、笔记）、状态筛选与计数、到期跟进、快捷撤回。纯本地 SQLite、无 LLM、
+引擎零改动；投递记录不影响 readiness/mastery/planner。不提供删除，用 `withdrawn` 结束。
+设计见 `docs/superpowers/specs/2026-10-26-p4.3-job-applications-design.md`。
+
 **P4.2 公司/JD 匹配已完成（2026-10-26，分支 `p4.2-company-jd`）。**
 新增 `/target` 页面：粘贴 JD → LLM 抽取要求并映射到包内概念 → 审核页调整权重 →
 确认后写入 `Goal.concept_overrides` 与 `target_role`，JD 原文与解析结果存 `target_jd`
@@ -51,13 +57,10 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 的溯源收紧。设计见
 `docs/superpowers/specs/2026-10-25-p3.3-search-backends-design.md`。
 
-**P4.3（求职管理）范围待定义。** 开始前先写 P4.3 spec 并更新 ROADMAP。
-
 **不要提前实现：**
 
 - `tb migrate`、完整行级 diff、快照回滚（P3.5 明确不做）
 - SearXNG / Firecrawl / arXiv 适配器
-- P4.3 求职管理
 - P4.1 范围外的行为题、系统设计题、多轮追问、语音、强制计时
 - 把 `interviews.yaml` 纳入 `tb/1` 校验（留到 P4.1b）
 
@@ -104,6 +107,15 @@ domain 自动路由、auto 逐查询回退、草稿级手动覆盖，以及“�
 - JD 文本会发送到用户配置的模型服务，页面必须明示；本地 SQLite 保存，不上传。
 - 引擎零改动；不修改内容契约、证据表、掌握度表。
 - 默认 `pytest` 不联网；JD 解析用假客户端测试。
+
+**P4.3 约束（实施中）：**
+
+- `src/testbridge/career/applications.py` 只做投递记录与校验；不调用 LLM；不得被引擎模块 import。
+- 投递记录是过程状态，不参与 mastery/readiness/planner，也不写入 evidence。
+- 不提供删除；用 `withdrawn` 结束并保留历史。
+- 公司/岗位/笔记按不可信文本：长度上限、纯文本存储、转义展示。
+- 日期统一 `YYYY-MM-DD`；非法输入 400 并保留用户输入。
+- 无 LLM、无外部网络；默认 `pytest` 不联网。
 
 ## 不可破坏的边界
 
