@@ -329,7 +329,8 @@ quality: 100/100                # exit 0
 - [x] 每题确认后写面试证据，重复确认不重复写
       （`test_confirm_writes_evidence_and_summary`：重复确认返回同一 `evidence_id`）
 - [x] 能下钻到面试证据与原始回答
-      （`test_progress_shows_interview_evidence`：类型列为“面试”并链接会话汇总；确认时回答全文写入 evidence payload）
+      （`test_progress_shows_interview_evidence` + `test_confirm_writes_evidence_and_summary`：
+      类型列链接会话汇总，汇总页“回答”列展示原始回答）
 - [x] 面试失分概念进入 `/today` 弱项
       （`test_three_question_flow_reaches_today`：`/today` 出现“面试失分”）
 - [x] 未配置 LLM 时可手动打分完成流程
@@ -358,7 +359,7 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 P2、P3.1、P3.2、P3.3、P3.4、P4.1 已实现。当前范围、退出标准与遗留以上方章节为准。
 
-### P3.5 内容演进（范围待定义，与 P4.1 并行）
+### P3.5 内容演进（范围待定义）
 
 - 现有内容包的整体演进：批量重新生成、版本迁移（`tb migrate`）或等价重建脚本。
 - 分期的具体范围与退出标准待 brainstorming + spec 后写入本文件。

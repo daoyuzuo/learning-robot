@@ -8,12 +8,17 @@
 {% endif %}
 <h2>总分 {{ "%.2f"|format(summary.total) }}</h2>
 <table>
-  <tr><th>题目</th><th>概念</th><th>分数</th><th>证据</th></tr>
+  <tr><th>题目</th><th>概念</th><th>分数</th><th>回答</th><th>证据</th></tr>
   {% for answer in summary.answers %}
   <tr>
     <td>{{ questions[answer.question_id].title }}</td>
     <td>{{ questions[answer.question_id].concepts|join("、") }}</td>
     <td>{% if answer.question_id in summary.question_totals %}{{ "%.2f"|format(summary.question_totals[answer.question_id]) }}{% else %}—{% endif %}</td>
+    <td>
+      {% if answer.answer %}
+        <details><summary>查看</summary><p>{{ answer.answer }}</p></details>
+      {% else %}—{% endif %}
+    </td>
     <td>
       {% if answer.evidence_id %}
         <a href="/progress?concept={{ questions[answer.question_id].concepts[0] }}">下钻</a>

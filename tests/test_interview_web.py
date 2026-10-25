@@ -232,6 +232,7 @@ def test_confirm_writes_evidence_and_summary(tmp_path: Path) -> None:
     summary = c.get(f"/interview/session/{session_id}/summary")
     assert summary.status_code == 200
     assert "0.60" in summary.text
+    assert "我的回答" in summary.text
 
 
 def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
@@ -257,6 +258,7 @@ def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
 def test_three_question_flow_reaches_today(tmp_path: Path) -> None:
     c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
     session_id = start_session(c)
+    evidence_ids = set()
     for _ in range(3):
         page = c.get(f"/interview/session/{session_id}").text
         question_id = page.split('data-question-id="')[1].split('"')[0]
@@ -277,8 +279,11 @@ def test_three_question_flow_reaches_today(tmp_path: Path) -> None:
             },
         )
         assert response.status_code == 200
+        evidence_ids.add(response.json()["evidence_id"])
+    assert len(evidence_ids) == 3
     summary = c.get(f"/interview/session/{session_id}/summary")
     assert summary.status_code == 200
+    assert "completed" in summary.text
     today = c.get("/today").text
     assert "面试失分" in today
 
