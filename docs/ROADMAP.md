@@ -152,6 +152,11 @@ Readiness → Module → Concept → Evidence → Exercise / Lesson / Resource
 - Artifact 仍只记录路径；产出物评分（`accept` / `max_size_mb`、`data/artifacts/<evidence-id>/`）顺延。
 - CLI 的内容/导入错误仍直接打印 traceback，而不是 `ERROR code: path: message`。
 - 旧证据迁移：P1 时期把 self_assess / artifact 行写成 `exercise_attempt` 的记录，在 P2.1 / 真实数据使用前需要规范化。
+- `/progress?concept=` 过滤证据时，总数仍显示全局值；应显示过滤后的总数或明确标注。
+- Planner 复习理由使用 exercise ID；priority 在排序前被 clamp，override >1 时排序会丢失差异；补弱项没有练习回退。
+- 导入证据的非法 `created_at` / `payload` 数值应跳过并 warning，而不是中断 rebuild。
+- `all_mastery()` 每概念重复扫描证据；`review_state` 缺 `(learner_id, due)` 索引；P2.1 批量读取。
+- Web/E2E 补强：两概念证据过滤、到期复习行、补弱项、无 P0 的 readiness、数值型 BKT 序列。
 - P1 工程债中未随 P2 处理的部分：`tb build --lesson` 未知 ID 抛 `KeyError`；单文件 HTML 未内联完整 manifest / objectives / 资源列表；`web/` 与 `web/static` 未进 wheel；`schema_version` 别名；证据导出 100 万条上限、导入非原子、`new_event` 不支持 `supersedes`；CSP 对 `application/json` 内联块的内联报告；首页“继续学习”/内容包列表、提交聚合统计、证据写入失败 503 降级。
 
 ---
