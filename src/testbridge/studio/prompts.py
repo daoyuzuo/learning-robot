@@ -38,11 +38,23 @@ LESSON_SYSTEM = (
     "   - self_assess：rubric（weight 合计 1.0），不要 answer\n"
     "6. 每课至少 1 条 A/B 资源；资源配置：id、title、url、type、trust、license、"
     "last_verified（YYYY-MM-DD）、coverage（概念 id 数组）、why；"
-    "trust 只能是 A 或 B；只引用调研资料里 authority>=2 的条目，id 形如 DOC-XXX。\n"
+    "trust 只能是 A 或 B；只引用调研资料里 authority>=2 的条目，id 形如 DOC-XXX；"
+    "且 license / last_verified / why 不得为空。\n"
     "7. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"manifest": {"title", "minutes", "objectives"}, "html": "...", '
     '"exercises": [...], "resources": [...]}'
 )
+
+
+def render_concepts_text(level: str, concepts: list[dict]) -> str:
+    lines = [f"课程目标级别：{level}"]
+    for item in concepts:
+        target_level = item.get("target_level") or "L2"
+        lines.append(
+            f"- {item.get('id')} {item.get('title', '')}"
+            f"（target_level={target_level}）"
+        )
+    return "\n".join(lines)
 
 
 def render_outline_prompt(topic: str, level: str, lesson_count: int) -> str:

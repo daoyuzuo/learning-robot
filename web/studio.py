@@ -32,6 +32,7 @@ from testbridge.studio.outline import OutlineError, parse_outline_html, write_ou
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
+    render_concepts_text,
     render_lesson_prompt,
     render_outline_prompt,
 )
@@ -98,10 +99,8 @@ def mount_studio(
         return list(_yaml(draft_id, "concepts.yaml").get("concepts") or [])
 
     def concepts_text(draft_id: str) -> str:
-        return "\n".join(
-            f"- {item.get('id')} {item.get('title', '')}"
-            for item in concepts(draft_id)
-        )
+        draft = store.load(draft_id)
+        return render_concepts_text(draft.get("level") or "L2", concepts(draft_id))
 
     def outline_plans(draft_id: str) -> list:
         try:
