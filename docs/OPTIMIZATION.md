@@ -25,8 +25,11 @@
 | O4 | [2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md) |
 | O5 | [2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md) |
 
-**进度：** O1 已实现（2026-10-26，分支 `p5-optimization`）。默认
-`pytest` 756 passed、3 deselected；新增 14 个 CLI/环境测试。O3 待开始。
+**进度：** O1、O3、O5 已实现（2026-10-26，分支 `p5-optimization`；O5 经 merge
+`925ca62` 合入）。O3 完成来源角色、按查询路由、链接预检与质量门禁调整；
+O5 完成 token / 深色模式、响应式顶栏与统一组件样式。完成时默认 `pytest` 825 passed、
+3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
+100/100。下一步 O2，然后 O4。
 
 ---
 

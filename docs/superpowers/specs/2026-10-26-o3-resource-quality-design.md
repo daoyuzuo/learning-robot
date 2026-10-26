@@ -1,6 +1,6 @@
 # O3 参考资料工程化与可达性（Design）
 
-- 状态：Proposed，2026-10-26
+- 状态：Implemented，2026-10-26
 - 范围：来源类型、按查询路由、C 级补充阅读、OA 优先、链接预检、质量门禁、提示词
 - 上游：[优化清单](../../OPTIMIZATION.md)、[P3.3 检索后端](2026-10-25-p3.3-search-backends-design.md)、
   [P3.2 质量门禁](2026-10-25-p3.2-quality-gates-design.md)

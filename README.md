@@ -33,6 +33,18 @@ key 输入不回显、不写入仓库。确认后写入 Windows 用户级环境�
 
 需要联网自检时加 `--probe`；默认离线。
 
+## 复查资源链接（可选，联网）
+
+```bash
+PYTHONPATH=src .venv/Scripts/python -m testbridge.cli verify-resources content-packs/<pack>
+```
+
+（本机 venv 未安装 `testbridge` 包时命令需 `PYTHONPATH=src`；安装后可直接用 `tb`。）
+
+required 资源的死链或付费墙会返回退出码 1；补充阅读失败只提示，不阻断。
+Studio 调研时默认会预检前 10 条命中；如需完全离线，设置
+`TESTBRIDGE_STUDIO_VERIFY=0`。
+
 ## AI 追问（可选）
 
 课程页的追问面板需要一个 OpenAI 兼容端点。未配置时功能自动禁用，不影响其它页面。

@@ -1,6 +1,6 @@
 # O5 页面排版与样式（Design）
 
-- 状态：Proposed，2026-10-26
+- 状态：Implemented，2026-10-26
 - 范围：`web/static/tb.css`、Jinja2 模板、独立构建页面样式
 - 上游：[优化清单](../../OPTIMIZATION.md)
 - 决策：优先级最低，可增量做；本轮只做 CSS + 模板类名，不引入前端框架。
