@@ -230,3 +230,29 @@ def test_rejects_bad_lessons_per_module(tmp_path: Path) -> None:
             searches_per_lesson=5, model="m", prompt_version="studio/1",
         )
     assert excinfo.value.code == "invalid_lessons_per_module"
+
+
+def test_create_without_plan_keeps_old_shape(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    draft = store.create(
+        draft_id="demo", topic="t", level="L2", lesson_count=1,
+        searches_per_lesson=5, model="m",
+    )
+    assert "plan" not in draft
+
+
+def test_create_with_plan_persists_it(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    plan = {
+        "inputs": {"weekly_hours": 2, "horizon_weeks": 2,
+                   "purpose": "systematic", "must_cover": []},
+        "computed": {"module_count": 1, "lessons_per_module": 3,
+                     "lesson_minutes": 30, "total_lessons": 3},
+        "rationale": "r", "guidance": [], "confirmed": False,
+        "updated_at": "2026-10-27T00:00:00+00:00", "messages": [],
+    }
+    store.create(
+        draft_id="demo", topic="t", level="L2", module_count=1,
+        lessons_per_module=3, searches_per_lesson=5, model="m", plan=plan,
+    )
+    assert store.load("demo")["plan"]["computed"]["total_lessons"] == 3

@@ -47,6 +47,11 @@ from testbridge.studio.outline import (
     save_outline_html,
     write_outline,
 )
+from testbridge.studio.planning import (
+    PlanError,
+    parse_plan_input,
+    suggest_plan,
+)
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
@@ -554,12 +559,67 @@ def mount_studio(
         lesson_count: int | None = Form(None),
         searches_per_lesson: int = Form(20),
         search_backend: str = Form("auto"),
+        auto_plan: str | None = Form(None),
+        weekly_hours: str | None = Form(None),
+        horizon_weeks: str | None = Form(None),
+        purpose: str = Form("systematic"),
+        must_cover: str | None = Form(None),
     ):
         if level not in LEVELS:
             raise HTTPException(
                 status_code=400,
                 detail={"code": "invalid_level", "message": "级别必须是 L1–L4"},
             )
+        plan = None
+        if auto_plan:
+            try:
+                plan_input = parse_plan_input({
+                    "weekly_hours": float(weekly_hours),
+                    "horizon_weeks": int(horizon_weeks),
+                    "purpose": purpose,
+                    "must_cover": [
+                        item.strip()
+                        for item in (must_cover or "").replace("，", ",").split(",")
+                        if item.strip()
+                    ],
+                })
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "plan_invalid",
+                        "message": "每周小时与周期必须是数字",
+                    },
+                ) from None
+            except PlanError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"code": exc.code, "message": exc.message},
+                ) from None
+            suggestion = suggest_plan(plan_input, level)
+            plan = {
+                "inputs": {
+                    "weekly_hours": plan_input.weekly_hours,
+                    "horizon_weeks": plan_input.horizon_weeks,
+                    "purpose": plan_input.purpose,
+                    "must_cover": list(plan_input.must_cover),
+                },
+                "computed": {
+                    "module_count": suggestion.module_count,
+                    "lessons_per_module": suggestion.lessons_per_module,
+                    "lesson_minutes": suggestion.lesson_minutes,
+                    "total_lessons": suggestion.total_lessons,
+                    "total_minutes": suggestion.total_minutes,
+                },
+                "rationale": suggestion.rationale,
+                "guidance": [],
+                "confirmed": False,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "messages": [],
+            }
+            module_count = suggestion.module_count
+            lessons_per_module = suggestion.lessons_per_module
+            lesson_count = suggestion.total_lessons
         try:
             store.create(
                 draft_id=draft_id, topic=topic, level=level,
@@ -570,12 +630,14 @@ def mount_studio(
                 model=config.model if config else "unconfigured",
                 prompt_version=PROMPT_VERSION,
                 search_backend=search_backend,
+                plan=plan,
             )
         except DraftError as exc:
             raise HTTPException(
                 status_code=400, detail={"code": exc.code, "message": exc.message}
             ) from None
-        if config is not None and llm is not None:
+        # An unconfirmed plan must be confirmed before the outline is generated.
+        if config is not None and llm is not None and plan is None:
             runner.start(draft_id, "outline", lambda: generate_outline(draft_id))
         return RedirectResponse(url=f"/studio/{draft_id}", status_code=303)
 

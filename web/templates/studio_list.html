@@ -15,6 +15,15 @@
     <option value="deepseek">DeepSeek Search</option>
     <option value="openalex">OpenAlex</option>
   </select></label>
+  <label><input type="checkbox" name="auto_plan"> 自动规划课时</label>
+  <label>每周可投入（小时） <input name="weekly_hours" type="number" step="0.5" min="0.5" max="80" value="6"></label>
+  <label>周期（周） <input name="horizon_weeks" type="number" min="1" max="52" value="4"></label>
+  <label>目的 <select name="purpose">
+    <option value="interview">面试导向</option>
+    <option value="project">项目导向</option>
+    <option value="systematic" selected>系统补齐</option>
+  </select></label>
+  <label>必须覆盖（可选，逗号分隔） <input name="must_cover"></label>
   <button type="submit" class="tb-btn tb-btn-primary" {% if not enabled %}disabled{% endif %}>新建草稿</button>
 </form>
 <ul class="tb-drafts">

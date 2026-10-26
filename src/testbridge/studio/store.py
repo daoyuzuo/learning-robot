@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from testbridge.studio import planning
 from testbridge.studio.version import PROMPT_VERSION
 
 SCHEMA = "studio/1"
@@ -132,6 +133,7 @@ class DraftStore:
         model: str,
         prompt_version: str = PROMPT_VERSION,
         search_backend: str = "auto",
+        plan: dict | None = None,
     ) -> dict:
         if not ID_RE.fullmatch(draft_id):
             raise DraftError("invalid_id", "草稿 ID 只能包含字母、数字和连字符")
@@ -156,6 +158,8 @@ class DraftStore:
             )
         if self.exists(draft_id):
             raise DraftError("draft_exists", f"草稿已存在：{draft_id}")
+        if plan is not None:
+            planning.validate_plan(plan)
         now = _iso(_utcnow())
         draft = {
             "schema": SCHEMA,
@@ -184,6 +188,8 @@ class DraftStore:
                 },
             },
         }
+        if plan is not None:
+            draft["plan"] = plan
         self.path(draft_id).mkdir(parents=True, exist_ok=True)
         self.save(draft)
         return draft
