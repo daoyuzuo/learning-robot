@@ -264,7 +264,7 @@ ALLOWED_ATTRIBUTES = {
     "polyline": {"points", "fill", "stroke", "stroke-width", "transform"},
     "polygon": {"points", "fill", "stroke", "stroke-width", "transform", "fill-opacity"},
     "text": {"x", "y", "fill", "font-size", "text-anchor", "font-weight", "fill-opacity"},
-    "tspan": {"x", "y", "fill", "font-weight", "fill-opacity"},
+    "tspan": {"x", "y", "dy", "fill", "font-weight", "fill-opacity"},
     "stop": {"offset", "stop-color", "stop-opacity"},
 }
 ```
