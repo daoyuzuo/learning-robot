@@ -159,6 +159,44 @@ def test_render_truncates_long_label_with_ellipsis() -> None:
     assert "…" in target
 
 
+def test_render_boxes_fit_inside_viewbox() -> None:
+    tall_block = {
+        **BLOCK,
+        "groups": [
+            {"label": "感知", "items": ["很长的说明文字" * 4] * 5},
+            {"label": "判定", "items": ["规则", "模型"]},
+        ],
+    }
+    tall_compare = {
+        **COMPARE,
+        "left": {**COMPARE["left"], "items": ["很长的对比文字" * 3] * 5},
+    }
+    specs = [
+        FLOW,
+        {**FLOW, "direction": "TB"},
+        TIMELINE,
+        BLOCK,
+        tall_block,
+        COMPARE,
+        tall_compare,
+    ]
+    for raw in specs:
+        svg = render_figure(parse_figures([raw], {"c"})[0])
+        width, height = (
+            float(value)
+            for value in re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg).groups()
+        )
+        boxes = re.findall(
+            r'<rect x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"',
+            svg,
+        )
+        if raw["kind"] != "timeline":
+            assert boxes, raw["id"]
+        for x, y, w, h in boxes:
+            assert float(x) + float(w) <= width, raw["id"]
+            assert float(y) + float(h) <= height, raw["id"]
+
+
 def test_render_flow_tb_direction() -> None:
     svg = render_figure(parse_figures([{**FLOW, "direction": "TB"}], {"c"})[0])
     line = re.search(

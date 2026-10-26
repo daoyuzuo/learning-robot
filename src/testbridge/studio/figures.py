@@ -25,7 +25,7 @@ VIEWBOX_WIDTH = 800
 LINE_HEIGHT = 18
 BOX_HEIGHT = 64
 ROW_HEIGHT = 2 * LINE_HEIGHT + 8
-UNIT_PX = 8
+BOX_BOTTOM_PADDING = 10
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 MOUNT_RE = re.compile(
     r'<div\b[^>]*\bdata-tb-figure\s*=\s*(["\'])([^"\']+)\1[^>]*>\s*</div>',
@@ -418,6 +418,7 @@ def _render_block(spec: dict) -> str:
     item_y = title_y + 2 * LINE_HEIGHT + 12
     rows = max(len(group["items"]) for group in groups)
     height = item_y + (rows - 1) * ROW_HEIGHT + 2 * LINE_HEIGHT + 24
+    box_height = height - box_top - BOX_BOTTOM_PADDING
     title_units = _fit(width - 12)
     item_units = _fit(width - 12, 13)
     parts = []
@@ -425,7 +426,7 @@ def _render_block(spec: dict) -> str:
         x = margin + index * (width + gap)
         parts.append(
             f'<rect x="{_n(x)}" y="{_n(box_top)}" width="{_n(width)}"'
-            f' height="{_n(height - 20)}" rx="10"'
+            f' height="{_n(box_height)}" rx="10"'
             ' fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>'
         )
         parts.append(_text(x + width / 2, title_y, group["label"], title_units,
@@ -446,6 +447,7 @@ def _render_compare(spec: dict) -> str:
     item_y = title_y + 2 * LINE_HEIGHT + 12
     rows = max(len(spec["left"]["items"]), len(spec["right"]["items"]))
     height = item_y + (rows - 1) * ROW_HEIGHT + 2 * LINE_HEIGHT + 24
+    box_height = height - box_top - BOX_BOTTOM_PADDING
     title_units = _fit(col_w - 24)
     item_units = _fit(col_w - 24, 13)
     parts = []
@@ -453,7 +455,7 @@ def _render_compare(spec: dict) -> str:
         side = spec[key]
         parts.append(
             f'<rect x="{_n(x)}" y="{_n(box_top)}" width="{_n(col_w)}"'
-            f' height="{_n(height - 20)}" rx="10"'
+            f' height="{_n(box_height)}" rx="10"'
             ' fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>'
         )
         parts.append(_text(x + col_w / 2, title_y, side["title"], title_units,
