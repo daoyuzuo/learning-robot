@@ -51,9 +51,14 @@ LESSON_SYSTEM = (
     "C 级只能作为 role=supplementary（每课 2–3 条工程博客/教程）；D 不可用。"
     "只引用 <research> 中已通过预检的条目，禁止编造 URL；"
     "license / why 不得为空；why 必须写“工程上什么时候用”。\n"
-    "7. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
+    "7. 每课 1–2 张图；纯概念课至少 1 张。图上不用直接写 svg/img，而是在正文放空挂载点"
+    '<div data-tb-figure="FIG-1"></div>，并在 figures 数组中给出规格。\n'
+    "   每张图必须有 caption（图注）与 alt（说明图表达的关系），中文≤200 字；"
+    "图形 kind 只能是 flow / timeline / block / compare，仅使用本课概念。\n"
+    "   正文只允许 figure / figcaption 标签，禁止 svg / img / script / style。\n"
+    "8. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"manifest": {"title", "minutes", "objectives"}, "html": "...", '
-    '"exercises": [...], "resources": [...]}'
+    '"exercises": [...], "resources": [...], "figures": [...]}'
 )
 
 

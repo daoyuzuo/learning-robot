@@ -65,3 +65,9 @@ def test_lesson_outline_scopes_to_target_lesson() -> None:
 
 def test_lesson_system_restricts_exercises_to_lesson_concepts() -> None:
     assert "子集" in LESSON_SYSTEM
+
+
+def test_lesson_prompt_requires_figures() -> None:
+    assert "figures" in LESSON_SYSTEM
+    assert "data-tb-figure" in LESSON_SYSTEM
+    assert "caption" in LESSON_SYSTEM and "alt" in LESSON_SYSTEM

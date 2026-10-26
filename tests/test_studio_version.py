@@ -4,8 +4,8 @@ from testbridge.studio.store import DraftStore
 from testbridge.studio.version import PROMPT_VERSION
 
 
-def test_prompt_version_is_studio_3() -> None:
-    assert PROMPT_VERSION == "studio/3"
+def test_prompt_version_is_studio_4() -> None:
+    assert PROMPT_VERSION == "studio/4"
 
 
 def test_create_defaults_to_current_prompt_version(tmp_path: Path) -> None:

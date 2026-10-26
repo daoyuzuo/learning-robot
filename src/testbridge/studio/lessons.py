@@ -18,6 +18,7 @@ from testbridge.content.repository import KIND_BY_TYPE
 from testbridge.contract.loader import ContentError, load_lesson_file
 from testbridge.contract.models import Exercise, Resource
 from testbridge.contract.sanitize import sanitize_fragment
+from testbridge.studio.figures import FigureError, embed_figures, parse_figures
 from testbridge.studio.outline import LEVELS, LessonPlan
 from testbridge.studio.store import DraftStore
 
@@ -39,6 +40,7 @@ class LessonOutput:
     html: str
     exercises: list[dict] = field(default_factory=list)
     resources: list[dict] = field(default_factory=list)
+    figures: list[dict] = field(default_factory=list)
 
 
 def _first_error(exc: ValidationError) -> str:
@@ -145,9 +147,21 @@ def parse_lesson_json(
         raise LessonError("缺少 HTML 正文")
     if re.search(r"<\s*script", html, re.IGNORECASE):
         raise LessonError("正文不得包含脚本")
+    if re.search(r"<\s*svg", html, re.IGNORECASE):
+        raise LessonError("正文不得直接包含 SVG，请使用 figures 规格")
+    if re.search(
+        r'<img\b[^>]*\bsrc\s*=\s*["\']https?://', html, re.IGNORECASE
+    ):
+        raise LessonError("正文不得引用外部图片")
     clean = sanitize_fragment(html)
     if "<article" not in clean:
         raise LessonError("正文净化后为空")
+    try:
+        figures = parse_figures(data.get("figures") or [], concept_ids)
+        clean = embed_figures(clean, figures)
+    except FigureError as exc:
+        raise LessonError(str(exc)) from None
+    clean = sanitize_fragment(clean)
 
     manifest = data.get("manifest") if isinstance(data.get("manifest"), dict) else {}
     objectives = manifest.get("objectives") or lesson.objectives
@@ -167,6 +181,7 @@ def parse_lesson_json(
         html=clean,
         exercises=exercises,
         resources=resources,
+        figures=figures,
     )
 
 
@@ -283,6 +298,7 @@ def _namespace_collisions(
             {**item, "id": resource_map.get(item["id"], item["id"])}
             for item in output.resources
         ],
+        figures=output.figures,
     )
 
 

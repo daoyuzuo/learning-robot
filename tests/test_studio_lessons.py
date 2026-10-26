@@ -291,3 +291,71 @@ def test_cross_lesson_id_collisions_are_namespaced(tmp_path: Path) -> None:
     html = store.read("demo", "modules/M01/lessons/L-EXEC-002.html")
     assert 'data-tb-exercise="L-EXEC-002-EX-1"' in html
     assert 'data-tb-resource="L-EXEC-002-DOC-1"' in html
+
+
+FIGURE = {
+    "id": "FIG-1", "kind": "flow", "caption": "测试链路",
+    "alt": "采集到判定的两步流程",
+    "nodes": [{"id": "n1", "label": "采集"}, {"id": "n2", "label": "判定"}],
+    "edges": [{"from": "n1", "to": "n2"}],
+}
+
+
+def _payload_with_figure(*, html: str | None = None, figures=None) -> str:
+    body = html or (
+        '<article class="tb-lesson"><h1>课</h1>'
+        '<div data-tb-exercise="EX-1"></div>'
+        '<div data-tb-figure="FIG-1"></div></article>'
+    )
+    return json.dumps({
+        **PAYLOAD, "html": body, "figures": [FIGURE] if figures is None else figures,
+    })
+
+
+def test_lesson_embeds_inline_svg() -> None:
+    output = parse_lesson_json(
+        _payload_with_figure(), LESSON, {"executor-basics"}
+    )
+    assert output.figures[0]["id"] == "FIG-1"
+    assert '<figure class="tb-figure">' in output.html
+    assert "<svg " in output.html
+    assert 'data-tb-figure="FIG-1"' not in output.html
+
+
+def test_lesson_rejects_missing_mount() -> None:
+    body = '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div></article>'
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload_with_figure(html=body), LESSON, {"executor-basics"}
+        )
+
+
+def test_lesson_rejects_direct_svg() -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        '<svg viewBox="0 0 1 1"></svg></article>'
+    )
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload_with_figure(html=body, figures=[]),
+            LESSON, {"executor-basics"},
+        )
+
+
+def test_lesson_rejects_external_image() -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        '<img src="https://example.com/x.png" alt="x"></article>'
+    )
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload_with_figure(html=body, figures=[]),
+            LESSON, {"executor-basics"},
+        )
+
+
+def test_lesson_without_figures_still_works() -> None:
+    output = parse_lesson_json(
+        json.dumps({**PAYLOAD, "figures": []}), LESSON, {"executor-basics"}
+    )
+    assert output.figures == []

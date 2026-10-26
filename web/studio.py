@@ -319,6 +319,7 @@ def mount_studio(
             extra={
                 "prompt_version": PROMPT_VERSION,
                 "written_at": datetime.now(timezone.utc).isoformat(),
+                "figure_count": len(output.figures),
             },
         )
 
