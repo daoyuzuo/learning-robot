@@ -329,3 +329,156 @@ def test_plan_data_block_is_embedded_and_escaped(tmp_path: Path) -> None:
     assert 'id="tb-plan-data"' in page
     assert "\u003c/script\u003e" in page
     assert "</script><script>alert(1)" not in page
+
+
+class PlanLlm(FakeLlm):
+    def __init__(self, reply: str) -> None:
+        super().__init__()
+        self.reply = reply
+
+    def complete(self, system: str, user: str) -> str:
+        self.prompts.append(user)
+        if "课时计划" in system:
+            return self.reply
+        return super().complete(system, user)
+
+
+SUGGESTION = {
+    "plan": {"module_count": 1, "lessons_per_module": 3, "lesson_minutes": 35},
+    "guidance": ["多讲测试实操"],
+    "rationale": "减少理论课",
+    "changes": ["total_lessons: 4 -> 3"],
+}
+
+
+def plan_client(tmp_path: Path, llm=None) -> TestClient:
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts", studio_packs=tmp_path / "packs",
+        studio_llm=llm if llm is not None else PlanLlm(json.dumps(SUGGESTION)),
+        studio_search=type("S", (), {
+            "search": lambda self, q, count=10: [],
+            "fetch": lambda self, url: "",
+        })(),
+        studio_config=CONFIG,
+        studio_url_checker=lambda urls: {},
+    ))
+    manual_draft(app)
+    # Start from empty guidance so "chat does not write guidance" is visible.
+    app.post("/studio/demo/plan", json={**PLAN_BODY, "guidance": []})
+    return app
+
+
+def test_plan_chat_returns_suggestion_and_logs(tmp_path: Path) -> None:
+    app = plan_client(tmp_path)
+
+    response = app.post(
+        "/studio/demo/plan/chat", json={"message": "少讲论文，多讲测试实操"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plan"]["lessons_per_module"] == 3
+    assert body["changes"] == ["total_lessons: 4 -> 3"]
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["plan"]["messages"][-2]["role"] == "user"
+    assert draft["plan"]["messages"][-1]["role"] == "assistant"
+    # Chat only suggests; numbers and guidance change when the user applies.
+    assert draft["plan"]["computed"]["lessons_per_module"] == 2
+    assert draft["plan"]["guidance"] == []
+    assert draft["plan"]["confirmed"] is False
+
+
+def test_plan_chat_keeps_only_the_last_twenty_messages(tmp_path: Path) -> None:
+    app = plan_client(tmp_path)
+    store = app.app.state.studio_store
+
+    def seed(draft: dict) -> None:
+        draft["plan"]["messages"] = [
+            {"role": "user", "content": "旧消息", "at": "2026-10-27"}
+        ] * 20
+
+    store.update("demo", seed)
+
+    app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    messages = store.load("demo")["plan"]["messages"]
+    assert len(messages) == 20
+    assert messages[-1]["role"] == "assistant"
+
+
+def test_plan_chat_rejects_bad_model_output(tmp_path: Path) -> None:
+    app = plan_client(tmp_path, PlanLlm("not json"))
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "plan_invalid"
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["plan"]["computed"]["lessons_per_module"] == 2
+    assert draft["plan"]["guidance"] == []
+
+
+def test_plan_chat_without_llm_is_503(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in (
+        "TESTBRIDGE_LLM_BASE_URL", "TESTBRIDGE_LLM_API_KEY", "TESTBRIDGE_LLM_MODEL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts", studio_packs=tmp_path / "packs",
+        studio_llm=None, studio_search=None, studio_config=None,
+    ))
+    response = app.post("/studio/demo/plan/chat", json={"message": "x"})
+    assert response.status_code == 503
+
+
+def test_plan_chat_rejects_empty_and_long_messages(tmp_path: Path) -> None:
+    app = plan_client(tmp_path)
+
+    for message in ["", "   ", "x" * 501]:
+        response = app.post(
+            "/studio/demo/plan/chat", json={"message": message}
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"]["code"] == "plan_invalid"
+
+
+def test_plan_chat_without_plan_is_409(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "plan_missing"
+
+
+class NestedChatLlm(PlanLlm):
+    def __init__(self, holder: dict) -> None:
+        super().__init__("{}")
+        self.holder = holder
+        self.inner_status = None
+
+    def complete(self, system: str, user: str) -> str:
+        if "课时计划" in system:
+            self.prompts.append(user)
+            self.inner_status = self.holder["client"].post(
+                "/studio/demo/plan/chat", json={"message": "再来一次"}
+            ).status_code
+            return json.dumps(SUGGESTION)
+        return super().complete(system, user)
+
+
+def test_plan_chat_second_request_is_409(tmp_path: Path) -> None:
+    holder: dict = {}
+    llm = NestedChatLlm(holder)
+    app = plan_client(tmp_path, llm)
+    holder["client"] = app
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 200
+    assert llm.inner_status == 409

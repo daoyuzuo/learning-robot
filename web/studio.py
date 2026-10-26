@@ -7,6 +7,7 @@ or evidence. Model output and search results are untrusted input.
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -51,15 +52,18 @@ from testbridge.studio.planning import (
     MAX_RATIONALE,
     PlanError,
     parse_plan_input,
+    parse_plan_suggestion,
     suggest_plan,
     validate_plan,
 )
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
     OUTLINE_SYSTEM,
+    PLAN_SYSTEM,
     render_concepts_text,
     render_lesson_prompt,
     render_outline_prompt,
+    render_plan_prompt,
 )
 from testbridge.studio.research import (
     preflight_urls,
@@ -79,6 +83,8 @@ from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
 
 LEVELS = {"L1", "L2", "L3", "L4"}
+MAX_PLAN_MESSAGE = 500
+MAX_PLAN_MESSAGES = 20
 
 
 class OutlineBody(BaseModel):
@@ -724,6 +730,95 @@ def mount_studio(
     @router.post("/studio/{draft_id}/plan")
     def studio_plan(draft_id: str, payload: dict):
         return _save_plan(draft_id, payload)
+
+    plan_locks: dict[str, threading.Lock] = {}
+    plan_guard = threading.Lock()
+
+    def require_llm() -> None:
+        if config is None or llm is None:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "tutor_disabled", "message": "未配置模型服务"},
+            )
+
+    def record_plan_turn(draft_id: str, message: str, reply: str, at: str) -> None:
+        """Append one chat turn and count the call, under the store lock."""
+
+        def apply(draft: dict) -> None:
+            plan = draft.get("plan")
+            if not isinstance(plan, dict):
+                return
+            messages = list(plan.get("messages") or [])
+            messages.extend([
+                {"role": "user", "content": message, "at": at},
+                {"role": "assistant", "content": reply, "at": at},
+            ])
+            plan["messages"] = messages[-MAX_PLAN_MESSAGES:]
+            plan["updated_at"] = at
+            usage = draft.setdefault("usage", {"searches": 0, "llm_calls": 0})
+            usage["llm_calls"] = int(usage.get("llm_calls") or 0) + 1
+
+        try:
+            store.update(draft_id, apply)
+        except DraftNotFound:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "draft_not_found", "message": "草稿不存在"},
+            ) from None
+
+    @router.post("/studio/{draft_id}/plan/chat")
+    def studio_plan_chat(draft_id: str, payload: dict):
+        """Suggest plan changes; only ``POST /plan`` writes numbers."""
+        require_llm()
+        draft = draft_or_404(draft_id)
+        plan = draft.get("plan")
+        if not isinstance(plan, dict):
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "plan_missing", "message": "没有计划可调整"},
+            )
+        message = str(payload.get("message") or "").strip()
+        if not message or len(message) > MAX_PLAN_MESSAGE:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "plan_invalid",
+                    "message": "消息不能为空且不超过 500 字",
+                },
+            )
+        with plan_guard:
+            lock = plan_locks.setdefault(draft_id, threading.Lock())
+        if not lock.acquire(blocking=False):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "plan_chat_running",
+                    "message": "计划调整进行中",
+                },
+            )
+        try:
+            raw = llm.complete(PLAN_SYSTEM, render_plan_prompt(plan, message))
+            try:
+                suggestion = parse_plan_suggestion(raw, plan)
+            except PlanError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": exc.code, "message": exc.message},
+                ) from None
+            now = datetime.now(timezone.utc).isoformat()
+            record_plan_turn(
+                draft_id, message,
+                suggestion["rationale"] or "已给出调整建议", now,
+            )
+            return {
+                "plan": suggestion["computed"],
+                "guidance": suggestion["guidance"],
+                "rationale": suggestion["rationale"],
+                "changes": suggestion["changes"],
+                "usage": {"llm_calls": 1},
+            }
+        finally:
+            lock.release()
 
     @router.get("/studio/{draft_id}", response_class=HTMLResponse)
     def studio_draft(request: Request, draft_id: str):

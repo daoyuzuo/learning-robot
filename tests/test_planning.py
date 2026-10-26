@@ -1,9 +1,12 @@
+import json
+
 import pytest
 
 from testbridge.studio.planning import (
     PlanError,
     PlanInput,
     parse_plan_input,
+    parse_plan_suggestion,
     suggest_plan,
     validate_plan,
 )
@@ -120,3 +123,73 @@ def test_validate_plan_rejects_too_much_guidance() -> None:
         validate_plan(_plan(guidance=["x"] * 6))
     with pytest.raises(PlanError):
         validate_plan(_plan(guidance=["x" * 81]))
+
+
+CURRENT = {
+    "inputs": {"weekly_hours": 4, "horizon_weeks": 6,
+               "purpose": "interview", "must_cover": ["时间同步"]},
+    "computed": {"module_count": 2, "lessons_per_module": 3,
+                 "lesson_minutes": 35, "total_lessons": 6},
+    "guidance": [],
+}
+
+
+def test_parse_plan_suggestion_accepts_valid() -> None:
+    raw = json.dumps({
+        "plan": {"module_count": 2, "lessons_per_module": 2, "lesson_minutes": 35},
+        "guidance": ["多讲测试实操"],
+        "rationale": "减少理论课",
+        "changes": ["total_lessons: 6 -> 4"],
+    })
+    result = parse_plan_suggestion(raw, CURRENT)
+    assert result["computed"]["lessons_per_module"] == 2
+    assert result["guidance"] == ["多讲测试实操"]
+    assert result["changes"] == ["total_lessons: 6 -> 4"]
+
+
+def test_parse_plan_suggestion_rejects_bad_json() -> None:
+    with pytest.raises(PlanError):
+        parse_plan_suggestion("not json", CURRENT)
+
+
+def test_parse_plan_suggestion_rejects_out_of_range() -> None:
+    raw = json.dumps({"plan": {"module_count": 4, "lessons_per_module": 2,
+                              "lesson_minutes": 35}})
+    with pytest.raises(PlanError):
+        parse_plan_suggestion(raw, CURRENT)
+
+
+def test_parse_plan_suggestion_rejects_dropping_must_cover() -> None:
+    raw = json.dumps({
+        "plan": {"module_count": 1, "lessons_per_module": 3, "lesson_minutes": 35},
+        "must_cover": [],
+    })
+    with pytest.raises(PlanError):
+        parse_plan_suggestion(raw, CURRENT)
+
+
+def test_parse_plan_suggestion_keeps_matching_must_cover() -> None:
+    raw = json.dumps({
+        "plan": {"module_count": 2, "lessons_per_module": 2, "lesson_minutes": 35},
+        "must_cover": ["时间同步"],
+    })
+    assert parse_plan_suggestion(raw, CURRENT)["computed"]["total_lessons"] == 4
+
+
+def test_parse_plan_suggestion_rejects_bad_guidance_and_changes() -> None:
+    ok = {"plan": {"module_count": 2, "lessons_per_module": 2,
+                   "lesson_minutes": 35}}
+    with pytest.raises(PlanError):
+        parse_plan_suggestion(json.dumps({**ok, "guidance": [5]}), CURRENT)
+    with pytest.raises(PlanError):
+        parse_plan_suggestion(json.dumps({**ok, "changes": [5]}), CURRENT)
+    with pytest.raises(PlanError):
+        parse_plan_suggestion(json.dumps({**ok, "changes": ["x"] * 11}), CURRENT)
+
+
+def test_parse_plan_suggestion_strips_code_fence() -> None:
+    body = json.dumps({
+        "plan": {"module_count": 1, "lessons_per_module": 3, "lesson_minutes": 30},
+    })
+    raw = "```json\n" + body + "\n```"
+    assert parse_plan_suggestion(raw, CURRENT)["computed"]["module_count"] == 1

@@ -166,18 +166,90 @@
     };
   }
 
-  async function postPlan(body) {
-    const response = await fetch("/studio/" + draftId + "/plan", {
+  async function postJson(url, body, fallback) {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      showError((data.detail && data.detail.message) || "保存计划失败");
+      showError((data.detail && data.detail.message) || fallback);
       return null;
     }
-    return response.json();
+    return data;
+  }
+
+  function postPlan(body) {
+    return postJson("/studio/" + draftId + "/plan", body, "保存计划失败");
+  }
+
+  function planField(name) {
+    return planForm ? planForm.querySelector("[name=" + name + "]") : null;
+  }
+
+  function paintSuggestion(data, message) {
+    pendingSuggestion = {
+      plan: data.plan || {},
+      guidance: data.guidance || [],
+      rationale: data.rationale || "",
+    };
+    Object.entries(pendingSuggestion.plan).forEach(([name, value]) => {
+      const field = planField(name);
+      if (field && value !== undefined) field.value = value;
+    });
+    const diff = root.querySelector("[data-plan-diff]");
+    if (diff) {
+      diff.replaceChildren();
+      const changes = data.changes || [];
+      if (!changes.length) {
+        diff.textContent = "模型没有给出具体改动";
+      } else {
+        const list = document.createElement("ul");
+        changes.forEach((change) => {
+          const item = document.createElement("li");
+          item.textContent = change;
+          list.appendChild(item);
+        });
+        diff.appendChild(list);
+      }
+    }
+    const messages = root.querySelector("[data-plan-messages]");
+    if (messages) {
+      [
+        ["user", message],
+        ["assistant", pendingSuggestion.rationale || "已给出调整建议"],
+      ].forEach(([role, content]) => {
+        if (!content) return;
+        const item = document.createElement("li");
+        const who = document.createElement("strong");
+        who.textContent = role;
+        item.appendChild(who);
+        item.appendChild(document.createTextNode("：" + content));
+        messages.appendChild(item);
+      });
+    }
+    const apply = root.querySelector('[data-action="plan-apply"]');
+    if (apply) apply.hidden = false;
+  }
+
+  async function sendPlanChat(message) {
+    const text = String(message || "").trim();
+    if (!text) {
+      showError("请先输入计划调整要求");
+      return;
+    }
+    error.hidden = true;
+    try {
+      const data = await postJson(
+        "/studio/" + draftId + "/plan/chat",
+        { message: text },
+        "计划调整失败",
+      );
+      if (data) paintSuggestion(data, text);
+    } catch (err) {
+      showError(err.message);
+    }
   }
 
   root.querySelectorAll("[data-action]").forEach((button) => {
@@ -203,6 +275,24 @@
       if (!enabled) return;
       error.hidden = true;
       try {
+        if (action === "plan-chat") {
+          const input = root.querySelector("[data-plan-message]");
+          await sendPlanChat(input ? input.value : "");
+          return;
+        }
+        if (action === "plan-apply") {
+          if (!pendingSuggestion) return;
+          const data = planData();
+          const saved = await postJson("/studio/" + draftId + "/plan", {
+            inputs: data.inputs || {},
+            computed: pendingSuggestion.plan,
+            guidance: pendingSuggestion.guidance,
+            rationale: pendingSuggestion.rationale,
+            confirm: false,
+          }, "应用建议失败");
+          if (saved) location.reload();
+          return;
+        }
         if (action === "save-outline") {
           const editor = root.querySelector(".tb-outline-editor");
           await call("/api/studio/" + draftId + "/outline", {
@@ -267,6 +357,15 @@
       } catch (err) {
         showError(err.message);
       }
+    });
+  });
+
+  root.querySelectorAll("[data-quick-plan]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!enabled) return;
+      const input = root.querySelector("[data-plan-message]");
+      if (input) input.value = button.dataset.quickPlan;
+      await sendPlanChat(button.dataset.quickPlan);
     });
   });
 

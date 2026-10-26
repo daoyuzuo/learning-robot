@@ -428,7 +428,7 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
 
     draft = app.app.state.studio_store.load("demo")
     entry = draft["steps"]["lessons"]["L-EXEC-001"]
-    assert entry["prompt_version"] == "studio/4"
+    assert entry["prompt_version"] == "studio/5"
     assert entry["written_at"]
 
     validation = app.post("/api/studio/demo/validate", json={"skip_verify": True})

@@ -1,11 +1,12 @@
 from pathlib import Path
 
 from testbridge.studio.store import DraftStore
-from testbridge.studio.version import PROMPT_VERSION
+from testbridge.studio.version import PLAN_PROMPT_VERSION, PROMPT_VERSION
 
 
-def test_prompt_version_is_studio_4() -> None:
-    assert PROMPT_VERSION == "studio/4"
+def test_prompt_version_is_studio_5() -> None:
+    assert PROMPT_VERSION == "studio/5"
+    assert PLAN_PROMPT_VERSION == "plan/1"
 
 
 def test_create_defaults_to_current_prompt_version(tmp_path: Path) -> None:

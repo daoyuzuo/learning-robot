@@ -5,6 +5,7 @@ Pure functions: no LLM, no stores, no learning imports.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 
 UTILIZATION = 0.65
@@ -146,3 +147,71 @@ def validate_plan(plan: dict) -> None:
     for item in guidance:
         if not isinstance(item, str) or not item.strip() or len(item) > MAX_GUIDANCE_CHARS:
             raise PlanError("plan_invalid", f"写作方向每条不超过 {MAX_GUIDANCE_CHARS} 字")
+
+
+def parse_plan_suggestion(raw: str, current: dict) -> dict:
+    """Validate a model-proposed plan change against the current plan.
+
+    The model output is untrusted: it is parsed, range-checked and stripped of
+    anything the plan schema does not allow. The current plan is only read.
+    """
+    text = str(raw or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        text = text.split("\n", 1)[1] if "\n" in text else text
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        raise PlanError("plan_invalid", "模型输出不是合法 JSON") from None
+    if not isinstance(data, dict):
+        raise PlanError("plan_invalid", "模型输出必须是对象")
+    proposed = data.get("plan")
+    if not isinstance(proposed, dict):
+        raise PlanError("plan_invalid", "缺少 plan")
+    module_count = _int(proposed.get("module_count"), "module_count")
+    per_module = _int(proposed.get("lessons_per_module"), "lessons_per_module")
+    minutes = _int(proposed.get("lesson_minutes"), "lesson_minutes")
+    if not 1 <= module_count <= MAX_MODULES:
+        raise PlanError("plan_invalid", "模块数必须在 1–3 之间")
+    if not 1 <= per_module <= MAX_LESSONS_PER_MODULE:
+        raise PlanError("plan_invalid", "每模块课数必须在 1–5 之间")
+    if module_count * per_module > MAX_TOTAL_LESSONS:
+        raise PlanError("plan_invalid", "总课数不能超过 15")
+    if not MIN_LESSON_MINUTES <= minutes <= MAX_LESSON_MINUTES:
+        raise PlanError("plan_invalid", "单课分钟必须在 20–60 之间")
+    guidance = data.get("guidance") or []
+    if not isinstance(guidance, list) or len(guidance) > MAX_GUIDANCE:
+        raise PlanError("plan_invalid", f"写作方向最多 {MAX_GUIDANCE} 条")
+    clean_guidance = []
+    for item in guidance:
+        if not isinstance(item, str):
+            raise PlanError("plan_invalid", "写作方向必须是文本")
+        if not item.strip() or len(item) > MAX_GUIDANCE_CHARS:
+            raise PlanError("plan_invalid", "写作方向不合法")
+        clean_guidance.append(item.strip())
+    if "must_cover" in data:
+        current_topics = list((current.get("inputs") or {}).get("must_cover") or [])
+        if list(data.get("must_cover") or []) != current_topics:
+            raise PlanError("plan_invalid", "不能静默删除必须覆盖的主题")
+    changes = data.get("changes") or []
+    if not isinstance(changes, list) or len(changes) > MAX_CHANGES:
+        raise PlanError("plan_invalid", "changes 数量不合法")
+    clean_changes = []
+    for item in changes:
+        if not isinstance(item, str) or len(item) > MAX_CHANGE_CHARS:
+            raise PlanError("plan_invalid", "changes 文本不合法")
+        clean_changes.append(item)
+    rationale = data.get("rationale") or ""
+    if not isinstance(rationale, str) or len(rationale) > MAX_RATIONALE:
+        raise PlanError("plan_invalid", "rationale 不合法")
+    return {
+        "computed": {
+            "module_count": module_count,
+            "lessons_per_module": per_module,
+            "lesson_minutes": minutes,
+            "total_lessons": module_count * per_module,
+        },
+        "guidance": clean_guidance,
+        "rationale": rationale,
+        "changes": clean_changes,
+    }

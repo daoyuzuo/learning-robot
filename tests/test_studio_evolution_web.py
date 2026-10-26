@@ -245,7 +245,7 @@ def test_evolution_records_prompt_version_and_batch_step(
     draft = app.app.state.studio_store.load("demo")
     entry = draft["steps"]["lessons"]["L-1"]
     assert entry["status"] == "done"
-    assert entry["prompt_version"] == "studio/4"
+    assert entry["prompt_version"] == "studio/5"
     assert entry["written_at"]
     batch = draft["steps"]["batch"]
     assert batch["status"] == "done"
@@ -267,7 +267,7 @@ def test_history_page_shows_snapshot_and_current(tmp_path: Path) -> None:
     assert "上一版快照" in text
     assert "当前内容" in text
     assert "studio/1" in text
-    assert "studio/4" in text
+    assert "studio/5" in text
     assert "练习题干" in text
     assert "EX-1-1" in text
     assert "EX-5-1" in text
