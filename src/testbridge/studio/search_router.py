@@ -99,6 +99,42 @@ class SearchRouter:
             return SearchRoute(name, provider)
         return self._auto(topic, concept_titles, concept_domains)
 
+    def route_query(
+        self,
+        backend: str,
+        kind: str,
+        *,
+        topic: str,
+        concept_titles: list[str],
+        concept_domains: list[str],
+    ) -> SearchRoute:
+        """Route one query by its kind; manual backends never fall back."""
+        name = str(backend or "auto").strip().lower()
+        if name in MANUAL_BACKENDS:
+            return self.route(
+                name, topic=topic,
+                concept_titles=concept_titles, concept_domains=concept_domains,
+            )
+        primary_name = "openalex" if kind == "academic" else "deepseek"
+        secondary_name = (
+            "deepseek" if primary_name == "openalex" else "openalex"
+        )
+        return self._between(primary_name, secondary_name)
+
+    def _between(self, primary_name: str, secondary_name: str) -> SearchRoute:
+        primary = self.providers.get(primary_name)
+        secondary = self.providers.get(secondary_name)
+        if primary is None and secondary is None:
+            raise SearchError("no search backend configured")
+        if primary is None:
+            return SearchRoute(f"auto:{secondary_name}", secondary)
+        if secondary is None:
+            return SearchRoute(f"auto:{primary_name}", primary)
+        return SearchRoute(
+            f"auto:{primary_name}->{secondary_name}",
+            FallbackSearch(primary, secondary),
+        )
+
     def _auto(
         self,
         topic: str,
@@ -112,15 +148,4 @@ class SearchRouter:
         secondary_name = (
             "deepseek" if primary_name == "openalex" else "openalex"
         )
-        primary = self.providers.get(primary_name)
-        secondary = self.providers.get(secondary_name)
-        if primary is None and secondary is None:
-            raise SearchError("no search backend configured")
-        if primary is None:
-            return SearchRoute(f"auto:{secondary_name}", secondary)
-        if secondary is None:
-            return SearchRoute(f"auto:{primary_name}", primary)
-        return SearchRoute(
-            f"auto:{primary_name}->{secondary_name}",
-            FallbackSearch(primary, secondary),
-        )
+        return self._between(primary_name, secondary_name)

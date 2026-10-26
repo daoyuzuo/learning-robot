@@ -146,3 +146,40 @@ def test_fallback_fetch() -> None:
     secondary = FakeSearch("secondary")
 
     assert FallbackSearch(primary, secondary).fetch("https://x") == "secondary"
+
+
+def test_route_query_academic_uses_openalex() -> None:
+    router = SearchRouter({
+        "deepseek": FakeSearch("deepseek"),
+        "openalex": FakeSearch("openalex"),
+    })
+
+    route = router.route_query(
+        "auto", "academic", topic="t", concept_titles=[], concept_domains=[]
+    )
+
+    assert route.name == "auto:openalex->deepseek"
+
+
+def test_route_query_engineering_uses_deepseek() -> None:
+    router = SearchRouter({
+        "deepseek": FakeSearch("deepseek"),
+        "openalex": FakeSearch("openalex"),
+    })
+
+    route = router.route_query(
+        "auto", "engineering", topic="t", concept_titles=[], concept_domains=[]
+    )
+
+    assert route.name == "auto:deepseek->openalex"
+
+
+def test_route_query_manual_never_falls_back() -> None:
+    router = SearchRouter({"deepseek": FakeSearch("deepseek")})
+
+    route = router.route_query(
+        "deepseek", "academic", topic="t", concept_titles=[], concept_domains=[]
+    )
+
+    assert route.name == "deepseek"
+    assert isinstance(route.provider, FakeSearch)
