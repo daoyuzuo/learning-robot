@@ -510,7 +510,7 @@ P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATIO
 **进度：** O1–O5 已全部实现并合并到 master（O2 与 O4 于 2026-10-27 完成）。
 实际执行顺序为 O1 → O3 → O5 → O2 → O4。O3/O5 完成时默认 `pytest` 833 passed、
 3 deselected；O2 完成时默认 `pytest` 892 passed、3 deselected；O4 完成时默认
-`pytest` 968 passed、3 deselected，两个现有包 `tb validate` 0/0，
+`pytest` 987 passed、3 deselected，两个现有包 `tb validate` 0/0，
 `tb quality content-packs/sample-sensors` 100/100。优化清单没有下一个待办项。
 
 排期：优化清单已收尾，无下一项。五份 spec 与实施记录见
@@ -660,10 +660,19 @@ quality: 100/100                # exit 0；13 条 quality.resource_stale warning
   未确认计划不参与提示词。
 - 大纲门禁：计划未确认时 `POST /api/studio/{id}/outline` 返回 409
   `plan_unconfirmed`，页面按钮同步置灰；无 `plan` 的旧草稿不受影响。
-- prompt 版本 `studio/5`；计划对话单独记 `plan/1`，不混入课程 prompt 版本。
+- prompt 版本 `studio/5`；`plan/1`（`PLAN_PROMPT_VERSION`）只作为计划对话提示词的参考
+  常量，不按消息持久化，也不混入课程 prompt 版本记录。
 
 **不做：** 逐课大纲级对话、逐模块不等分配、自动重写已完成课程、从 `learning` 读取目标、
 多进程计划对话互斥。
+
+**与 spec 的偏差：**
+
+- 确认计划的“二次确认弹窗”简化为确认后的提示（`outline_exists` 时提示“请重新生成大纲”），
+  不删除既有课程文件。
+- 未实现逐模块不等分配：计划只有统一的 `lessons_per_module`，因此
+  `total_lessons = module_count × lessons_per_module` 可能比时间预算估算多 1–2 课（上限仍为 15）。
+- `plan/1` 已定义并有测试断言，但每条对话消息不记录 prompt 版本。
 
 **设计：** [O4 自动规划课时与对话修正](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)
 （实施计划：[2026-10-27-o4-course-planning-dialogue.md](superpowers/plans/2026-10-27-o4-course-planning-dialogue.md)）
@@ -676,7 +685,7 @@ quality: 100/100                # exit 0；13 条 quality.resource_stale warning
 
 ```text
 $ .venv/Scripts/python -m pytest -q
-968 passed, 3 deselected in 297.65s (0:04:57)
+987 passed, 3 deselected in 297.80s (0:04:57)
 
 $ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0

@@ -207,6 +207,12 @@
         note.textContent = pendingSuggestion.rationale;
         diff.appendChild(note);
       }
+      const direction = document.createElement("p");
+      direction.className = "tb-meta";
+      direction.textContent = pendingSuggestion.guidance.length
+        ? "写作方向：" + pendingSuggestion.guidance.join("、")
+        : "将清空现有写作方向";
+      diff.appendChild(direction);
       const changes = data.changes || [];
       if (!changes.length) {
         const empty = document.createElement("p");

@@ -16,7 +16,7 @@
     </h2>
     {% if plan %}{% set computed = plan.get("computed") or {} %}{% set inputs = plan.get("inputs") or {} %}
     <script type="application/json" id="tb-plan-data">{{ plan | tojson }}</script>
-    <p class="tb-meta">每周 {{ inputs.get("weekly_hours") }} 小时 · {{ inputs.get("horizon_weeks") }} 周 ·
+    <p class="tb-meta">每周 {{ "%g" | format(inputs.get("weekly_hours")) if inputs.get("weekly_hours") is not none else "—" }} 小时 · {{ inputs.get("horizon_weeks") }} 周 ·
       目的 {{ {"interview": "面试导向", "project": "项目导向", "systematic": "系统补齐"}.get(inputs.get("purpose"), inputs.get("purpose")) }}
       {% if inputs.get("must_cover") %} · 必须覆盖：{{ inputs.get("must_cover") | join("、") }}{% endif %}</p>
     <p class="tb-meta">{{ computed.get("module_count") }} 模块 ×

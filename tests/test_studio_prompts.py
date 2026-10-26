@@ -187,3 +187,35 @@ def test_whitespace_only_guidance_emits_no_block() -> None:
     assert render_lesson_prompt("x", "概念", "资料", guidance=["  "]) == (
         render_lesson_prompt("x", "概念", "资料")
     )
+
+
+def test_outline_prompt_emits_target_minutes() -> None:
+    prompt = render_outline_prompt("t", "L2", 1, 1, lesson_minutes=35)
+
+    assert "单课目标分钟：35" in prompt
+    assert "应接近该目标" in OUTLINE_SYSTEM
+
+
+def test_outline_prompt_without_minutes_has_no_target() -> None:
+    assert "单课目标分钟" not in render_outline_prompt("t", "L2", 1, 1)
+
+
+def test_plan_prompt_collapses_embedded_newlines() -> None:
+    prompt = render_plan_prompt(
+        {
+            "inputs": {"weekly_hours": 4, "horizon_weeks": 6,
+                       "purpose": "interview", "must_cover": ["时间\n同步"]},
+            "computed": {"module_count": 1, "lessons_per_module": 1,
+                         "lesson_minutes": 30},
+            "guidance": ["多讲\n实操"],
+        },
+        "少讲\n论文",
+        messages=[{"role": "user", "content": "上一轮\n消息"}],
+    )
+
+    plan_block = prompt.split("<plan>")[1].split("</plan>")[0].strip().splitlines()
+    assert len(plan_block) == 8
+    assert "必须覆盖：时间 同步" in plan_block
+    assert "写作方向：多讲 实操" in plan_block
+    assert "<message>少讲 论文</message>" in prompt
+    assert "user: 上一轮 消息" in prompt

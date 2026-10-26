@@ -73,8 +73,13 @@ def _external_image(html: str) -> str | None:
     scanner.feed(html)
     scanner.close()
     for source in scanner.sources:
-        cleaned = _CONTROL_RE.sub("", source).replace("\\", "/").lower()
-        if cleaned.startswith(("//", "http:", "https:")):
+        raw = _CONTROL_RE.sub("", source)
+        # A leading backslash is never a legitimate local image source: browsers
+        # treat it as a path separator for special schemes, so reject it before
+        # the ``\\`` -> ``/`` normalization below.
+        if raw.startswith("\\"):
+            return source
+        if raw.replace("\\", "/").lower().startswith(("//", "http:", "https:")):
             return source
     return None
 

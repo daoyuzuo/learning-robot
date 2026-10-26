@@ -12,6 +12,7 @@ OUTLINE_SYSTEM = (
     "要求：\n"
     "1. 概念 2–6 个（总数不超过 12），id 用小写 kebab-case 英文；先修关系无环。\n"
     "2. 模块数与每模块课程数严格按用户要求；模块 id 形如 M01，课程 id 形如 L-XXX-001。\n"
+    "若给出单课目标分钟，每课 minutes 应接近该目标（20–60 之间）。\n"
     "3. 每个模块声明 1–4 个概念（且不超过 min(4, 每模块课数 × 2)）；"
     "每课声明 1–2 个概念，必须属于本模块；每个模块概念至少出现在一课。\n"
     "4. 每课给出 1–5 条 objectives、1–3 条 exercise_intents、1–3 条 research_queries；"
@@ -79,14 +80,19 @@ MAX_HISTORY_MESSAGES = 6
 MAX_HISTORY_CHARS = 200
 
 
+def _one_line(value: object) -> str:
+    """Collapse any embedded newlines so text cannot add prompt lines."""
+    return " ".join(str(value).split())
+
+
 def _history_block(messages: list[dict] | None) -> str:
     """Render the tail of the plan conversation as untrusted plain text."""
     lines = []
     for message in (messages or [])[-MAX_HISTORY_MESSAGES:]:
         if not isinstance(message, dict):
             continue
-        role = str(message.get("role") or "").strip()
-        content = str(message.get("content") or "").strip()[:MAX_HISTORY_CHARS]
+        role = _one_line(message.get("role") or "")
+        content = _one_line(message.get("content") or "")[:MAX_HISTORY_CHARS]
         if role and content:
             lines.append(f"{role}: {content}")
     if not lines:
@@ -100,6 +106,12 @@ def render_plan_prompt(
     computed = (plan or {}).get("computed") or {}
     inputs = (plan or {}).get("inputs") or {}
     guidance = (plan or {}).get("guidance") or []
+    topics = "、".join(
+        _one_line(item) for item in inputs.get("must_cover") or [] if _one_line(item)
+    )
+    directions = "、".join(
+        _one_line(item) for item in guidance if _one_line(item)
+    )
     return (
         f"<plan>\n当前模块数：{computed.get('module_count')}\n"
         f"当前每模块课数：{computed.get('lessons_per_module')}\n"
@@ -107,10 +119,10 @@ def render_plan_prompt(
         f"每周小时：{inputs.get('weekly_hours')}\n"
         f"周期：{inputs.get('horizon_weeks')}\n"
         f"目的：{inputs.get('purpose')}\n"
-        f"必须覆盖：{'、'.join(inputs.get('must_cover') or [])}\n"
-        f"写作方向：{'、'.join(guidance)}\n</plan>\n"
+        f"必须覆盖：{topics}\n"
+        f"写作方向：{directions}\n</plan>\n"
         f"{_history_block(messages)}"
-        f"<message>{message[:500]}</message>\n"
+        f"<message>{_one_line(message)[:500]}</message>\n"
         "请只输出计划调整 JSON。"
     )
 
@@ -152,11 +164,16 @@ def render_outline_prompt(
     module_count: int,
     lessons_per_module: int,
     guidance: list[str] | None = None,
+    lesson_minutes: int | None = None,
 ) -> str:
+    target = (
+        f"单课目标分钟：{lesson_minutes}\n" if lesson_minutes is not None else ""
+    )
     return (
         f"主题：{topic}\n目标级别：{level}\n"
         f"模块数：{module_count}\n每模块课数：{lessons_per_module}\n"
         f"每模块概念上限：{min(4, lessons_per_module * 2)}\n"
+        f"{target}"
         f"{_guidance_block(guidance)}"
         "请输出课程包大纲 JSON。"
     )

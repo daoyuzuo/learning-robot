@@ -35,7 +35,7 @@ compare 规格，服务端渲染内联 SVG 并嵌入课程，prompt 版本升到
 `lesson_no_figure` warning 与 `figure_mount_unresolved` 硬错误，已发布包分数基线不变。
 O4 完成确定性课时计划、计划卡片、只建议的对话修订（`plan/1`）、确认后 `guidance`
 接入大纲与写课提示词、未确认计划的大纲门禁，prompt 版本升到 `studio/5`。
-O4 完成时默认 `pytest` 968 passed、3 deselected；两个现有包 `tb validate` 0/0，
+O4 完成时默认 `pytest` 987 passed、3 deselected；两个现有包 `tb validate` 0/0，
 `tb quality content-packs/sample-sensors` 100/100。优化清单到此全部完成，没有下一个优化项。
 
 ---

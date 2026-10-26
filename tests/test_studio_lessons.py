@@ -368,6 +368,7 @@ def test_lesson_without_figures_still_works() -> None:
     r"\\example.com/x.png",
     r"\/example.com/x.png",
     r"/\example.com/x.png",
+    r"\example.com/x.png",
 ])
 def test_lesson_rejects_obfuscated_external_image(src: str) -> None:
     body = (

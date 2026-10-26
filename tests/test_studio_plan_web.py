@@ -194,6 +194,11 @@ def test_draft_page_shows_plan_card(tmp_path: Path) -> None:
     assert "多讲测试实操" in page
     assert 'data-action="plan-confirm"' in page
     assert 'data-action="plan-chat"' in page
+    assert "data-plan-diff" in page
+    assert "data-plan-messages" in page
+    assert 'data-action="plan-apply"' in page
+    # %g keeps whole hours readable ("每周 4 小时", not "4.0").
+    assert "每周 4 小时" in page
 
 
 def test_draft_page_without_plan_shows_manual_mode(tmp_path: Path) -> None:
@@ -514,3 +519,62 @@ def test_plan_chat_does_not_count_rejected_output(tmp_path: Path) -> None:
 
     assert response.status_code == 422
     assert store.load("demo")["usage"]["llm_calls"] == before
+
+
+class RetryLlm(PlanLlm):
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__("")
+        self.replies = list(replies)
+        self.chat_calls = 0
+
+    def complete(self, system: str, user: str) -> str:
+        if "课时计划" in system:
+            self.prompts.append(user)
+            index = min(self.chat_calls, len(self.replies) - 1)
+            self.chat_calls += 1
+            return self.replies[index]
+        return super().complete(system, user)
+
+
+def test_plan_chat_retries_once_on_bad_output(tmp_path: Path) -> None:
+    llm = RetryLlm(["not json", json.dumps(SUGGESTION)])
+    app = plan_client(tmp_path, llm)
+    store = app.app.state.studio_store
+    before = store.load("demo")["usage"]["llm_calls"]
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 200
+    assert llm.chat_calls == 2
+    assert "上一次输出不可用" in llm.prompts[-1]
+    assert response.json()["usage"] == {"llm_calls": 2}
+    assert store.load("demo")["usage"]["llm_calls"] == before + 2
+
+
+def test_plan_chat_gives_up_after_two_bad_outputs(tmp_path: Path) -> None:
+    llm = RetryLlm(["not json", "still not json"])
+    app = plan_client(tmp_path, llm)
+    store = app.app.state.studio_store
+    before = store.load("demo")["usage"]["llm_calls"]
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 422
+    assert llm.chat_calls == 2
+    assert store.load("demo")["usage"]["llm_calls"] == before
+    assert store.load("demo")["plan"]["computed"]["lessons_per_module"] == 2
+
+
+def test_plan_save_reports_an_existing_outline(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    app.post("/studio", data={
+        "draft_id": "demo", "topic": "t", "level": "L3",
+        "module_count": "1", "lessons_per_module": "1",
+        "searches_per_lesson": "5", "search_backend": "auto",
+    })
+    assert (tmp_path / "drafts" / "demo" / "outline.html").is_file()
+
+    response = app.post("/studio/demo/plan", json=PLAN_BODY)
+
+    assert response.status_code == 200
+    assert response.json()["outline_exists"] is True

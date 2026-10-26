@@ -277,7 +277,7 @@ Content-Type: application/json
 | 存储 | 旧草稿无 plan 可读；新字段写入/读取；messages 截断到 10 轮 |
 | Web | 自动规划创建；确认计划同步计数；大纲门禁；对话按钮与 diff 展示 |
 | 互斥 | 同一草稿并发 chat 返回 409；与批量/单课任务互不干扰 |
-| 回归 | 现有 978 个测试；两个包 `tb validate` 0/0 |
+| 回归 | 现有 987 个测试；两个包 `tb validate` 0/0 |
 
 验收：
 

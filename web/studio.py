@@ -248,6 +248,14 @@ def mount_studio(
             return [str(item) for item in plan.get("guidance") or []]
         return []
 
+    def plan_minutes(draft: dict) -> int | None:
+        """The confirmed plan's target lesson length, if any."""
+        plan = draft.get("plan")
+        if isinstance(plan, dict) and plan.get("confirmed"):
+            value = (plan.get("computed") or {}).get("lesson_minutes")
+            return value if isinstance(value, int) else None
+        return None
+
     def generate_outline(draft_id: str) -> None:
         draft = store.load(draft_id)
         module_count = int(draft.get("module_count") or 1)
@@ -260,6 +268,7 @@ def mount_studio(
             render_outline_prompt(
                 draft["topic"], draft["level"], module_count, lessons_per_module,
                 guidance=plan_guidance(draft),
+                lesson_minutes=plan_minutes(draft),
             ),
             lambda raw: outline_writer.parse_outline_json(
                 raw, module_count, lessons_per_module
@@ -750,8 +759,10 @@ def mount_studio(
                 detail={"code": "tutor_disabled", "message": "未配置模型服务"},
             )
 
-    def record_plan_turn(draft_id: str, message: str, reply: str, at: str) -> None:
-        """Append one chat turn and count the call, under the store lock."""
+    def record_plan_turn(
+        draft_id: str, message: str, reply: str, at: str, *, calls: int
+    ) -> None:
+        """Append one chat turn and count the calls, under the store lock."""
 
         def apply(draft: dict) -> None:
             plan = draft.get("plan")
@@ -765,7 +776,7 @@ def mount_studio(
             plan["messages"] = messages[-MAX_PLAN_MESSAGES:]
             plan["updated_at"] = at
             usage = draft.setdefault("usage", {"searches": 0, "llm_calls": 0})
-            usage["llm_calls"] = int(usage.get("llm_calls") or 0) + 1
+            usage["llm_calls"] = int(usage.get("llm_calls") or 0) + calls
 
         try:
             store.update(draft_id, apply)
@@ -812,28 +823,41 @@ def mount_studio(
                 },
             )
         try:
-            raw = llm.complete(
-                PLAN_SYSTEM,
-                render_plan_prompt(plan, message, plan.get("messages")),
+            # One retry with the validation error attached, like generate().
+            prompt = render_plan_prompt(
+                plan, message, plan.get("messages")
             )
-            try:
-                suggestion = parse_plan_suggestion(raw, plan)
-            except PlanError as exc:
-                raise HTTPException(
-                    status_code=422,
-                    detail={"code": exc.code, "message": exc.message},
-                ) from None
+            calls = 0
+            for attempt in range(2):
+                calls += 1
+                raw = llm.complete(PLAN_SYSTEM, prompt)
+                try:
+                    suggestion = parse_plan_suggestion(raw, plan)
+                except PlanError as exc:
+                    if attempt == 1:
+                        raise HTTPException(
+                            status_code=422,
+                            detail={"code": exc.code, "message": exc.message},
+                        ) from None
+                    prompt = (
+                        prompt
+                        + f"\n上一次输出不可用：{exc.message}\n"
+                        "请只输出一个合法的计划 JSON 对象。"
+                    )
+                    continue
+                break
             now = datetime.now(timezone.utc).isoformat()
             record_plan_turn(
                 draft_id, message,
                 suggestion["rationale"] or "已给出调整建议", now,
+                calls=calls,
             )
             return {
                 "plan": suggestion["computed"],
                 "guidance": suggestion["guidance"],
                 "rationale": suggestion["rationale"],
                 "changes": suggestion["changes"],
-                "usage": {"llm_calls": 1},
+                "usage": {"llm_calls": calls},
             }
         finally:
             lock.release()
