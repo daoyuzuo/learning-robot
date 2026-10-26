@@ -235,13 +235,13 @@ def _cmd_doctor(args) -> int:
 
     mailto = os.environ.get("TESTBRIDGE_OPENALEX_MAILTO")
     print(f"{'openalex.mailto':16} {'set' if mailto else 'unset'}")
-    for name, default in (
-        ("TESTBRIDGE_OPENALEX_BASE_URL", "https://api.openalex.org"),
-        ("TESTBRIDGE_OPENALEX_TIMEOUT", "10"),
+    for label, name, default in (
+        ("openalex.base_url", "TESTBRIDGE_OPENALEX_BASE_URL", "https://api.openalex.org"),
+        ("openalex.timeout", "TESTBRIDGE_OPENALEX_TIMEOUT", "10"),
     ):
         value = os.environ.get(name)
         state = "set" if value else "default"
-        print(f"{name.lower():16} {state:8} {value or default}")
+        print(f"{label:16} {state:8} {value or default}")
 
     if missing:
         print("missing: " + ", ".join(missing), file=sys.stderr)
