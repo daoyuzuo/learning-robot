@@ -25,6 +25,9 @@
 | O4 | [2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md) |
 | O5 | [2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md) |
 
+**进度：** O1 已实现（2026-10-26，分支 `p5-optimization`）。默认
+`pytest` 756 passed、3 deselected；新增 14 个 CLI/环境测试。O3 待开始。
+
 ---
 
 ## 0. 总览

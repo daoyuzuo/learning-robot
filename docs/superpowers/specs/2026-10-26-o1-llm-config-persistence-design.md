@@ -1,6 +1,6 @@
 # O1 模型配置一次生效（Design）
 
-- 状态：Proposed，2026-10-26
+- 状态：Implemented，2026-10-26（分支 `p5-optimization`）
 - 范围：CLI 配置命令、Windows 用户环境变量写入、离线自检、README
 - 上游：[优化清单](../../OPTIMIZATION.md)
 - 决策：2026-10-26 确认采用“Windows 用户环境变量 + `tb doctor`”，
