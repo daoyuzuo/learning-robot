@@ -365,6 +365,9 @@ def test_lesson_without_figures_still_works() -> None:
     "https://example.com/x.png",
     "//example.com/x.png",
     "http&#58;//example.com/x.png",
+    r"\\example.com/x.png",
+    r"\/example.com/x.png",
+    r"/\example.com/x.png",
 ])
 def test_lesson_rejects_obfuscated_external_image(src: str) -> None:
     body = (
@@ -400,3 +403,16 @@ def test_lesson_allows_relative_image() -> None:
         LESSON, {"executor-basics"},
     )
     assert 'src="images/x.png"' in output.html
+
+
+@pytest.mark.parametrize("src", [r"images\\x.png", "images\\x.png"])
+def test_lesson_allows_windows_style_relative_image(src: str) -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        f'<img src="{src}" alt="x"></article>'
+    )
+    output = parse_lesson_json(
+        _payload_with_figure(html=body, figures=[]),
+        LESSON, {"executor-basics"},
+    )
+    assert f'src="{src}"' in output.html

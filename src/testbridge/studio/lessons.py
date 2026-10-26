@@ -63,16 +63,18 @@ _CONTROL_RE = re.compile(r"[\x00-\x20\x7f]+")
 def _external_image(html: str) -> str | None:
     """Return the first remote ``img`` source, if any.
 
-    Spaces and control characters are stripped before the check so obfuscated
-    schemes and protocol-relative URLs are still caught. Relative sources stay
-    allowed; the prompt forbids them but they cannot leak a remote fetch.
+    Spaces and control characters are stripped, then ``\\`` is treated as ``/``
+    because WHATWG URL parsing does the same for special schemes; without that
+    ``\\\\evil.com/x.png`` would look relative but still fetch remotely. Relative
+    sources stay allowed; the prompt forbids them but they cannot leak a remote
+    fetch.
     """
     scanner = _ImageSrcScanner()
     scanner.feed(html)
     scanner.close()
     for source in scanner.sources:
-        cleaned = _CONTROL_RE.sub("", source).lower()
-        if cleaned.startswith("//") or cleaned.startswith(("http:", "https:")):
+        cleaned = _CONTROL_RE.sub("", source).replace("\\", "/").lower()
+        if cleaned.startswith(("//", "http:", "https:")):
             return source
     return None
 

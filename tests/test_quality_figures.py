@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from testbridge.content.repository import load_pack
-from testbridge.quality.evaluate import evaluate_pack, _prompt_versions
+from testbridge.quality.evaluate import _prompt_versions, evaluate_pack
 from testbridge.quality.figures import evaluate_figures
 
 FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "minimal-pack"
@@ -42,6 +42,38 @@ def test_unresolved_mount_is_an_error(tmp_path: Path) -> None:
     assert any(
         issue.code == "quality.figure_mount_unresolved" for issue in result.errors
     )
+
+
+def test_quoted_mount_syntax_is_not_an_error(tmp_path: Path) -> None:
+    root = copy_pack(
+        tmp_path,
+        '<article class="tb-lesson">'
+        '<p>正文要写 <code>data-tb-figure="FIG-1"</code> 这样的属性。</p>'
+        '<pre><code>&lt;div data-tb-figure="FIG-1"&gt;&lt;/div&gt;</code></pre>'
+        "</article>",
+    )
+    result = evaluate_figures(load_pack(root), {})
+    assert result.errors == []
+
+
+def test_non_div_attribute_is_not_a_mount(tmp_path: Path) -> None:
+    root = copy_pack(
+        tmp_path,
+        '<article class="tb-lesson">'
+        '<span data-tb-figure="FIG-1"></span></article>',
+    )
+    result = evaluate_figures(load_pack(root), {})
+    assert result.errors == []
+
+
+def test_uppercase_figure_tag_satisfies_coverage(tmp_path: Path) -> None:
+    root = copy_pack(
+        tmp_path,
+        '<article class="tb-lesson"><FIGURE class="tb-figure">'
+        "<svg></svg><figcaption>x</figcaption></FIGURE></article>",
+    )
+    result = evaluate_figures(load_pack(root), {"L-ONE": "studio/4"})
+    assert result.warnings == []
 
 
 def test_new_prompt_without_figure_warns(tmp_path: Path) -> None:

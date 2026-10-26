@@ -394,16 +394,27 @@ def _render_timeline(spec: dict) -> str:
     ]
     for index, event in enumerate(events):
         x = margin + index * step
+        # Endpoints only have half the interior spacing between them and the
+        # viewBox edge, so grow their labels outward instead of centering them.
+        if index == 0:
+            anchor = "start"
+        elif index == count - 1:
+            anchor = "end"
+        else:
+            anchor = "middle"
         parts.append(
             f'<circle cx="{_n(x)}" cy="{_n(axis_y)}" r="6" fill="currentColor"/>'
         )
         parts.append(
             _text(x, axis_y - 22, event["at"], label_units, size=13, weight=600,
-                  max_lines=1)
+                  anchor=anchor, max_lines=1)
         )
-        parts.append(_text(x, label_y, event["label"], label_units))
+        parts.append(
+            _text(x, label_y, event["label"], label_units, anchor=anchor)
+        )
         if event["detail"]:
-            parts.append(_text(x, detail_y, event["detail"], detail_units, size=12))
+            parts.append(_text(x, detail_y, event["detail"], detail_units, size=12,
+                               anchor=anchor))
     return _svg(VIEWBOX_WIDTH, height, spec, "".join(parts))
 
 

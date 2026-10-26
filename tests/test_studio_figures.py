@@ -1,3 +1,4 @@
+import html
 import itertools
 import re
 
@@ -246,6 +247,39 @@ def test_render_block_rows_reserve_two_lines_and_grow() -> None:
         return float(re.search(r'viewBox="0 0 800 ([\d.]+)"', svg).group(1))
 
     assert height(tall_svg) > height(short_svg)
+
+
+def test_timeline_endpoint_labels_stay_inside_viewbox() -> None:
+    label = "endpoint-label-01234"
+    assert len(label) == 20
+    spec = {
+        **TIMELINE,
+        "events": [
+            {"at": "t0", "label": label},
+            {"at": "t1", "label": label},
+        ],
+    }
+    svg = render_figure(parse_figures([spec], {"c"})[0])
+
+    anchors = []
+    for block in re.findall(r"<text\b[^>]*>.*?</text>", svg, re.DOTALL):
+        x = float(re.search(r'x="([\d.]+)"', block).group(1))
+        size = int(re.search(r'font-size="(\d+)"', block).group(1))
+        anchor = re.search(r'text-anchor="([a-z]+)"', block).group(1)
+        line = html.unescape(re.sub(r"<[^>]+>", "", block))
+        extent = len(line) * size / 2
+        if anchor == "start":
+            left, right = x, x + extent
+        elif anchor == "end":
+            left, right = x - extent, x
+        else:
+            left, right = x - extent / 2, x + extent / 2
+        anchors.append(anchor)
+        assert 0 <= left, (line, anchor, left)
+        assert right <= 800, (line, anchor, right)
+
+    assert anchors.count("start") == 2
+    assert anchors.count("end") == 2
 
 
 def test_render_wide_flow_stays_inside_viewbox() -> None:

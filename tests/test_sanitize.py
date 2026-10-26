@@ -60,6 +60,24 @@ def test_find_forbidden_html_flags_data_url() -> None:
     assert any("data" in issue for issue in issues)
 
 
+def test_find_forbidden_html_flags_backslash_rooted_url() -> None:
+    assert find_forbidden_html(r'<img src="\evil.com" alt="x">')
+    assert find_forbidden_html(r'<img src="\\evil.com/x.png" alt="x">')
+    assert find_forbidden_html(r'<img src="\/evil.com/x.png" alt="x">')
+    assert find_forbidden_html(r'<a href="/\evil.com/x">x</a>')
+
+
+def test_find_forbidden_html_flags_protocol_relative_url() -> None:
+    assert find_forbidden_html('<a href="//evil.com/x">x</a>')
+    assert find_forbidden_html('<img src="//evil.com/x.png" alt="x">')
+
+
+def test_find_forbidden_html_allows_relative_url() -> None:
+    assert find_forbidden_html('<img src="images/x.png" alt="x">') == []
+    assert find_forbidden_html(r'<img src="images\x.png" alt="x">') == []
+    assert find_forbidden_html('<a href="#section">x</a>') == []
+
+
 def test_keeps_svg_group_transform() -> None:
     result = sanitize_fragment(
         '<svg><g transform="translate(1,2)"><path d="M0 0"/></g></svg>'

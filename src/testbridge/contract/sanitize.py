@@ -72,15 +72,45 @@ RELATIVE_URL_PREFIXES = ("#", "/", "./", "../")
 SCHEME_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.-]*):")
 
 
-def _url_scheme(value: str) -> str | None:
-    """Return a URL value's lowercased scheme, or None for relative URLs."""
-    compact = "".join(
+def _compact(value: str) -> str:
+    """Drop whitespace and control characters, which URLs ignore in browsers."""
+    return "".join(
         ch for ch in value if not (ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7F)
     )
+
+
+def _normalized_url(value: str) -> str:
+    r"""Compact a URL and treat ``\`` as ``/`` like WHATWG parsing does.
+
+    For special schemes browsers resolve backslashes to slashes, so
+    ``\\evil.com``, ``\/evil.com``, and ``/\evil.com`` reach a remote host even
+    though a naive prefix check sees a relative path.
+    """
+    return _compact(value).replace("\\", "/")
+
+
+def _url_scheme(value: str) -> str | None:
+    """Return a URL value's lowercased scheme, or None for relative URLs."""
+    compact = _compact(value)
     if not compact or compact.startswith(RELATIVE_URL_PREFIXES):
         return None
     match = SCHEME_RE.match(compact)
     return match.group(1).lower() if match else None
+
+
+def _is_backslash_url(value: str) -> bool:
+    r"""True when a backslash makes a URL look relative but resolve remotely.
+
+    ``\\evil.com`` hides a remote target from a plain prefix check; any
+    backslash-rooted value is rejected so the whole family fails validation,
+    as is a value whose http(s) scheme only appears once backslashes are slashes.
+    """
+    compact = _compact(value)
+    if "\\" not in compact:
+        return False
+    return compact.startswith("\\") or _normalized_url(value).startswith(
+        ("http:", "https:")
+    )
 
 
 class _ForbiddenHTMLDetector(HTMLParser):
@@ -110,6 +140,10 @@ class _ForbiddenHTMLDetector(HTMLParser):
                 scheme = _url_scheme(value)
                 if scheme is not None and scheme not in SAFE_URL_SCHEMES:
                     self.issues.append(f"forbidden URL scheme: {scheme}")
+                elif _normalized_url(value).startswith("//"):
+                    self.issues.append("forbidden protocol-relative URL")
+                elif _is_backslash_url(value):
+                    self.issues.append("forbidden backslash URL")
 
 
 def sanitize_fragment(html: str) -> str:
