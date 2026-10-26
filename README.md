@@ -135,6 +135,7 @@ tb quality drafts/<id> --research-dir drafts/<id>/research --budget 20 --json
 - [P3.4 多模块与批量设计](docs/superpowers/specs/2026-10-25-p3.4-multi-module-batch-design.md)
 - [P3.5 内容演进设计](docs/superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)
 - [路线图](docs/ROADMAP.md)
+- [优化清单（体验债）](docs/OPTIMIZATION.md)
 - [开源项目调研](docs/research/ai-teaching-open-source.md)
 - [Agent 守则](CLAUDE.md)
 

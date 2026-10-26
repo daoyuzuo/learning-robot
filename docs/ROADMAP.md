@@ -495,6 +495,27 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 ---
 
+## 优化清单（体验债，待排期，2026-10-26）
+
+P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATION.md)。
+
+| 编号 | 主题 | 建议优先级 | 触碰硬边界 |
+|---|---|---|---|
+| O1 | 模型配置一次生效（用户级环境变量 + `tb doctor`） | P0 | 否：不引入仓库内 `.env` |
+| O3 | 参考资料工程化与可达性（来源配比、按查询路由、付费墙/404 预检；C 级可作补充阅读） | P1 | 是：质量门禁 trust 语义 |
+| O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 |
+| O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 |
+| O5 | 页面排版与样式 | P3 | 否：只动 `web/` |
+
+排期建议：O1 → O3 → O2 → O4 → O5。五份 spec 已写入
+[O1](superpowers/specs/2026-10-26-o1-llm-config-persistence-design.md)、
+[O2](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)、
+[O3](superpowers/specs/2026-10-26-o3-resource-quality-design.md)、
+[O4](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)、
+[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)，待评审后再写实施计划。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。
@@ -528,5 +549,11 @@ P4.1 与 P4.2 已合并到 master；P4.3 已完成（分支 `p4.3-job-applicatio
 - P4.1 面试闭环：[2026-10-26-p4.1-interview-loop-design.md](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)
 - P4.2 公司/JD 匹配：[2026-10-26-p4.2-company-jd-design.md](superpowers/specs/2026-10-26-p4.2-company-jd-design.md)
 - P4.3 求职管理：[2026-10-26-p4.3-job-applications-design.md](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)
+- 优化清单（体验债）：[OPTIMIZATION.md](OPTIMIZATION.md)
+- O1 模型配置一次生效：[2026-10-26-o1-llm-config-persistence-design.md](superpowers/specs/2026-10-26-o1-llm-config-persistence-design.md)
+- O2 课程图文并茂：[2026-10-26-o2-lesson-figures-design.md](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)
+- O3 参考资料质量：[2026-10-26-o3-resource-quality-design.md](superpowers/specs/2026-10-26-o3-resource-quality-design.md)
+- O4 自动规划与对话：[2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)
+- O5 页面样式：[2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)
