@@ -116,6 +116,7 @@ def mount_studio(
     app.state.evolution = evolution
     app.state.studio_llm = llm
     app.state.studio_search = search
+    app.state.studio_url_checker = url_checker
     router = APIRouter()
 
     def ctx(request: Request, **kwargs):
@@ -708,10 +709,14 @@ def mount_studio(
             # Synchronous runs report a missing lesson as a request failure.
             # A lesson that failed but already existed on disk is kept, so the
             # rewrite-conflict path still returns 200 with a failed step.
-            missing = [
-                target for target in targets
-                if not lesson_path(draft_id, target).is_file()
-            ]
+            missing: list[str] = []
+            for target in targets:
+                try:
+                    produced = lesson_path(draft_id, target).is_file()
+                except OutlineError:
+                    produced = False
+                if not produced:
+                    missing.append(target)
             if missing:
                 raise HTTPException(
                     status_code=400,

@@ -88,10 +88,6 @@ def create_app(
     target_llm=None,
     target_config: TutorConfig | None = None,
 ) -> FastAPI:
-    # A caller-supplied search provider owns its own link verification; only
-    # the app-built stack gets the default reachability checker. This keeps
-    # offline test doubles from performing real network checks.
-    custom_search = studio_search is not None
     pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
     database = db_path or ROOT / "data" / "testbridge.db"
     uploads = artifacts_dir or ROOT / "data" / "artifacts"
@@ -159,7 +155,7 @@ def create_app(
         })
     if (
         studio_url_checker is None
-        and not custom_search
+        and studio_cfg is not None
         and os.environ.get("TESTBRIDGE_STUDIO_VERIFY", "1") != "0"
     ):
         from testbridge.studio.verify import check_urls

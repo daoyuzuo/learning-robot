@@ -13,7 +13,6 @@ from testbridge.content.repository import ContentPack
 from testbridge.quality.report import QualityIssue, QualityMetric, proportional
 
 AB_TRUST = {"A", "B"}
-ALLOWED_SUPPLEMENTARY_TRUST = {"A", "B", "C"}
 MAX_SUPPLEMENTARY_PER_LESSON = 3
 STALE_DAYS = 180
 OFFICIAL_KINDS = {"official_docs", "standard", "repository"}
@@ -339,15 +338,16 @@ def evaluate_provenance(
             proportional(query_ok, len(lessons), 5), 5,
             f"{query_ok}/{len(lessons)}",
         ))
-    result.metrics.append(QualityMetric(
-        "provenance.source_mix", "来源配比",
-        proportional(mix_ok, len(lessons), 5), 5,
-        f"{mix_ok}/{len(lessons)}",
-    ))
-    if checked_required:
+    if include_metrics:
         result.metrics.append(QualityMetric(
-            "provenance.reachable", "required 可达",
-            proportional(reachable_ok, checked_required, 5), 5,
-            f"{reachable_ok}/{checked_required}",
+            "provenance.source_mix", "来源配比",
+            proportional(mix_ok, len(lessons), 5), 5,
+            f"{mix_ok}/{len(lessons)}",
         ))
+        if checked_required:
+            result.metrics.append(QualityMetric(
+                "provenance.reachable", "required 可达",
+                proportional(reachable_ok, checked_required, 5), 5,
+                f"{reachable_ok}/{checked_required}",
+            ))
     return result

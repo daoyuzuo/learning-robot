@@ -458,3 +458,35 @@ def test_paywalled_hit_is_hidden_from_the_model(tmp_path: Path) -> None:
     assert "<research>" in llm.lesson_prompts[-1]
     assert "docs.ros.org/x" not in llm.lesson_prompts[-1]
     assert response.status_code >= 400
+
+
+def test_studio_enabled_builds_default_url_checker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("TESTBRIDGE_STUDIO_VERIFY", raising=False)
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts",
+        studio_packs=tmp_path / "packs",
+        studio_llm=FakeLlm(),
+        studio_search=FakeSearch(),
+        studio_config=CONFIG,
+    ))
+
+    assert app.app.state.studio_url_checker is not None
+
+
+def test_verify_env_zero_disables_default_url_checker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("TESTBRIDGE_STUDIO_VERIFY", "0")
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts",
+        studio_packs=tmp_path / "packs",
+        studio_llm=FakeLlm(),
+        studio_search=FakeSearch(),
+        studio_config=CONFIG,
+    ))
+
+    assert app.app.state.studio_url_checker is None

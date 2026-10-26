@@ -80,6 +80,7 @@ def make_app(tmp_path: Path, router: RecordingRouter) -> TestClient:
         studio_llm=FakeLlm(),
         studio_search=router,
         studio_config=CONFIG,
+        studio_url_checker=lambda urls: {},
     ))
 
 

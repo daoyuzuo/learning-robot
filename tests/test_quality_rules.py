@@ -623,9 +623,47 @@ def test_only_papers_warning_and_source_mix(tmp_path: Path) -> None:
 
 def test_published_pack_has_no_new_metrics(tmp_path: Path) -> None:
     pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
 
-    result = evaluate_provenance(load_pack(pack))
+    result = evaluate_provenance(
+        load_pack(pack), research, budget=2, include_metrics=False
+    )
 
     keys = {metric.key for metric in result.metrics}
     assert "provenance.source_mix" not in keys
     assert "provenance.reachable" not in keys
+
+
+def test_stale_resource_is_a_warning(tmp_path: Path) -> None:
+    resources = [{**default_resource(), "last_verified": "2020-01-01"}]
+    pack = build_pack(tmp_path / "pack", resources=resources)
+    research = write_research(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.resource_stale" and issue.resource_id == "DOC-1"
+        for issue in result.warnings
+    )
+
+
+def test_lesson_without_required_resource_warns(tmp_path: Path) -> None:
+    resources = [{
+        **default_resource(), "trust": "C", "role": "supplementary",
+        "url": "https://blog.example/x",
+    }]
+    pack = build_pack(
+        tmp_path / "pack", resources=resources,
+        lesson_resources=["DOC-1"],
+    )
+    research = write_research(tmp_path / "pack", hits=[
+        {"url": "https://blog.example/x", "trust": "C"},
+    ])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.lesson_no_ab_required"
+        and issue.lesson_id == "L-ONE"
+        for issue in result.warnings
+    )

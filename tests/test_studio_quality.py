@@ -83,6 +83,7 @@ def make_app(tmp_path: Path, lesson_json: str) -> TestClient:
         studio_llm=FakeLlm(lesson_json),
         studio_search=FakeSearch(),
         studio_config=CONFIG,
+        studio_url_checker=lambda urls: {},
     ))
 
 

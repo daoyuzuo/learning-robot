@@ -212,6 +212,7 @@ def make_app(
         studio_search=search or FakeSearch(),
         studio_config=CONFIG,
         studio_inline=inline,
+        studio_url_checker=lambda urls: {},
     ))
 
 

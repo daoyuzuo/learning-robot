@@ -120,6 +120,7 @@ def make_app(
         studio_llm=llm or FakeLlm(),
         studio_search=FakeSearch(),
         studio_config=CONFIG,
+        studio_url_checker=lambda urls: {},
     ))
 
 
