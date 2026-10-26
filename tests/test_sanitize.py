@@ -82,3 +82,27 @@ def test_find_forbidden_html_ignores_text_content() -> None:
 def test_find_forbidden_html_flags_obfuscated_javascript_urls() -> None:
     assert find_forbidden_html("<a href=javascript:alert(1)>x</a>")
     assert find_forbidden_html('<a href="java&#115;cript:alert(1)">x</a>')
+
+
+def test_svg_accessibility_attributes_survive() -> None:
+    html = (
+        '<figure class="tb-figure"><svg viewBox="0 0 10 10" role="img" '
+        'aria-label="图"><title>标题</title><desc>说明</desc>'
+        '<text x="1" y="2" font-weight="600" fill-opacity="0.5">字</text>'
+        "</svg><figcaption>说明</figcaption></figure>"
+    )
+    clean = sanitize_fragment(html)
+    assert "<title>标题</title>" in clean
+    assert "<desc>说明</desc>" in clean
+    assert 'role="img"' in clean
+    assert 'aria-label="图"' in clean
+    assert 'font-weight="600"' in clean
+    assert 'fill-opacity="0.5"' in clean
+
+
+def test_svg_still_drops_scripts_and_styles() -> None:
+    html = '<svg onload="x()" style="color:red"><script>1</script></svg>'
+    clean = sanitize_fragment(html)
+    assert "onload" not in clean
+    assert "style=" not in clean
+    assert "<script" not in clean

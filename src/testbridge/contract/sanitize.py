@@ -12,29 +12,52 @@ ALLOWED_TAGS = {
     "p", "ul", "ol", "li", "strong", "em", "code", "pre", "blockquote",
     "figure", "figcaption", "img", "svg", "g", "path", "circle", "rect",
     "line", "polyline", "polygon", "text", "tspan", "defs", "linearGradient",
-    "stop", "table", "thead", "tbody", "tr", "th", "td", "a", "span", "div",
+    "stop", "title", "desc",
+    "table", "thead", "tbody", "tr", "th", "td", "a", "span", "div",
     "aside", "details", "summary", "br", "hr",
 }
 
 ALLOWED_ATTRIBUTES = {
     "*": {
         "class", "id", "data-tb-block", "data-tb-exercise", "data-tb-widget",
-        "data-tb-resource", "data-variant", "data-language", "title",
+        "data-tb-resource", "data-tb-figure", "data-variant", "data-language",
+        "title", "role", "aria-label", "aria-describedby", "aria-hidden",
+        "focusable",
     },
     # "rel" is omitted: nh3 >= 0.3 rejects listing it while link_rel is set.
     # link_rel already forces rel="noopener noreferrer" on every link.
     "a": {"href", "target"},
     "img": {"src", "alt", "width", "height"},
     "svg": {"viewBox", "viewbox", "xmlns", "width", "height", "fill", "stroke"},
-    "g": {"transform", "fill", "stroke", "stroke-width"},
-    "path": {"d", "fill", "stroke", "stroke-width", "transform"},
-    "circle": {"cx", "cy", "r", "fill", "stroke", "stroke-width", "transform"},
-    "rect": {"x", "y", "width", "height", "rx", "fill", "stroke", "transform"},
-    "line": {"x1", "y1", "x2", "y2", "stroke", "stroke-width", "transform"},
+    "g": {
+        "transform", "fill", "stroke", "stroke-width", "fill-opacity",
+        "stroke-opacity",
+    },
+    "path": {
+        "d", "fill", "stroke", "stroke-width", "transform", "fill-opacity",
+        "stroke-opacity",
+    },
+    "circle": {
+        "cx", "cy", "r", "fill", "stroke", "stroke-width", "transform",
+        "fill-opacity",
+    },
+    "rect": {
+        "x", "y", "width", "height", "rx", "fill", "stroke", "transform",
+        "fill-opacity", "stroke-opacity",
+    },
+    "line": {
+        "x1", "y1", "x2", "y2", "stroke", "stroke-width", "transform",
+        "stroke-opacity",
+    },
     "polyline": {"points", "fill", "stroke", "stroke-width", "transform"},
-    "polygon": {"points", "fill", "stroke", "stroke-width", "transform"},
-    "text": {"x", "y", "fill", "font-size", "text-anchor"},
-    "tspan": {"x", "y", "fill"},
+    "polygon": {
+        "points", "fill", "stroke", "stroke-width", "transform", "fill-opacity",
+    },
+    "text": {
+        "x", "y", "fill", "font-size", "text-anchor", "font-weight",
+        "fill-opacity",
+    },
+    "tspan": {"x", "y", "dy", "fill", "font-weight", "fill-opacity"},
     "stop": {"offset", "stop-color", "stop-opacity"},
 }
 
