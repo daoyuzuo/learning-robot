@@ -12,13 +12,20 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
+
 from testbridge.build import build_pack
-from testbridge.content.repository import list_packs, load_pack
+from testbridge.content.repository import (
+    ContentValidationError,
+    list_packs,
+    load_pack,
+)
 from testbridge.contract.validator import validate_pack
 from testbridge.evidence.store import EvidenceStore
 from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import Goal, LearningStore
+from testbridge.studio.verify import check_url, reason
 from testbridge.tutor.client import (
     LlmClient,
     OpenAICompatibleClient,
@@ -269,6 +276,35 @@ def _cmd_doctor(args) -> int:
     return 0
 
 
+def _cmd_verify_resources(args) -> int:
+    pack_dir = Path(args.pack)
+    try:
+        pack = load_pack(pack_dir)
+    except ContentValidationError as exc:
+        print(
+            f"ERROR verify-resources: pack is invalid "
+            f"({len(exc.report.errors)} error(s))",
+            file=sys.stderr,
+        )
+        return 2
+    client = httpx.Client(timeout=10.0, follow_redirects=True)
+    failures = 0
+    try:
+        for resource in sorted(pack.resources.values(), key=lambda item: item.id):
+            check = check_url(client, resource.url)
+            if check.ok:
+                print(f"OK    {resource.id} {resource.url}")
+                continue
+            if resource.role == "required":
+                failures += 1
+                print(f"ERROR {resource.id} {resource.url}: {reason(check)}")
+            else:
+                print(f"WARN  {resource.id} {resource.url}: {reason(check)}")
+    finally:
+        client.close()
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -347,6 +383,9 @@ def main(argv: list[str] | None = None) -> int:
     doctor = sub.add_parser("doctor", help="check local configuration")
     doctor.add_argument("--probe", action="store_true")
 
+    verify = sub.add_parser("verify-resources", help="check resource links")
+    verify.add_argument("pack")
+
     args = parser.parse_args(argv)
 
     if args.command == "doctor":
@@ -355,6 +394,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "env":
         if args.env_command == "init":
             return _cmd_env_init(args)
+
+    if args.command == "verify-resources":
+        return _cmd_verify_resources(args)
 
     if args.command == "validate":
         report = validate_pack(Path(args.pack))
