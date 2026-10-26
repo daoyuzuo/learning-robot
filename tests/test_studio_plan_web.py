@@ -8,8 +8,10 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
+import pytest
 from fastapi.testclient import TestClient
 
+from testbridge.studio.store import DraftStore
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
@@ -201,5 +203,129 @@ def test_draft_page_without_plan_shows_manual_mode(tmp_path: Path) -> None:
     page = app.get("/studio/demo").text
 
     assert 'data-step="plan"' in page
-    assert "手动模式" in page
+    assert "手动模式</span>" in page
+    assert "未确认" not in page
     assert 'data-action="plan-confirm"' not in page
+
+
+def test_create_with_non_numeric_plan_input_is_rejected(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+
+    response = app.post("/studio", data={
+        "draft_id": "nan", "topic": "t", "level": "L2",
+        "searches_per_lesson": "5", "search_backend": "auto",
+        "auto_plan": "on", "weekly_hours": "abc", "horizon_weeks": "2",
+    }, follow_redirects=False)
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "plan_invalid"
+    assert app.app.state.studio_store.exists("nan") is False
+
+
+def test_plan_confirm_requires_a_real_boolean(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+
+    response = app.post(
+        "/studio/demo/plan", json={**PLAN_BODY, "confirm": "false"}
+    )
+
+    assert response.status_code == 200
+    draft = app.app.state.studio_store.load("demo")
+    assert draft["plan"]["confirmed"] is False
+    assert draft["module_count"] == 1
+
+
+@pytest.mark.parametrize("value", [2.0, "2", True])
+def test_plan_rejects_non_integer_computed(
+    tmp_path: Path, value: object
+) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+    bad = {**PLAN_BODY, "computed": {**PLAN_BODY["computed"],
+                                     "module_count": value}}
+
+    response = app.post("/studio/demo/plan", json=bad)
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "plan_invalid"
+
+
+def test_plan_rejects_non_text_guidance(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+
+    response = app.post(
+        "/studio/demo/plan", json={**PLAN_BODY, "guidance": [{"text": "x"}]}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "plan_invalid"
+
+
+def test_plan_save_unknown_draft_is_404(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+
+    response = app.post("/studio/nope/plan", json=PLAN_BODY)
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "draft_not_found"
+
+
+def test_plan_save_keeps_existing_messages(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+    app.post("/studio/demo/plan", json=PLAN_BODY)
+    store = app.app.state.studio_store
+    messages = [{"role": "user", "content": "少讲论文", "at": "2026-10-27"}]
+
+    def seed(draft: dict) -> None:
+        draft["plan"]["messages"] = messages
+
+    store.update("demo", seed)
+
+    app.post("/studio/demo/plan", json={**PLAN_BODY, "confirm": True})
+
+    assert store.load("demo")["plan"]["messages"] == messages
+
+
+def test_plan_save_keeps_a_concurrent_step_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A write that lands before the update must survive the plan save.
+
+    The competing writer runs inside a monkeypatched ``DraftStore.update``
+    wrapper, so the test is deterministic and needs no threads.
+    """
+    app = make_app(tmp_path)
+    manual_draft(app)
+    store = app.app.state.studio_store
+    original_update = DraftStore.update
+
+    def competing_update(self, draft_id, mutator):
+        self.set_step(draft_id, "outline", status="done")
+        return original_update(self, draft_id, mutator)
+
+    monkeypatch.setattr(DraftStore, "update", competing_update)
+
+    response = app.post("/studio/demo/plan", json=PLAN_BODY)
+
+    assert response.status_code == 200
+    draft = store.load("demo")
+    assert draft["steps"]["outline"]["status"] == "done"
+    assert draft["plan"]["computed"]["total_lessons"] == 4
+
+
+def test_plan_data_block_is_embedded_and_escaped(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    manual_draft(app)
+    app.post("/studio/demo/plan", json={
+        **PLAN_BODY,
+        "guidance": ["多讲 </script><script>alert(1)</script>"],
+    })
+
+    page = app.get("/studio/demo").text
+
+    assert 'id="tb-plan-data"' in page
+    assert "\u003c/script\u003e" in page
+    assert "</script><script>alert(1)" not in page

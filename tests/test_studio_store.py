@@ -256,3 +256,18 @@ def test_create_with_plan_persists_it(tmp_path: Path) -> None:
         lessons_per_module=3, searches_per_lesson=5, model="m", plan=plan,
     )
     assert store.load("demo")["plan"]["computed"]["total_lessons"] == 3
+
+
+def test_create_with_invalid_plan_raises_draft_error(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    bad = {
+        "computed": {"module_count": 4, "lessons_per_module": 1,
+                     "lesson_minutes": 30, "total_lessons": 4},
+    }
+    with pytest.raises(DraftError) as excinfo:
+        store.create(
+            draft_id="bad-plan", topic="t", level="L2", module_count=1,
+            lessons_per_module=1, searches_per_lesson=5, model="m", plan=bad,
+        )
+    assert excinfo.value.code == "plan_invalid"
+    assert store.exists("bad-plan") is False

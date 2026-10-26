@@ -11,8 +11,8 @@
 <div id="studio" data-draft="{{ draft.id }}" data-enabled="{{ 'true' if enabled else 'false' }}">
   <section class="tb-step tb-card" data-step="plan">
     <h2>0 计划
-      <span class="tb-status tb-badge" data-status="{{ 'done' if plan and plan.confirmed else 'pending' }}">
-        {{ "已确认" if plan and plan.confirmed else "未确认" }}</span>
+      <span class="tb-status tb-badge" data-status="{{ 'done' if plan and plan.confirmed else ('pending' if plan else 'draft') }}">
+        {{ "已确认" if plan and plan.confirmed else ("未确认" if plan else "手动模式") }}</span>
     </h2>
     {% if plan %}{% set computed = plan.get("computed") or {} %}{% set inputs = plan.get("inputs") or {} %}
     <script type="application/json" id="tb-plan-data">{{ plan | tojson }}</script>

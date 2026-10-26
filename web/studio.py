@@ -68,7 +68,12 @@ from testbridge.studio.research import (
 )
 from testbridge.studio.search import SearchProvider
 from testbridge.studio.search_router import SearchRoute, SearchRouter
-from testbridge.studio.store import ID_RE, DraftError, DraftStore
+from testbridge.studio.store import (
+    ID_RE,
+    DraftError,
+    DraftNotFound,
+    DraftStore,
+)
 from testbridge.studio.version import PROMPT_VERSION
 from testbridge.tutor.client import LlmClient
 from testbridge.tutor.config import TutorConfig, missing_vars
@@ -643,32 +648,23 @@ def mount_studio(
             runner.start(draft_id, "outline", lambda: generate_outline(draft_id))
         return RedirectResponse(url=f"/studio/{draft_id}", status_code=303)
 
-    def _save_plan(draft_id: str, payload: dict) -> dict:
-        def invalid(message: str) -> HTTPException:
-            return HTTPException(
-                status_code=400,
-                detail={"code": "plan_invalid", "message": message},
-            )
+    def _plan_from_payload(payload: dict) -> dict:
+        """Build and validate a plan; raises ``PlanError`` on invalid input."""
 
         def plan_int(value: object, name: str) -> int:
             if isinstance(value, bool) or not isinstance(value, int):
-                raise invalid(f"{name} 必须是整数")
+                raise PlanError("plan_invalid", f"{name} 必须是整数")
             return value
 
-        draft = draft_or_404(draft_id)
-        try:
-            inputs = parse_plan_input(payload.get("inputs") or {})
-        except PlanError as exc:
-            raise HTTPException(
-                status_code=400,
-                detail={"code": exc.code, "message": exc.message},
-            ) from None
+        inputs = parse_plan_input(payload.get("inputs") or {})
         computed = payload.get("computed") or {}
         if not isinstance(computed, dict):
-            raise invalid("computed 必须是对象")
+            raise PlanError("plan_invalid", "computed 必须是对象")
         guidance = payload.get("guidance") or []
         if not isinstance(guidance, list):
-            raise invalid("guidance 必须是列表")
+            raise PlanError("plan_invalid", "guidance 必须是列表")
+        if any(not isinstance(item, str) for item in guidance):
+            raise PlanError("plan_invalid", "写作方向必须是文本")
         modules = plan_int(computed.get("module_count"), "module_count")
         per_module = plan_int(computed.get("lessons_per_module"), "lessons_per_module")
         minutes = plan_int(computed.get("lesson_minutes"), "lesson_minutes")
@@ -689,24 +685,39 @@ def mount_studio(
                 "total_minutes": total_lessons * minutes,
             },
             "rationale": str(payload.get("rationale") or "")[:MAX_RATIONALE],
-            "guidance": [str(item) for item in guidance],
-            "confirmed": bool(payload.get("confirm")),
+            "guidance": list(guidance),
+            # Only a real ``true`` confirms: strings such as "false" do not.
+            "confirmed": payload.get("confirm") is True,
             "updated_at": datetime.now(timezone.utc).isoformat(),
-            "messages": list((draft.get("plan") or {}).get("messages") or []),
+            "messages": [],
         }
+        validate_plan(plan)
+        return plan
+
+    def _save_plan(draft_id: str, payload: dict) -> dict:
+        """Persist a plan inside ``DraftStore.update`` so no write is lost."""
+
+        def apply(draft: dict) -> None:
+            plan = _plan_from_payload(payload)
+            plan["messages"] = list((draft.get("plan") or {}).get("messages") or [])
+            draft["plan"] = plan
+            if plan["confirmed"]:
+                draft["module_count"] = plan["computed"]["module_count"]
+                draft["lessons_per_module"] = plan["computed"]["lessons_per_module"]
+                draft["lesson_count"] = plan["computed"]["total_lessons"]
+
         try:
-            validate_plan(plan)
+            store.update(draft_id, apply)
+        except DraftNotFound:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "draft_not_found", "message": "草稿不存在"},
+            ) from None
         except PlanError as exc:
             raise HTTPException(
                 status_code=400,
                 detail={"code": exc.code, "message": exc.message},
             ) from None
-        draft["plan"] = plan
-        if plan["confirmed"]:
-            draft["module_count"] = plan["computed"]["module_count"]
-            draft["lessons_per_module"] = plan["computed"]["lessons_per_module"]
-            draft["lesson_count"] = plan["computed"]["total_lessons"]
-        store.save(draft)
         outline_exists = (store.path(draft_id) / "outline.html").is_file()
         return {"ok": True, "outline_exists": outline_exists}
 

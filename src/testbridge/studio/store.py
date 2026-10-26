@@ -159,7 +159,11 @@ class DraftStore:
         if self.exists(draft_id):
             raise DraftError("draft_exists", f"草稿已存在：{draft_id}")
         if plan is not None:
-            planning.validate_plan(plan)
+            try:
+                planning.validate_plan(plan)
+            except planning.PlanError as exc:
+                # The store speaks ``DraftError``; callers must never see a 500.
+                raise DraftError(exc.code, exc.message) from None
         now = _iso(_utcnow())
         draft = {
             "schema": SCHEMA,
