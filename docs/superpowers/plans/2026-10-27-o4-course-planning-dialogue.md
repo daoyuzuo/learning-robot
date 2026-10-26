@@ -60,6 +60,8 @@
 
 ```python
 # tests/test_planning.py
+import json
+
 import pytest
 
 from testbridge.studio.planning import (
@@ -558,8 +560,8 @@ from testbridge.studio import planning
 
             try:
                 plan_input = parse_plan_input({
-                    "weekly_hours": weekly_hours,
-                    "horizon_weeks": horizon_weeks,
+                    "weekly_hours": float(weekly_hours),
+                    "horizon_weeks": int(horizon_weeks),
                     "purpose": purpose,
                     "must_cover": [
                         item.strip()
@@ -567,6 +569,14 @@ from testbridge.studio import planning
                         if item.strip()
                     ],
                 })
+            except (TypeError, ValueError):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "plan_invalid",
+                        "message": "每周小时与周期必须是数字",
+                    },
+                ) from None
             except PlanError as exc:
                 raise HTTPException(
                     status_code=400,
@@ -973,7 +983,6 @@ CURRENT = {
                "purpose": "interview", "must_cover": ["时间同步"]},
     "computed": {"module_count": 2, "lessons_per_module": 3,
                  "lesson_minutes": 35, "total_lessons": 6},
-    "guidedance": [],
     "guidance": [],
 }
 
@@ -1050,11 +1059,11 @@ def plan_app(tmp_path: Path, reply: str) -> TestClient:
 
 def test_plan_chat_returns_suggestion_and_logs(tmp_path: Path) -> None:
     reply = json.dumps({
-        "plan": {"module_count": 1, "lessons_per_module": 2,
+        "plan": {"module_count": 1, "lessons_per_module": 3,
                  "lesson_minutes": 35},
         "guidance": ["多讲测试实操"],
         "rationale": "减少理论课",
-        "changes": ["total_lessons: 4 -> 2"],
+        "changes": ["total_lessons: 4 -> 3"],
     })
     app = plan_app(tmp_path, reply)
 
@@ -1064,12 +1073,14 @@ def test_plan_chat_returns_suggestion_and_logs(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["plan"]["lessons_per_module"] == 2
-    assert body["changes"] == ["total_lessons: 4 -> 2"]
+    assert body["plan"]["lessons_per_module"] == 3
+    assert body["changes"] == ["total_lessons: 4 -> 3"]
     draft = app.app.state.studio_store.load("demo")
     assert draft["plan"]["messages"][-2]["role"] == "user"
     assert draft["plan"]["messages"][-1]["role"] == "assistant"
+    # Chat only suggests; numbers and guidance change when the user applies.
     assert draft["plan"]["computed"]["lessons_per_module"] == 2
+    assert draft["plan"]["guidance"] == []
 
 
 def test_plan_chat_rejects_bad_model_output(tmp_path: Path) -> None:
@@ -1080,7 +1091,7 @@ def test_plan_chat_rejects_bad_model_output(tmp_path: Path) -> None:
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "plan_invalid"
     draft = app.app.state.studio_store.load("demo")
-    assert draft["plan"]["computed"]["lessons_per_module"] == 3
+    assert draft["plan"]["computed"]["lessons_per_module"] == 2
     assert draft["plan"]["guidance"] == []
 
 
@@ -1104,7 +1115,7 @@ Expected: FAIL — `parse_plan_suggestion`、`PLAN_SYSTEM`、接口不存在。
 `src/testbridge/studio/planning.py` 追加：
 
 ```python
-import json
+import json  # add at module top with the other imports
 
 def parse_plan_suggestion(raw: str, current: dict) -> dict:
     text = str(raw or "").strip()
@@ -1171,7 +1182,7 @@ def parse_plan_suggestion(raw: str, current: dict) -> dict:
 
 ```python
 PLAN_SYSTEM = (
-    "你是 TestBridge 的课程规划助手。只输出一个 JSON 对象，不要代码块、不要额外文字。\n"
+    "你是 TestBridge 的课时计划助手。只输出一个 JSON 对象，不要代码块、不要额外文字。\n"
     "根据当前计划与用户的一句话要求，返回调整后的计划：\n"
     '{"plan": {"module_count": 1-3, "lessons_per_module": 1-5, '
     '"lesson_minutes": 20-60}, "guidance": ["最多 5 条、每条 80 字"], '
@@ -1206,7 +1217,9 @@ PROMPT_VERSION = "studio/5"
 PLAN_PROMPT_VERSION = "plan/1"
 ```
 
-`web/studio.py`：import `PLAN_SYSTEM`、`render_plan_prompt`、`parse_plan_suggestion`，并加：
+`web/studio.py`：import 区增加 `import threading` 与
+`from testbridge.studio.planning import PlanError, parse_plan_suggestion`；
+从 `prompts` 导入 `PLAN_SYSTEM`、`render_plan_prompt`，并加：
 
 ```python
     plan_locks: dict[str, threading.Lock] = {}
@@ -1263,10 +1276,6 @@ PLAN_PROMPT_VERSION = "plan/1"
                  "at": now},
             ])
             plan["messages"] = messages[-20:]
-            plan["guidance"] = suggestion["guidance"]
-            plan["rationale"] = suggestion["rationale"] or plan.get("rationale", "")
-            plan["computed"] = {**plan.get("computed", {}), **suggestion["computed"]}
-            plan["confirmed"] = False
             plan["updated_at"] = now
             store.save(draft)
             return {
