@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from testbridge.studio.outline import LessonPlan
-from testbridge.studio.search import SearchHit, SearchProvider, trust_for
+from testbridge.studio.search import SearchHit, SearchProvider
 from testbridge.studio.search_router import ACADEMIC_KEYWORDS, SearchRoute
 from testbridge.studio.sources import classify_hit, trust_for_hit
 from testbridge.studio.store import DraftStore
@@ -22,10 +22,6 @@ CONTENT_LIMIT = 4000
 QUERY_KINDS = ("academic", "engineering", "official")
 OFFICIAL_HINTS = (
     "site:", "docs.", "documentation", "官方文档", "标准", "spec", "reference",
-)
-ENGINEERING_HINTS = (
-    "best practice", "tutorial", "how to", "guide", "教程", "实践", "排查",
-    "测试", "调试",
 )
 
 
@@ -139,7 +135,7 @@ def render_research_html(lesson: LessonPlan, result: ResearchResult) -> str:
         rows.append(
             f'<li class="tb-hit"><a href="{html_lib.escape(hit.url)}">'
             f"{html_lib.escape(hit.title or hit.url)}</a> "
-            f'<span class="tb-trust">{trust_for(hit.authority)}</span> '
+            f'<span class="tb-trust">{trust_for_hit(hit)}</span> '
             f'<span class="tb-kind">{classify_hit(hit)}</span>'
             f"<p>{html_lib.escape(hit.summary or hit.snippet)}</p></li>"
         )

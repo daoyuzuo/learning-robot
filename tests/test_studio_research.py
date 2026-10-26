@@ -108,6 +108,19 @@ def test_research_html_escapes_titles() -> None:
     assert "<script>" not in page
 
 
+def test_research_html_labels_hits_with_dossier_trust() -> None:
+    hit = SearchHit("Executors", "https://docs.ros.org/x", "", "", "", 1)
+    result = ResearchResult(
+        lesson_id="L-1", queries=["q"], searches=1, errors=[], hits=[hit],
+    )
+
+    page = render_research_html(LESSON, result)
+
+    # A whitelisted domain lifts authority-based C to B; the page must show the
+    # same trust value that write_research stores in the dossier.
+    assert '<span class="tb-trust">B</span>' in page
+
+
 def test_build_queries_mixes_kinds() -> None:
     queries = build_queries(LESSON, ["执行器基础"], budget=8)
     kinds = {item.kind for item in queries}

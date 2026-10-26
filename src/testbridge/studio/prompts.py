@@ -12,7 +12,10 @@ OUTLINE_SYSTEM = (
     "2. 模块数与每模块课程数严格按用户要求；模块 id 形如 M01，课程 id 形如 L-XXX-001。\n"
     "3. 每个模块声明 1–4 个概念（且不超过 min(4, 每模块课数 × 2)）；"
     "每课声明 1–2 个概念，必须属于本模块；每个模块概念至少出现在一课。\n"
-    "4. 每课给出 1–5 条 objectives、1–3 条 exercise_intents、1–3 条 research_queries。\n"
+    "4. 每课给出 1–5 条 objectives、1–3 条 exercise_intents、1–3 条 research_queries；"
+    "research_queries 必须同时包含工程实践向（best practices / tutorial / 测试方法）"
+    "与官方文档向（site:docs.ros.org、site:github.com、厂商文档）查询，"
+    "不要全部是论文检索。\n"
     "5. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"pack_title": "...", "concepts": [{"id", "title", "domain", '
     '"target_level", "prerequisites", "weight", "evidence_criteria": '
@@ -40,10 +43,14 @@ LESSON_SYSTEM = (
     "   - short_answer：answer={\"accepted\": [...], \"min_hits\": 1}，"
     "rubric=[{\"dimension\", \"weight\", \"criteria\"}]（weight 合计 1.0）\n"
     "   - self_assess：rubric（weight 合计 1.0），不要 answer\n"
-    "6. 每课至少 1 条 A/B 资源；资源配置：id、title、url、type、trust、license、"
-    "last_verified（YYYY-MM-DD）、coverage（概念 id 数组）、why；"
-    "trust 只能是 A 或 B；只引用调研资料里 authority>=2 的条目，id 形如 DOC-XXX；"
-    "且 license / last_verified / why 不得为空。\n"
+    "6. 每课至少 1 条 role=required 的 A/B 资源，并至少尝试 1 条 kind 为 "
+    "official_docs / standard / repository 的 required 资源；allowed kind："
+    "official_docs/standard/engineering_blog/tutorial/repository/paper/book/video/other。\n"
+    "   资源配置：id、title、url、type、kind、role、trust、license、last_verified、"
+    "coverage（概念 id 数组）、why；required 的 trust 只能是 A 或 B；"
+    "C 级只能作为 role=supplementary（每课 2–3 条工程博客/教程）；D 不可用。"
+    "只引用 <research> 中已通过预检的条目，禁止编造 URL；"
+    "license / why 不得为空；why 必须写“工程上什么时候用”。\n"
     "7. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"manifest": {"title", "minutes", "objectives"}, "html": "...", '
     '"exercises": [...], "resources": [...]}'

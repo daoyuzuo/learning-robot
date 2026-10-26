@@ -22,6 +22,7 @@ from testbridge.studio.outline import (
     write_outline,
 )
 from testbridge.studio.search import SearchHit
+from testbridge.studio.verify import ResourceCheck
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
@@ -137,6 +138,7 @@ LESSON_JSON = (
     '], '
     '"resources": [{"id": "DOC-1", "title": "Executors", '
     '"url": "https://docs.ros.org/x", "type": "official-doc", '
+    '"kind": "official_docs", "role": "required", '
     '"trust": "A", "license": "Apache-2.0", '
     '"last_verified": "2026-10-25", "coverage": ["executor-basics"], '
     '"why": "官方"}]}'
@@ -173,7 +175,16 @@ class FakeSearch:
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
 
 
-def make_app(tmp_path: Path, llm: FakeLlm | None = None) -> TestClient:
+def ok_checker(urls):
+    return {url: ResourceCheck(url, 200, url, 4000, False, "") for url in urls}
+
+
+def make_app(
+    tmp_path: Path,
+    llm: FakeLlm | None = None,
+    *,
+    checker=ok_checker,
+) -> TestClient:
     return TestClient(create_app(
         SAMPLE, tmp_path / "e.db",
         studio_drafts=tmp_path / "drafts",
@@ -181,6 +192,7 @@ def make_app(tmp_path: Path, llm: FakeLlm | None = None) -> TestClient:
         studio_llm=llm or FakeLlm(),
         studio_search=FakeSearch(),
         studio_config=CONFIG,
+        studio_url_checker=checker,
     ))
 
 
@@ -393,7 +405,7 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
 
     draft = app.app.state.studio_store.load("demo")
     entry = draft["steps"]["lessons"]["L-EXEC-001"]
-    assert entry["prompt_version"] == "studio/2"
+    assert entry["prompt_version"] == "studio/3"
     assert entry["written_at"]
 
     validation = app.post("/api/studio/demo/validate", json={"skip_verify": True})
@@ -410,3 +422,39 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
     assert reloaded["steps"]["research"]["L-EXEC-001"]["status"] == "done"
     assert reloaded["steps"]["lessons"]["L-EXEC-001"]["status"] == "done"
     assert reloaded["steps"]["promote"]["status"] == "done"
+
+
+def test_research_records_check_and_keeps_score(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    create_draft(app)
+
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+    dossier = app.app.state.studio_store.read(
+        "demo", "research/L-EXEC-001.json"
+    )
+    assert '"paywalled": false' in dossier
+    assert '"kind":' in dossier
+
+    app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
+    resources = app.app.state.studio_store.read("demo", "resources.yaml")
+    assert "last_verified:" in resources
+    assert "last_verified: ''" not in resources
+
+
+def test_paywalled_hit_is_hidden_from_the_model(tmp_path: Path) -> None:
+    def walled(urls):
+        return {
+            url: ResourceCheck(url, 200, url, 4000, True, "") for url in urls
+        }
+
+    app = make_app(tmp_path, checker=walled)
+    create_draft(app)
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+    response = app.post(
+        "/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    llm = app.app.state.studio_llm
+    assert "<research>" in llm.lesson_prompts[-1]
+    assert "docs.ros.org/x" not in llm.lesson_prompts[-1]
+    assert response.status_code >= 400

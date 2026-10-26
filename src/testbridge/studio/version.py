@@ -1,3 +1,3 @@
 """Prompt and generation version constants."""
 
-PROMPT_VERSION = "studio/2"
+PROMPT_VERSION = "studio/3"
