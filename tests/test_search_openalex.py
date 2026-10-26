@@ -54,11 +54,35 @@ def test_search_request_and_mapping() -> None:
     assert seen["params"]["per-page"] == "5"
     assert seen["params"]["mailto"] == "me@example.com"
     assert hits[0].title == "Paper"
-    assert hits[0].url == "https://doi.org/10.1000/x"
+    assert hits[0].url == "https://oa.example/p"
+    assert hits[0].oa_url == "https://oa.example/p"
+    assert hits[0].is_oa is True
+    assert hits[0].work_type == "article"
     assert hits[0].summary == "hello world"
     assert hits[0].snippet == "hello world"
     assert hits[0].authority == 3
     assert hits[0].date == "2025-01-02"
+
+
+def test_oa_url_wins_over_doi() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"results": [work()]})
+
+    hits = client(handler).search("q")
+
+    assert hits[0].url == "https://oa.example/p"
+
+
+def test_doi_used_when_no_oa_or_landing() -> None:
+    ok = work(primary_location={}, open_access={})
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"results": [ok]})
+
+    hits = client(handler).search("q")
+
+    assert hits[0].url == "https://doi.org/10.1000/x"
+    assert hits[0].is_oa is False
 
 
 def test_publication_year_fallback() -> None:

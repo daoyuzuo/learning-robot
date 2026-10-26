@@ -5,54 +5,56 @@
 <p class="tb-meta">{{ draft.topic }} · {{ draft.level }} · {{ modules|length }} 模块 ·
   {{ lessons|length }} 课 · 每课检索 {{ draft.searches_per_lesson }} 次 ·
   检索源 {{ draft.get("search_backend", "auto") }}</p>
-{% if not enabled %}<p class="tb-warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
+{% if not enabled %}<p class="tb-warn tb-callout" data-tone="warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
 {% set batch = draft.steps.get("batch") or {} %}
 <div id="studio" data-draft="{{ draft.id }}" data-enabled="{{ 'true' if enabled else 'false' }}">
-  <section class="tb-step" data-step="outline">
-    <h2>1 大纲 <span class="tb-status" data-status-for="outline">{{ draft.steps.outline.status }}</span></h2>
+  <section class="tb-step tb-card" data-step="outline">
+    <h2>1 大纲 <span class="tb-status tb-badge" data-status-for="outline" data-status="{{ draft.steps.outline.status }}">{{ draft.steps.outline.status }}</span></h2>
     <div class="tb-outline-editor" contenteditable="{{ 'true' if enabled else 'false' }}">{{ outline_html | safe }}</div>
-    <p><button type="button" data-action="save-outline" {% if not enabled %}disabled{% endif %}>保存大纲</button>
-       <button type="button" data-action="regen-outline" {% if not enabled %}disabled{% endif %}>重新生成</button></p>
+    <p><button type="button" class="tb-btn" data-action="save-outline" {% if not enabled %}disabled{% endif %}>保存大纲</button>
+       <button type="button" class="tb-btn" data-action="regen-outline" {% if not enabled %}disabled{% endif %}>重新生成</button></p>
   </section>
-  <section class="tb-step" data-step="research">
+  <section class="tb-step tb-card" data-step="research">
     <h2>2 调研</h2>
-    <p><button type="button" data-action="batch-research" {% if not enabled %}disabled{% endif %}>全部调研</button>
-       <span class="tb-batch" data-batch-status="research">{% if batch.get("mode") == "research" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span></p>
+    <p><button type="button" class="tb-btn tb-btn-primary" data-action="batch-research" {% if not enabled %}disabled{% endif %}>全部调研</button>
+       <span class="tb-batch tb-badge" data-batch-status="research" data-status="{% if batch.get('mode') == 'research' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "research" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
+       {% if batch.get("mode") == "research" and batch.get("total") %}<progress class="tb-progress-bar" max="{{ batch.get('total', 0) }}" value="{{ batch.get('done', 0) }}" aria-label="调研进度"></progress>{% endif %}</p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>
     <ul>
     {% for plan in module.lessons %}{% set entry = draft.steps.research.get(plan.lesson_id, {}) %}
       <li>{{ plan.lesson_id }} {{ plan.title }}
-        <span class="tb-status" data-step-status="research:{{ plan.lesson_id }}">{{ entry.get("status", "pending") }}</span>
+        <span class="tb-status tb-badge" data-step-status="research:{{ plan.lesson_id }}" data-status="{{ entry.get('status', 'pending') }}">{{ entry.get("status", "pending") }}</span>
         <span class="tb-progress" data-progress-for="research:{{ plan.lesson_id }}"></span>
-        {% if entry.get("backend") %}<span class="tb-status">{{ entry.get("backend") }}</span>{% endif %}
-        <button type="button" data-action="research" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>开始调研</button>
+        {% if entry.get("backend") %}<span class="tb-status tb-badge">{{ entry.get("backend") }}</span>{% endif %}
+        <button type="button" class="tb-btn" data-action="research" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>开始调研</button>
       </li>{% endfor %}
     </ul>
     {% endfor %}
   </section>
-  <section class="tb-step" data-step="lessons">
+  <section class="tb-step tb-card" data-step="lessons">
     <h2>3 写课</h2>
-    <p><button type="button" data-action="batch-lessons" {% if not enabled %}disabled{% endif %}>全部写课</button>
-       <span class="tb-batch" data-batch-status="lessons">{% if batch.get("mode") == "lessons" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span></p>
+    <p><button type="button" class="tb-btn tb-btn-primary" data-action="batch-lessons" {% if not enabled %}disabled{% endif %}>全部写课</button>
+       <span class="tb-batch tb-badge" data-batch-status="lessons" data-status="{% if batch.get('mode') == 'lessons' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "lessons" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
+       {% if batch.get("mode") == "lessons" and batch.get("total") %}<progress class="tb-progress-bar" max="{{ batch.get('total', 0) }}" value="{{ batch.get('done', 0) }}" aria-label="写课进度"></progress>{% endif %}</p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>
     <ul>
     {% for plan in module.lessons %}{% set lesson_entry = draft.steps.lessons.get(plan.lesson_id, {}) %}
       <li>{{ plan.lesson_id }} {{ plan.title }}
-        <span class="tb-status" data-step-status="lessons:{{ plan.lesson_id }}">{{ lesson_entry.get("status", "pending") }}</span>
-        <button type="button" data-action="lesson" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>写这一课</button>
+        <span class="tb-status tb-badge" data-step-status="lessons:{{ plan.lesson_id }}" data-status="{{ lesson_entry.get('status', 'pending') }}">{{ lesson_entry.get("status", "pending") }}</span>
+        <button type="button" class="tb-btn" data-action="lesson" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>写这一课</button>
         {% if lesson_entry.get("status") == "done" %}
-        <button type="button" data-action="rewrite" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>重写这一课</button>
+        <button type="button" class="tb-btn" data-action="rewrite" data-lesson="{{ plan.lesson_id }}" {% if not enabled %}disabled{% endif %}>重写这一课</button>
         {% endif %}
       </li>{% endfor %}
     </ul>
     {% endfor %}
   </section>
-  <section class="tb-step" data-step="validation">
-    <h2>4 校验 <span class="tb-status" data-status-for="validation">{{ draft.steps.validation.status }}</span></h2>
+  <section class="tb-step tb-card" data-step="validation">
+    <h2>4 校验 <span class="tb-status tb-badge" data-status-for="validation" data-status="{{ draft.steps.validation.status }}">{{ draft.steps.validation.status }}</span></h2>
     <p><label><input type="checkbox" class="tb-skip-verify"> 跳过资源可达性检查</label></p>
-    <p><button type="button" data-action="validate">运行校验</button></p>
+    <p><button type="button" class="tb-btn" data-action="validate">运行校验</button></p>
     {% set quality = draft.steps.validation.get("quality") %}
     <div class="tb-quality">
       <p>
@@ -69,14 +71,14 @@
     </div>
     <pre class="tb-issues">{{ (draft.steps.validation.get("issues") or []) | join("\n") }}</pre>
   </section>
-  <section class="tb-step" data-step="promote">
-    <h2>5 定稿 <span class="tb-status" data-status-for="promote">{{ draft.steps.promote.status }}</span></h2>
+  <section class="tb-step tb-card" data-step="promote">
+    <h2>5 定稿 <span class="tb-status tb-badge" data-status-for="promote" data-status="{{ draft.steps.promote.status }}">{{ draft.steps.promote.status }}</span></h2>
     <p><label><input type="checkbox" class="tb-force"> 覆盖已有包</label>
        <label><input type="checkbox" class="tb-skip-verify-promote"> 跳过资源可达性检查</label>
-       <button type="button" data-action="promote">写入 content-packs</button></p>
+       <button type="button" class="tb-btn tb-btn-primary" data-action="promote">写入 content-packs</button></p>
     <pre class="tb-issues tb-promote-path"></pre>
   </section>
-  <p class="tb-error" hidden></p>
+  <p class="tb-error tb-callout" data-tone="error" hidden></p>
 </div>
 {% endblock %}
 {% block scripts %}

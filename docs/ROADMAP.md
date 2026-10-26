@@ -495,24 +495,96 @@ $ .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
 
 ---
 
-## 优化清单（体验债，待排期，2026-10-26）
+## 优化清单（体验债，2026-10-26）
 
 P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATION.md)。
 
-| 编号 | 主题 | 建议优先级 | 触碰硬边界 |
-|---|---|---|---|
-| O1 | 模型配置一次生效（用户级环境变量 + `tb doctor`） | P0 | 否：不引入仓库内 `.env` |
-| O3 | 参考资料工程化与可达性（来源配比、按查询路由、付费墙/404 预检；C 级可作补充阅读） | P1 | 是：质量门禁 trust 语义 |
-| O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 |
-| O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 |
-| O5 | 页面排版与样式 | P3 | 否：只动 `web/` |
+| 编号 | 主题 | 建议优先级 | 触碰硬边界 | 状态 |
+|---|---|---|---|---|
+| O1 | 模型配置一次生效（用户级环境变量 + `tb doctor`） | P0 | 否：不引入仓库内 `.env` | 已完成 |
+| O3 | 参考资料工程化与可达性（来源配比、按查询路由、付费墙/404 预检；C 级可作补充阅读） | P1 | 是：质量门禁 trust 语义 | 已完成 |
+| O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 | 待开始 |
+| O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 | 待开始 |
+| O5 | 页面排版与样式 | P3 | 否：只动 `web/` | 已完成 |
 
-排期建议：O1 → O3 → O2 → O4 → O5。五份 spec 已写入
+**进度：** O1 已实现（2026-10-26）；O3 已实现（2026-10-26，分支 `p5-optimization`）；
+O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 `pytest` 825 passed、
+3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
+100/100。下一步 O2，然后 O4。
+
+排期建议：O1、O3、O5 已完成；下一步 O2，然后 O4。五份 spec 已写入
 [O1](superpowers/specs/2026-10-26-o1-llm-config-persistence-design.md)、
 [O2](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)、
 [O3](superpowers/specs/2026-10-26-o3-resource-quality-design.md)、
 [O4](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)、
-[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)，待评审后再写实施计划。
+[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)；O2/O4 待写实施计划。
+
+---
+
+## O3 参考资料工程化（已完成，2026-10-26）
+
+**范围：**
+
+- 资源新增可选 `kind` / `role`；`required` 只允许 A/B，`supplementary` 允许 A/B/C，D 一律拒绝。
+- `auto` 按查询类型分流：学术走 OpenAlex，工程/官方走 DeepSeek；手动后端不回退。
+- OpenAlex 优先给 OA 链接，其次 landing page，最后 DOI。
+- 调研阶段按来源类型均衡选取至多 10 条命中预检：状态码、最终 URL、正文长度、
+  付费墙启发式；档案记录 `kind` / `trust` / `check` 与逐查询 `backend`。
+- 写课只看到通过预检的命中（存在检查记录时，未检查的命中也不展示）；
+  `required` 未通过预检直接拒绝。
+- `last_verified` 只在检查通过时写当天，不再自动填今天。
+- `tb verify-resources <pack>`：显式联网复查，required 失败返回 1。
+- 质量门禁：`provenance.trust` 只统计 required；新增 `source_mix`（5 分，required
+  中有官方/标准/仓库或工程实践来源）与 `reachable`（5 分，仅在有检查记录时出现）；
+  新增 `resource_unreachable` / `resource_unchecked` / `resource_stale` /
+  `supplementary_too_many` / `lesson_only_papers` / `lesson_no_ab_required` /
+  `lesson_no_practice_source`（缺少工程实践来源只 warning，不扣分）。
+- prompt 版本 `studio/3`；旧草稿继续按 `studio/1` / `studio/2` 显示，不自动迁移。
+
+**不做：** 付费墙绕过、C 级自动升 B、SearXNG / Firecrawl / arXiv 适配器、
+外部图片与 AI 生图（属 O2）。
+
+**设计：** [O3 参考资料工程化](superpowers/specs/2026-10-26-o3-resource-quality-design.md)
+
+**验证命令（2026-10-26；本机 venv 未安装 `testbridge` 包，需 `PYTHONPATH=src`）：**
+
+```text
+$ PYTHONPATH=src .venv/Scripts/python -m pytest -q
+825 passed, 3 deselected in 291.81s
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
+quality: 100/100                # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/robot-quality-system
+quality: 100/100                # exit 0；13 条 quality.resource_stale warning，分数不变
+```
+
+---
+
+## O5 页面排版与样式（已完成，2026-10-26）
+
+**范围：**
+
+- 设计 token + 深色模式（`prefers-color-scheme`），旧变量保留为别名。
+- 响应式顶栏（窄屏换行/折叠）、当前页高亮、跳过导航链接。
+- 统一按钮 / 卡片 / 徽章 / 进度条 / 提示块 / 表格滚动容器 / 表单组件类。
+- 工作台状态徽章与批量进度条统一颜色和文本；`tb build` 课程页同步样式钩子。
+- 可访问性：`:focus-visible`、`prefers-reduced-motion`、表格横向滚动容器、
+  320px 无横向滚动；状态不只靠颜色。
+- 只动 `web/`（含模板 class）与 `build.py` 样式钩子；不改路由、表单字段与业务逻辑。
+
+**不做：** 前端框架 / SPA / 构建链、信息架构重写、浏览器视觉回归依赖。
+
+**设计：** [O5 页面排版与样式](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)
+
+**验证（2026-10-26）：** 合并后默认 `pytest` 825 passed、3 deselected；
+`tb build` 产物与 Web 共用同一份 `tb.css`。320/768/1280 三档与键盘走查仍由人工完成。
 
 ---
 

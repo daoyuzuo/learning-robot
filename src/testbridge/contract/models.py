@@ -11,6 +11,11 @@ SCHEMA_VERSION = "tb/1"
 Level = Literal["L1", "L2", "L3", "L4"]
 ExerciseType = Literal["single_choice", "multi_choice", "short_answer", "self_assess", "artifact"]
 Trust = Literal["A", "B", "C", "D"]
+ResourceKind = Literal[
+    "official_docs", "standard", "engineering_blog", "tutorial",
+    "repository", "paper", "book", "video", "other",
+]
+ResourceRole = Literal["required", "supplementary"]
 WidgetType = Literal["parameter-svg"]
 
 ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
@@ -181,6 +186,8 @@ class Resource(StrictModel):
     title: str = Field(min_length=1)
     url: str
     type: str = Field(min_length=1)
+    kind: ResourceKind = "other"
+    role: ResourceRole = "required"
     trust: Trust
     license: str = ""
     last_verified: str = ""

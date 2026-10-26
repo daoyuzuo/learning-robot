@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import yaml
 from pydantic import ValidationError
 
+from testbridge.content.repository import KIND_BY_TYPE
 from testbridge.contract.loader import ContentError, load_lesson_file
 from testbridge.contract.models import Exercise, Resource
 from testbridge.contract.sanitize import sanitize_fragment
@@ -21,7 +22,8 @@ from testbridge.studio.outline import LEVELS, LessonPlan
 from testbridge.studio.store import DraftStore
 
 DEFAULT_MODULE_ID = "M01"
-ALLOWED_TRUST = {"A", "B"}
+ALLOWED_REQUIRED_TRUST = {"A", "B"}
+ALLOWED_SUPPLEMENTARY_TRUST = {"A", "B", "C"}
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
 
@@ -72,20 +74,31 @@ def _parse_exercises(items: object, concept_ids: set[str]) -> list[dict]:
     return parsed
 
 
-def _parse_resources(items: object, concept_ids: set[str]) -> list[dict]:
+def _parse_resources(
+    items: object,
+    concept_ids: set[str],
+    usable_urls: set[str] | None = None,
+) -> list[dict]:
     if not isinstance(items, list):
         raise LessonError("resources 必须是数组")
     parsed: list[dict] = []
     seen: set[str] = set()
     today = datetime.now(timezone.utc).date().isoformat()
+    verified = set(usable_urls or ())
     for item in items:
         if not isinstance(item, dict) or not item.get("id"):
             raise LessonError("资源缺少 id")
         resource_id = item["id"]
         if resource_id in seen:
             raise LessonError(f"资源 id 重复：{resource_id}")
-        if item.get("trust") not in ALLOWED_TRUST:
-            raise LessonError(f"资源只有 A/B 级可用：{resource_id}")
+        role = str(item.get("role") or "required")
+        trust = item.get("trust")
+        if trust == "D":
+            raise LessonError(f"资源 trust D 不可用：{resource_id}")
+        if role == "required" and trust not in ALLOWED_REQUIRED_TRUST:
+            raise LessonError(f"required 资源只允许 A/B：{resource_id}")
+        if role == "supplementary" and trust not in ALLOWED_SUPPLEMENTARY_TRUST:
+            raise LessonError(f"supplementary 资源只允许 A/B/C：{resource_id}")
         try:
             resource = Resource.model_validate(item)
         except ValidationError as exc:
@@ -95,16 +108,29 @@ def _parse_resources(items: object, concept_ids: set[str]) -> list[dict]:
         for concept_id in resource.coverage:
             if concept_id not in concept_ids:
                 raise LessonError(f"资源覆盖了不存在的概念：{concept_id}")
+        if (
+            usable_urls is not None
+            and resource.role == "required"
+            and resource.url not in verified
+        ):
+            raise LessonError(f"required 资源未通过可达性检查：{resource_id}")
         data = resource.model_dump(exclude_none=True)
-        if not data.get("last_verified"):
-            data["last_verified"] = today
+        if "kind" not in item:
+            data["kind"] = KIND_BY_TYPE.get(
+                resource.type.strip().lower(), "other"
+            )
+        data["last_verified"] = today if resource.url in verified else ""
         parsed.append(data)
         seen.add(resource_id)
     return parsed
 
 
 def parse_lesson_json(
-    raw: str, lesson: LessonPlan, concept_ids: set[str]
+    raw: str,
+    lesson: LessonPlan,
+    concept_ids: set[str],
+    *,
+    usable_urls: set[str] | None = None,
 ) -> LessonOutput:
     text = _FENCE_RE.sub("", raw.strip()).strip()
     try:
@@ -128,7 +154,9 @@ def parse_lesson_json(
     minutes = manifest.get("minutes") or lesson.minutes
 
     exercises = _parse_exercises(data.get("exercises") or [], concept_ids)
-    resources = _parse_resources(data.get("resources") or [], concept_ids)
+    resources = _parse_resources(
+        data.get("resources") or [], concept_ids, usable_urls
+    )
 
     return LessonOutput(
         manifest={

@@ -13,6 +13,38 @@
 
 P2 学习闭环、P2.1–P2.4 已完成；P3.1 增加内容生产工作台（`/studio`）；P3.2 增加确定性质量门禁（`tb quality`，硬错误阻断定稿）；P3.3 增加 OpenAlex 检索后端与自动路由；P3.4 支持一个包 1–3 个模块、每模块 1–5 课的模块化大纲、顺序批量与单课重写；P3.5 增加跨草稿内容演进（`/studio/evolution`、prompt 版本、旧/新快照对比）。默认 `pytest` 不联网；真实调用需 `TESTBRIDGE_LIVE=1`。
 
+## 一次性配置模型（Windows）
+
+不需要每个终端重复 `export`。首次运行：
+
+```bash
+.venv/Scripts/python -m testbridge.cli env init
+```
+
+按提示填写 base URL、model、timeout（内容生成建议 90 秒）和 API key；
+key 输入不回显、不写入仓库。确认后写入 Windows 用户级环境变量。
+**重开终端；已运行的 Web 服务需要重启。**
+
+检查当前终端读到的配置（不会显示 key）：
+
+```bash
+.venv/Scripts/python -m testbridge.cli doctor
+```
+
+需要联网自检时加 `--probe`；默认离线。
+
+## 复查资源链接（可选，联网）
+
+```bash
+PYTHONPATH=src .venv/Scripts/python -m testbridge.cli verify-resources content-packs/<pack>
+```
+
+（本机 venv 未安装 `testbridge` 包时命令需 `PYTHONPATH=src`；安装后可直接用 `tb`。）
+
+required 资源的死链或付费墙会返回退出码 1；补充阅读失败只提示，不阻断。
+Studio 调研时默认会对按来源类型均衡选取的至多 10 条命中做链接预检。
+`TESTBRIDGE_STUDIO_VERIFY=0` 只关闭链接预检，搜索与模型调用不受影响。
+
 ## AI 追问（可选）
 
 课程页的追问面板需要一个 OpenAI 兼容端点。未配置时功能自动禁用，不影响其它页面。

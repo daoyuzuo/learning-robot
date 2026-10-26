@@ -22,6 +22,7 @@ from testbridge.studio.outline import (
     write_outline,
 )
 from testbridge.studio.search import SearchHit
+from testbridge.studio.verify import ResourceCheck
 from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
@@ -137,6 +138,7 @@ LESSON_JSON = (
     '], '
     '"resources": [{"id": "DOC-1", "title": "Executors", '
     '"url": "https://docs.ros.org/x", "type": "official-doc", '
+    '"kind": "official_docs", "role": "required", '
     '"trust": "A", "license": "Apache-2.0", '
     '"last_verified": "2026-10-25", "coverage": ["executor-basics"], '
     '"why": "官方"}]}'
@@ -144,9 +146,12 @@ LESSON_JSON = (
 
 
 class FakeLlm:
-    def __init__(self, outline_json: str = OUTLINE_JSON) -> None:
+    def __init__(
+        self, outline_json: str = OUTLINE_JSON, lesson_json: str = LESSON_JSON
+    ) -> None:
         self.calls = 0
         self.outline_json = outline_json
+        self.lesson_json = lesson_json
         self.outline_prompts: list[str] = []
         self.lesson_prompts: list[str] = []
 
@@ -156,7 +161,7 @@ class FakeLlm:
             self.outline_prompts.append(user)
             return self.outline_json
         self.lesson_prompts.append(user)
-        return LESSON_JSON
+        return self.lesson_json
 
 
 class FakeSearch:
@@ -173,14 +178,25 @@ class FakeSearch:
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
 
 
-def make_app(tmp_path: Path, llm: FakeLlm | None = None) -> TestClient:
+def ok_checker(urls):
+    return {url: ResourceCheck(url, 200, url, 4000, False, "") for url in urls}
+
+
+def make_app(
+    tmp_path: Path,
+    llm: FakeLlm | None = None,
+    *,
+    checker=ok_checker,
+    search=None,
+) -> TestClient:
     return TestClient(create_app(
         SAMPLE, tmp_path / "e.db",
         studio_drafts=tmp_path / "drafts",
         studio_packs=tmp_path / "packs",
         studio_llm=llm or FakeLlm(),
-        studio_search=FakeSearch(),
+        studio_search=search or FakeSearch(),
         studio_config=CONFIG,
+        studio_url_checker=checker,
     ))
 
 
@@ -207,6 +223,25 @@ def seed_multi_draft(app: TestClient):
 
 def test_studio_list_page_renders(tmp_path: Path) -> None:
     assert "新建草稿" in make_app(tmp_path).get("/studio").text
+
+
+def test_studio_pages_expose_ui_components(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    assert 'class="tb-form tb-card"' in app.get("/studio").text
+
+    store = seed_multi_draft(app)
+    store.set_step(
+        "multi", "batch", status="running",
+        extra={"mode": "research", "done": 1, "total": 2},
+    )
+    draft = app.get("/studio/multi").text
+    assert 'class="tb-step tb-card"' in draft
+    assert 'class="tb-status tb-badge"' in draft
+    assert 'class="tb-progress-bar"' in draft
+
+    evolution = app.get("/studio/evolution").text
+    assert 'class="tb-evo-draft tb-card"' in evolution
+    assert "tb-badge" in evolution
 
 
 def test_studio_list_offers_module_fields(tmp_path: Path) -> None:
@@ -393,7 +428,7 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
 
     draft = app.app.state.studio_store.load("demo")
     entry = draft["steps"]["lessons"]["L-EXEC-001"]
-    assert entry["prompt_version"] == "studio/2"
+    assert entry["prompt_version"] == "studio/3"
     assert entry["written_at"]
 
     validation = app.post("/api/studio/demo/validate", json={"skip_verify": True})
@@ -410,3 +445,153 @@ def test_full_flow_validates_and_promotes(tmp_path: Path) -> None:
     assert reloaded["steps"]["research"]["L-EXEC-001"]["status"] == "done"
     assert reloaded["steps"]["lessons"]["L-EXEC-001"]["status"] == "done"
     assert reloaded["steps"]["promote"]["status"] == "done"
+
+
+def test_research_records_check_and_keeps_score(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    create_draft(app)
+
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+    dossier = app.app.state.studio_store.read(
+        "demo", "research/L-EXEC-001.json"
+    )
+    assert '"paywalled": false' in dossier
+    assert '"kind":' in dossier
+
+    app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
+    resources = app.app.state.studio_store.read("demo", "resources.yaml")
+    assert "last_verified:" in resources
+    assert "last_verified: ''" not in resources
+
+
+def test_paywalled_hit_is_hidden_from_the_model(tmp_path: Path) -> None:
+    def walled(urls):
+        return {
+            url: ResourceCheck(url, 200, url, 4000, True, "") for url in urls
+        }
+
+    app = make_app(tmp_path, checker=walled)
+    create_draft(app)
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+    response = app.post(
+        "/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    llm = app.app.state.studio_llm
+    assert "<research>" in llm.lesson_prompts[-1]
+    assert "docs.ros.org/x" not in llm.lesson_prompts[-1]
+    assert response.status_code >= 400
+
+
+OFFICIAL_URL = "https://docs.ros.org/official"
+
+
+class ManyHitsSearch:
+    """More than ten hits across kinds, with the official URL last."""
+
+    def search(self, query: str, count: int = 10) -> list[SearchHit]:
+        hits = [
+            SearchHit(
+                title=f"Tutorial {index}",
+                url=f"https://blog.example/tutorial/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(4)
+        ]
+        hits += [
+            SearchHit(
+                title=f"Post {index}",
+                url=f"https://blog.example/posts/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(5)
+        ]
+        hits += [
+            SearchHit(
+                title=f"Other {index}",
+                url=f"https://other.example/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(2)
+        ]
+        hits.append(SearchHit(
+            title="Official", url=OFFICIAL_URL, snippet="", summary="",
+            content="", authority=3,
+        ))
+        return hits
+
+    def fetch(self, url: str) -> str:
+        return ""
+
+
+def test_research_preflights_across_kinds_and_hides_unchecked_urls(
+    tmp_path: Path,
+) -> None:
+    checked: list[str] = []
+
+    def checker(urls):
+        checked.extend(urls)
+        return {url: ResourceCheck(url, 200, url, 4000, False, "") for url in urls}
+
+    lesson_json = LESSON_JSON.replace("https://docs.ros.org/x", OFFICIAL_URL)
+    llm = FakeLlm(lesson_json=lesson_json)
+    app = make_app(
+        tmp_path, llm, checker=checker, search=ManyHitsSearch(),
+    )
+    create_draft(app)
+
+    research = app.post(
+        "/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"}
+    )
+    assert research.status_code == 200, research.text
+    # The official hit is last, but the kind-balanced preflight still checks it.
+    assert OFFICIAL_URL in checked
+    assert len(checked) <= 10
+
+    dossier = json.loads(app.app.state.studio_store.read(
+        "demo", "research/L-EXEC-001.json"
+    ))
+    unchecked = [hit["url"] for hit in dossier["hits"] if "check" not in hit]
+    assert unchecked
+
+    lesson = app.post(
+        "/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    assert lesson.status_code == 200, lesson.text
+    prompt = llm.lesson_prompts[-1]
+    assert OFFICIAL_URL in prompt
+    for url in unchecked:
+        assert url not in prompt
+
+
+def test_studio_enabled_builds_default_url_checker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.delenv("TESTBRIDGE_STUDIO_VERIFY", raising=False)
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts",
+        studio_packs=tmp_path / "packs",
+        studio_llm=FakeLlm(),
+        studio_search=FakeSearch(),
+        studio_config=CONFIG,
+    ))
+
+    assert app.app.state.studio_url_checker is not None
+
+
+def test_verify_env_zero_disables_default_url_checker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("TESTBRIDGE_STUDIO_VERIFY", "0")
+    app = TestClient(create_app(
+        SAMPLE, tmp_path / "e.db",
+        studio_drafts=tmp_path / "drafts",
+        studio_packs=tmp_path / "packs",
+        studio_llm=FakeLlm(),
+        studio_search=FakeSearch(),
+        studio_config=CONFIG,
+    ))
+
+    assert app.app.state.studio_url_checker is None

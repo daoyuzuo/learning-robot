@@ -37,6 +37,7 @@ def test_today_shows_weak_after_wrong_answer(tmp_path: Path) -> None:
     response = c.get("/today")
     assert response.status_code == 200
     assert "掌握度偏低" in response.text
+    assert 'data-status="weak"' in response.text
 
 
 def test_progress_includes_readiness(tmp_path: Path) -> None:

@@ -22,7 +22,10 @@
 
   function paintLesson(step, lesson, entry) {
     const status = root.querySelector(`[data-step-status="${step}:${lesson}"]`);
-    if (status) status.textContent = entry.status || "pending";
+    if (status) {
+      status.textContent = entry.status || "pending";
+      status.dataset.status = entry.status || "pending";
+    }
     const progress = root.querySelector(`[data-progress-for="${step}:${lesson}"]`);
     if (!progress) return;
     const done = entry.queries || 0;
@@ -62,15 +65,36 @@
     });
   }
 
+  function batchProgressBar(node) {
+    const next = node.nextElementSibling;
+    if (next && next.classList.contains("tb-progress-bar")) return next;
+    const bar = document.createElement("progress");
+    bar.className = "tb-progress-bar";
+    bar.setAttribute("aria-label", "批量进度");
+    node.insertAdjacentElement("afterend", bar);
+    return bar;
+  }
+
   function paintBatch(batch) {
     document.querySelectorAll("[data-batch-status]").forEach((node) => {
       if (!batch || !batch.mode || node.dataset.batchStatus !== batch.mode) {
         node.textContent = "";
+        delete node.dataset.status;
         return;
       }
       node.textContent = batch.status === "failed"
         ? "失败：" + (batch.error || "")
         : "完成 " + (batch.done || 0) + "/" + (batch.total || 0);
+      node.dataset.status = batch.status || "";
+      const bar = batchProgressBar(node);
+      const total = Number(batch.total) || 0;
+      if (total > 0) {
+        bar.max = total;
+        bar.value = Number(batch.done) || 0;
+      } else {
+        bar.removeAttribute("max");
+        bar.removeAttribute("value");
+      }
     });
   }
 
@@ -78,6 +102,7 @@
     document.querySelectorAll("[data-status-for]").forEach((node) => {
       const entry = payload.steps[node.dataset.statusFor] || {};
       node.textContent = entry.status || "pending";
+      node.dataset.status = entry.status || "pending";
     });
     paintBatch(payload.steps.batch);
     ["research", "lessons"].forEach((step) => {

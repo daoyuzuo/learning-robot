@@ -132,6 +132,7 @@ def test_old_draft_without_module_fields_runs_outline(tmp_path: Path) -> None:
         studio_search=NoopSearch(),
         studio_config=CONFIG,
         studio_inline=True,
+        studio_url_checker=lambda urls: {},
     ))
     store = app.app.state.studio_store
     create_draft(store, lesson_count=2)

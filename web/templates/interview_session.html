@@ -1,47 +1,50 @@
 {% extends "base.html" %}
 {% block title %}面试中 · TestBridge{% endblock %}
 {% block content %}
-<div class="tb-interview-session"
+<div class="tb-interview-session tb-card"
      data-interview-session="{{ session.id }}"
      data-question-id="{{ question.id }}">
   {% if status == "abandoned" %}
-    <p class="tb-interview-error">会话已结束。</p>
-    <p><a href="/interview">回到面试首页</a></p>
+    <p class="tb-interview-error tb-callout" data-tone="error">会话已结束。</p>
+    <p><a class="tb-btn tb-btn-ghost" href="/interview">回到面试首页</a></p>
   {% else %}
   <p class="tb-meta">{{ index + 1 }} / {{ total }} · 建议 {{ question.minutes }} 分钟</p>
   <h1>{{ question.title }}</h1>
   <p>{{ question.prompt }}</p>
   <p class="tb-meta">概念：{{ question.concepts|join("、") }}</p>
+  <div class="tb-table-wrap">
   <table class="tb-interview-dimensions">
     <tr><th>维度</th><th>权重</th><th>标准</th></tr>
     {% for item in question.rubric %}
     <tr><td>{{ item.dimension }}</td><td>{{ item.weight }}</td><td>{{ item.criteria }}</td></tr>
     {% endfor %}
   </table>
+  </div>
 
-  <label class="tb-interview-answer-label" for="tb-interview-answer">你的回答</label>
+  <label class="tb-interview-answer-label tb-field" for="tb-interview-answer">你的回答</label>
   <textarea id="tb-interview-answer" rows="12"
     {% if answer and answer.status in ["graded", "confirmed"] %}readonly{% endif %}
   >{{ answer.answer if answer else "" }}</textarea>
   <p class="tb-meta tb-interview-save">自动保存</p>
-  <p class="tb-interview-error" hidden></p>
+  <p class="tb-interview-error tb-callout" data-tone="error" hidden></p>
 
   <div class="tb-interview-actions">
     {% if not answer or answer.status == "answered" %}
-    <button type="button" data-action="grade">提交评分</button>
+    <button type="button" class="tb-btn tb-btn-primary" data-action="grade">提交评分</button>
     {% endif %}
     {% if answer and answer.status == "graded" %}
-    <button type="button" data-action="grade">重新评分</button>
-    <button type="button" data-action="confirm">确认本题</button>
-    <button type="button" data-action="reset">重新作答</button>
+    <button type="button" class="tb-btn tb-btn-primary" data-action="grade">重新评分</button>
+    <button type="button" class="tb-btn" data-action="confirm">确认本题</button>
+    <button type="button" class="tb-btn" data-action="reset">重新作答</button>
     {% endif %}
-    <button type="button" data-action="abandon">放弃本次</button>
+    <button type="button" class="tb-btn tb-btn-ghost" data-action="abandon">放弃本次</button>
   </div>
 
   {% if answer and answer.status in ["graded", "confirmed"] %}
-  <section class="tb-interview-card">
+  <section class="tb-interview-card tb-card">
     <h2>{{ "已确认" if answer.status == "confirmed" else "评分建议" }}</h2>
     {% if answer.llm_summary %}<p>{{ answer.llm_summary }}</p>{% endif %}
+    <div class="tb-table-wrap">
     <table class="tb-interview-dimensions">
       <tr><th>维度</th><th>建议分</th><th>理由</th><th>你的分数</th></tr>
       {% for item in answer.llm_scores %}
@@ -61,6 +64,7 @@
       </tr>
       {% endfor %}
     </table>
+    </div>
   </section>
   {% endif %}
   {% endif %}

@@ -14,6 +14,7 @@ from testbridge.contract.validator import validate_pack
 from testbridge.quality.evaluate import QualityUnavailable, evaluate_draft
 from testbridge.quality.report import QualityReport
 from testbridge.studio.store import DraftStore
+from testbridge.studio.verify import check_url, reason
 
 CONTENT_FILES = (
     "pack.yaml", "concepts.yaml", "exercises.yaml", "resources.yaml", "widgets.yaml",
@@ -59,19 +60,20 @@ def quality_draft(store: DraftStore, draft_id: str) -> QualityReport:
 
 
 def verify_resources(resources, client=None) -> list[str]:
+    """Return failures for required resources; supplementary links never block."""
     owned = client is None
     client = client or httpx.Client(timeout=10.0, follow_redirects=True)
     errors = []
     try:
         for resource in resources:
+            role = str(resource.get("role") or "required")
+            if role != "required":
+                continue
             resource_id = resource.get("id", "?")
-            url = resource.get("url", "")
-            try:
-                response = client.get(url)
-                if response.status_code >= 400:
-                    errors.append(f"{resource_id}: HTTP {response.status_code}")
-            except httpx.HTTPError as exc:
-                errors.append(f"{resource_id}: {type(exc).__name__}")
+            check = check_url(client, str(resource.get("url") or ""))
+            if check.ok:
+                continue
+            errors.append(f"{resource_id}: {reason(check)}")
     finally:
         if owned:
             client.close()

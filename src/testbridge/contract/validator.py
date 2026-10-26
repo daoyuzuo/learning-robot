@@ -361,6 +361,16 @@ def validate_pack(pack_dir: Path) -> ValidationReport:
         if not manifest.resources:
             report.warnings.append(Issue("lesson.no_resource", f"{manifest.id} has no resources"))
     for resource in resources.values():
+        if resource.trust == "D":
+            report.errors.append(Issue(
+                "resource.trust", f"{resource.id} trust D is not usable"
+            ))
+        elif resource.role == "required" and resource.trust not in {"A", "B"}:
+            report.errors.append(Issue(
+                "resource.required_trust",
+                f"{resource.id} required resource must be trust A/B",
+            ))
+    for resource in resources.values():
         if not resource.last_verified:
             report.warnings.append(
                 Issue("resource.no_verified", f"{resource.id} has no last_verified")

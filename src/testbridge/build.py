@@ -20,7 +20,7 @@ STANDALONE_TEMPLATE = """<!doctype html>
 <style>__CSS__</style>
 </head>
 <body data-lesson-id="__LESSON_ID__">
-<main class="tb-main">
+<main class="tb-main tb-lesson-main">
 __BODY__
 <button id="tb-export">导出证据 JSONL</button>
 </main>

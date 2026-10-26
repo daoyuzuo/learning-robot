@@ -3,20 +3,29 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import httpx
+
 from testbridge.build import build_pack
-from testbridge.content.repository import list_packs, load_pack
+from testbridge.content.repository import (
+    ContentValidationError,
+    list_packs,
+    load_pack,
+)
 from testbridge.contract.validator import validate_pack
 from testbridge.evidence.store import EvidenceStore
 from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import Goal, LearningStore
+from testbridge.studio.verify import check_url, reason
 from testbridge.tutor.client import (
     LlmClient,
     OpenAICompatibleClient,
@@ -24,6 +33,13 @@ from testbridge.tutor.client import (
     TutorUpstreamError,
 )
 from testbridge.tutor.config import TutorConfig, load_config, missing_vars
+from testbridge.tutor.env_store import (
+    EnvWriteError,
+    display_url,
+    export_lines,
+    secret_status,
+    write_user_env,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -114,6 +130,181 @@ def _run_quality(
     return 0 if report.ok else 1
 
 
+REQUIRED_LLM_VARS = (
+    "TESTBRIDGE_LLM_BASE_URL",
+    "TESTBRIDGE_LLM_API_KEY",
+    "TESTBRIDGE_LLM_MODEL",
+)
+
+
+def _valid_base_url(value: str) -> bool:
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(value.strip())
+    except ValueError:
+        return False
+    return parts.scheme in {"http", "https"} and bool(parts.hostname)
+
+
+def _prompt_value(label: str, current: str, *, secret: bool = False) -> str:
+    shown = secret_status(current) if secret else current
+    suffix = f" [{shown}]" if current else ""
+    prompt = f"{label}{suffix}: "
+    value = getpass.getpass(prompt) if secret else input(prompt)
+    return value.strip() or current
+
+
+def _cmd_env_init(args) -> int:
+    current = {name: os.environ.get(name, "") for name in REQUIRED_LLM_VARS}
+    base_url = args.base_url or _prompt_value(
+        "TESTBRIDGE_LLM_BASE_URL", current["TESTBRIDGE_LLM_BASE_URL"]
+    )
+    model = args.model or _prompt_value(
+        "TESTBRIDGE_LLM_MODEL", current["TESTBRIDGE_LLM_MODEL"]
+    )
+    timeout = args.timeout or _prompt_value(
+        "TESTBRIDGE_LLM_TIMEOUT", os.environ.get("TESTBRIDGE_LLM_TIMEOUT", "")
+    ) or "90"
+    api_key = _prompt_value(
+        "TESTBRIDGE_LLM_API_KEY", current["TESTBRIDGE_LLM_API_KEY"], secret=True
+    )
+
+    if not _valid_base_url(base_url):
+        print(
+            "ERROR env: base URL must start with http:// or https://",
+            file=sys.stderr,
+        )
+        return 2
+    if not model:
+        print("ERROR env: model must not be empty", file=sys.stderr)
+        return 2
+    try:
+        timeout_value = float(timeout)
+    except ValueError:
+        timeout_value = 0
+    if timeout_value <= 0:
+        print("ERROR env: timeout must be > 0", file=sys.stderr)
+        return 2
+    if not api_key:
+        print("ERROR env: API key must not be empty", file=sys.stderr)
+        return 2
+
+    values = {
+        "TESTBRIDGE_LLM_BASE_URL": base_url,
+        "TESTBRIDGE_LLM_API_KEY": api_key,
+        "TESTBRIDGE_LLM_MODEL": model,
+        "TESTBRIDGE_LLM_TIMEOUT": timeout,
+    }
+    print("will set:")
+    for name, value in values.items():
+        shown = secret_status(value) if name == "TESTBRIDGE_LLM_API_KEY" else value
+        print(f"  {name} = {shown}")
+
+    if args.dry_run:
+        return 0
+    answer = input("write these to your user environment? [y/N] ").strip().lower()
+    if answer not in {"y", "yes"}:
+        print("cancelled")
+        return 1
+    if os.name != "nt":
+        print("add these lines to your shell profile, then restart the shell:")
+        for line in export_lines(values):
+            print(line)
+        return 0
+    try:
+        write_user_env(values)
+    except EnvWriteError as exc:
+        print(f"ERROR env: could not write user environment: {exc}", file=sys.stderr)
+        return 2
+    print("saved. reopen your terminal and restart any running Web service.")
+    return 0
+
+
+def _cmd_doctor(args) -> int:
+    required = [
+        ("llm.base_url", "TESTBRIDGE_LLM_BASE_URL", display_url),
+        ("llm.model", "TESTBRIDGE_LLM_MODEL", str),
+        ("llm.api_key", "TESTBRIDGE_LLM_API_KEY", secret_status),
+    ]
+    missing = []
+    for label, name, formatter in required:
+        value = os.environ.get(name, "")
+        if not value:
+            missing.append(name)
+            print(f"{label:16} missing  {name}")
+            continue
+        print(f"{label:16} set      {formatter(value)}")
+
+    timeout = os.environ.get("TESTBRIDGE_LLM_TIMEOUT") or "30"
+    timeout_state = "set" if os.environ.get("TESTBRIDGE_LLM_TIMEOUT") else "default"
+    print(f"{'llm.timeout':16} {timeout_state:8} {timeout}s")
+
+    mailto = os.environ.get("TESTBRIDGE_OPENALEX_MAILTO")
+    print(f"{'openalex.mailto':16} {'set' if mailto else 'unset'}")
+    for label, name, default in (
+        ("openalex.base_url", "TESTBRIDGE_OPENALEX_BASE_URL", "https://api.openalex.org"),
+        ("openalex.timeout", "TESTBRIDGE_OPENALEX_TIMEOUT", "10"),
+    ):
+        value = os.environ.get(name)
+        state = "set" if value else "default"
+        print(f"{label:16} {state:8} {value or default}")
+
+    if missing:
+        print("missing: " + ", ".join(missing), file=sys.stderr)
+        return 2
+    if not args.probe:
+        return 0
+
+    config = load_config()
+    if config is None:
+        print("ERROR doctor: missing environment variables", file=sys.stderr)
+        return 2
+    client = build_tutor_client(config)
+    started = time.perf_counter()
+    try:
+        reply = client.complete("你是连通性测试，请只回复 ok。", "ok")
+    except TutorTimeoutError:
+        print("ERROR doctor: upstream timed out", file=sys.stderr)
+        return 2
+    except TutorUpstreamError as exc:
+        print(f"ERROR doctor: {exc}", file=sys.stderr)
+        return 2
+    elapsed = (time.perf_counter() - started) * 1000
+    print(f"latency: {elapsed:.0f} ms")
+    print(f"reply: {reply.strip()[:40]}")
+    return 0
+
+
+def _cmd_verify_resources(args) -> int:
+    pack_dir = Path(args.pack)
+    try:
+        pack = load_pack(pack_dir)
+    except ContentValidationError as exc:
+        print(
+            f"ERROR verify-resources: pack is invalid "
+            f"({len(exc.report.errors)} error(s))",
+            file=sys.stderr,
+        )
+        return 2
+    client = httpx.Client(timeout=10.0, follow_redirects=True)
+    failures = 0
+    try:
+        for resource in sorted(pack.resources.values(), key=lambda item: item.id):
+            check = check_url(client, resource.url)
+            if check.ok:
+                print(f"OK    {resource.id} {resource.url}")
+                continue
+            if resource.role == "required":
+                failures += 1
+                print(f"ERROR {resource.id} {resource.url}: {reason(check)}")
+            else:
+                print(f"WARN  {resource.id} {resource.url}: {reason(check)}")
+    finally:
+        client.close()
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -181,7 +372,31 @@ def main(argv: list[str] | None = None) -> int:
     tutor_sub = tutor.add_subparsers(dest="tutor_command", required=True)
     tutor_sub.add_parser("check", help="verify the configured LLM endpoint")
 
+    env = sub.add_parser("env", help="manage user-level configuration")
+    env_sub = env.add_subparsers(dest="env_command", required=True)
+    env_init = env_sub.add_parser("init", help="write TESTBRIDGE_LLM_* once")
+    env_init.add_argument("--base-url", default=None)
+    env_init.add_argument("--model", default=None)
+    env_init.add_argument("--timeout", default=None)
+    env_init.add_argument("--dry-run", action="store_true")
+
+    doctor = sub.add_parser("doctor", help="check local configuration")
+    doctor.add_argument("--probe", action="store_true")
+
+    verify = sub.add_parser("verify-resources", help="check resource links")
+    verify.add_argument("pack")
+
     args = parser.parse_args(argv)
+
+    if args.command == "doctor":
+        return _cmd_doctor(args)
+
+    if args.command == "env":
+        if args.env_command == "init":
+            return _cmd_env_init(args)
+
+    if args.command == "verify-resources":
+        return _cmd_verify_resources(args)
 
     if args.command == "validate":
         report = validate_pack(Path(args.pack))

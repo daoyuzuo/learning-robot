@@ -52,6 +52,25 @@ def test_nav_shows_applications(tmp_path: Path) -> None:
     assert 'href="/applications"' in c.get("/").text
 
 
+def test_pages_expose_ui_components(tmp_path: Path) -> None:
+    c = make_app(tmp_path)
+    empty = c.get("/applications").text
+    assert 'class="tb-app-form tb-form tb-card"' in empty
+    assert 'class="tb-callout"' in empty
+
+    response = c.post("/applications", data=create_data(),
+                      follow_redirects=False)
+    location = response.headers["location"]
+
+    listing = c.get("/applications").text
+    assert 'class="tb-table-wrap"' in listing
+    assert 'class="tb-badge" data-status="applied"' in listing
+
+    detail = c.get(location).text
+    assert 'class="tb-app-form tb-form tb-card"' in detail
+    assert 'class="tb-btn tb-btn-primary"' in detail
+
+
 def test_create_redirects_and_lists(tmp_path: Path) -> None:
     c = make_app(tmp_path)
     response = c.post("/applications", data=create_data(),

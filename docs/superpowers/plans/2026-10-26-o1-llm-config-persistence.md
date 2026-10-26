@@ -47,7 +47,7 @@
   - `def display_url(url: str) -> str`
   - `def secret_status(value: str | None) -> str`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_env_commands.py
@@ -99,12 +99,12 @@ def test_secret_status_never_returns_value() -> None:
     assert secret_status(None) == "missing"
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: FAIL with `ModuleNotFoundError: testbridge.tutor.env_store`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/testbridge/tutor/env_store.py
@@ -199,12 +199,12 @@ def secret_status(value: str | None) -> str:
     return f"set ({len(value)} chars)" if value else "missing"
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: PASS（6 passed）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/testbridge/tutor/env_store.py tests/test_env_commands.py
@@ -225,7 +225,7 @@ git commit -m "feat: add user environment writer helpers"
   - `main(["env", "init", ...]) -> int`
   - 交互输入：base URL、model、timeout、API key；`--dry-run` 不写。
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # append to tests/test_env_commands.py
@@ -334,12 +334,12 @@ def test_env_init_rejects_bad_url(monkeypatch, capsys) -> None:
     assert "base URL" in capsys.readouterr().err
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: FAIL because `main(["env", ...])` is not implemented.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `src/testbridge/cli.py`:
 
@@ -469,12 +469,12 @@ if args.command == "env":
         return _cmd_env_init(args)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: PASS（10 passed）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/testbridge/cli.py tests/test_env_commands.py
@@ -493,7 +493,7 @@ git commit -m "feat: add tb env init"
 - Consumes: `display_url`, `secret_status`, `load_config`, `missing_vars`.
 - Produces: `main(["doctor"]) -> 0 | 2`；`main(["doctor", "--probe"])` 复用模型客户端。
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # append to tests/test_env_commands.py
@@ -544,12 +544,12 @@ def test_doctor_probe_missing_config(monkeypatch, capsys) -> None:
     assert "missing" in capsys.readouterr().err
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: FAIL because `doctor` is not implemented.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Add to `cli.py`:
 
@@ -616,12 +616,12 @@ if args.command == "doctor":
     return _cmd_doctor(args)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/Scripts/python -m pytest tests/test_env_commands.py -v`
 Expected: PASS（14 passed）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/testbridge/cli.py tests/test_env_commands.py
@@ -635,7 +635,7 @@ git commit -m "feat: add tb doctor"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Add the Windows one-time setup section**
+- [x] **Step 1: Add the Windows one-time setup section**
 
 在 README 的“AI 追问（可选）”前插入：
 
@@ -661,12 +661,12 @@ key 输入不回显、不写入仓库。确认后写入 Windows 用户环境变�
 需要联网自检时加 `--probe`；默认离线。
 ```
 
-- [ ] **Step 2: Run full tests**
+- [x] **Step 2: Run full tests**
 
 Run: `.venv/Scripts/python -m pytest -q`
-Expected: `746 passed` 左右（742 + 新增 14），`3 deselected`
+Expected: `756 passed`（742 + 新增 14），`3 deselected`
 
-- [ ] **Step 3: Manual acceptance**
+- [x] **Step 3: Manual acceptance**
 
 ```bash
 .venv/Scripts/python -m testbridge.cli doctor --dry-run  # 若未实现 --dry-run，用 env init --dry-run
@@ -675,7 +675,7 @@ Expected: `746 passed` 左右（742 + 新增 14），`3 deselected`
 
 确认输出中没有 API key；新开终端后 `doctor` 显示配置齐全。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md

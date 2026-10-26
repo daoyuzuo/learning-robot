@@ -38,7 +38,7 @@ from testbridge.studio.gates import (
     verify_resources,
 )
 from testbridge.studio.jobs import JobBusy, JobRunner
-from testbridge.studio.lessons import LessonError
+from testbridge.studio.lessons import DEFAULT_MODULE_ID, LessonError
 from testbridge.studio.outline import (
     OutlineError,
     flatten_modules,
@@ -53,6 +53,11 @@ from testbridge.studio.prompts import (
     render_concepts_text,
     render_lesson_prompt,
     render_outline_prompt,
+)
+from testbridge.studio.research import (
+    preflight_urls,
+    render_research_for_prompt,
+    usable_urls_from_payload,
 )
 from testbridge.studio.search import SearchProvider
 from testbridge.studio.search_router import SearchRoute, SearchRouter
@@ -102,6 +107,7 @@ def mount_studio(
     llm: LlmClient | None,
     search: SearchProvider | SearchRouter | None,
     inline: bool = False,
+    url_checker=None,
 ) -> None:
     store = DraftStore(drafts_root)
     store.mark_interrupted()
@@ -109,6 +115,9 @@ def mount_studio(
     evolution = EvolutionJob(store, runner)
     app.state.studio_store = store
     app.state.evolution = evolution
+    app.state.studio_llm = llm
+    app.state.studio_search = search
+    app.state.studio_url_checker = url_checker
     router = APIRouter()
 
     def ctx(request: Request, **kwargs):
@@ -163,6 +172,19 @@ def mount_studio(
                 concept_domains=domains,
             )
         return SearchRoute("custom", search)
+
+    def route_for_query(
+        draft: dict, titles: list[str], domains: list[str], kind: str
+    ) -> SearchRoute:
+        backend = str(draft.get("search_backend") or "auto")
+        if hasattr(search, "route_query"):
+            return search.route_query(
+                backend, kind,
+                topic=str(draft.get("topic") or ""),
+                concept_titles=titles,
+                concept_domains=domains,
+            )
+        return route_for(draft, titles, domains)
 
     def outline_modules(draft_id: str) -> list:
         try:
@@ -232,7 +254,6 @@ def mount_studio(
         items = concepts(draft_id)
         titles = [str(item.get("title", "")) for item in items]
         domains = [str(item.get("domain", "")) for item in items]
-        route = route_for(draft, titles, domains)
 
         def progress(done: int, total: int, hits: int) -> None:
             store.set_step(
@@ -241,29 +262,43 @@ def mount_studio(
             )
 
         result = research_runner.run_research(
-            plan, titles, route.provider, draft["searches_per_lesson"],
-            progress=progress, backend=route.name,
+            plan, titles,
+            budget=draft["searches_per_lesson"],
+            progress=progress,
+            route_for=lambda kind: route_for_query(draft, titles, domains, kind),
         )
-        research_runner.write_research(store, draft_id, plan, result)
+        checks = None
+        if url_checker is not None:
+            # The injected checker batches URLs itself; cap the fan-out so one
+            # lesson never triggers more than the check budget. Pick one hit
+            # per kind first so official docs are not crowded out by one kind.
+            checks = url_checker(preflight_urls(result.hits))
+        research_runner.write_research(
+            store, draft_id, plan, result, checks=checks
+        )
         add_usage(draft_id, searches=result.searches)
         store.set_step(
             draft_id, "research", lesson_id=lesson_id,
             extra={
                 "queries": result.searches,
                 "hits": len(result.hits),
-                "backend": route.name,
+                "backend": result.backend,
             },
         )
 
-    def research_text(draft_id: str, lesson_id: str) -> str:
+    def research_payload(draft_id: str, lesson_id: str) -> str:
         path = store.path(draft_id) / f"research/{lesson_id}.json"
         return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+    def research_text(draft_id: str, lesson_id: str) -> str:
+        return render_research_for_prompt(research_payload(draft_id, lesson_id))
 
     def generate_lesson(
         draft_id: str, lesson_id: str, *, replace: bool = False
     ) -> None:
         plan = lesson_plan(draft_id, lesson_id)
         concept_ids = {item["id"] for item in concepts(draft_id)}
+        usable = usable_urls_from_payload(research_payload(draft_id, lesson_id))
         output = generate(
             draft_id,
             LESSON_SYSTEM,
@@ -272,7 +307,9 @@ def mount_studio(
                 concepts_text(draft_id, plan.concepts),
                 research_text(draft_id, lesson_id),
             ),
-            lambda raw: lesson_writer.parse_lesson_json(raw, plan, concept_ids),
+            lambda raw: lesson_writer.parse_lesson_json(
+                raw, plan, concept_ids, usable_urls=usable
+            ),
         )
         lesson_writer.write_lesson(
             store, draft_id, plan, output, replace=replace, namespace=True
@@ -642,6 +679,14 @@ def mount_studio(
             "modules": [module.module_id for module in modules],
         }
 
+    def lesson_path(draft_id: str, lesson_id: str) -> Path:
+        plan = lesson_plan(draft_id, lesson_id)
+        module_id = plan.module_id or DEFAULT_MODULE_ID
+        return (
+            store.path(draft_id)
+            / "modules" / module_id / "lessons" / f"{lesson_id}.html"
+        )
+
     def start_lessons(draft_id: str, kind: str, body: dict | None, make_job) -> list[str]:
         draft_or_404(draft_id)
         require_enabled()
@@ -662,6 +707,26 @@ def mount_studio(
                 status_code=409,
                 detail={"code": "step_running", "message": "任务进行中"},
             ) from None
+        if kind == "lessons" and runner.inline:
+            # Synchronous runs report a missing lesson as a request failure.
+            # A lesson that failed but already existed on disk is kept, so the
+            # rewrite-conflict path still returns 200 with a failed step.
+            missing: list[str] = []
+            for target in targets:
+                try:
+                    produced = lesson_path(draft_id, target).is_file()
+                except OutlineError:
+                    produced = False
+                if not produced:
+                    missing.append(target)
+            if missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "lesson_failed",
+                        "message": "写课失败，未生成课程：" + "、".join(missing),
+                    },
+                )
         return targets
 
     @router.post("/api/studio/{draft_id}/research")

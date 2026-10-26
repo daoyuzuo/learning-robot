@@ -8,15 +8,32 @@ from __future__ import annotations
 
 import html as html_lib
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from testbridge.studio.outline import LessonPlan
-from testbridge.studio.search import SearchHit, SearchProvider, trust_for
+from testbridge.studio.search import SearchHit, SearchProvider
+from testbridge.studio.search_router import ACADEMIC_KEYWORDS, SearchRoute
+from testbridge.studio.sources import classify_hit, trust_for_hit
 from testbridge.studio.store import DraftStore
 
 SITE_QUERY = "site:docs.ros.org OR site:docs.ros2.org"
 CONTENT_LIMIT = 4000
+QUERY_KINDS = ("academic", "engineering", "official")
+# English hints match whole words so "spec" does not hit "inspect" and
+# "reference" does not hit "preference". Chinese has no word boundaries, so
+# those hints stay substrings.
+OFFICIAL_HINT_WORDS = re.compile(
+    r"\b(?:site|docs|documentation|spec|reference)\b", re.IGNORECASE
+)
+OFFICIAL_HINTS_ZH = ("官方文档", "标准")
+
+
+@dataclass(frozen=True)
+class ResearchQuery:
+    text: str
+    kind: str
 
 
 @dataclass(frozen=True)
@@ -27,48 +44,95 @@ class ResearchResult:
     errors: list[str] = field(default_factory=list)
     searches: int = 0
     backend: str = ""
+    query_log: list[dict] = field(default_factory=list)
+
+
+def classify_query(text: str) -> str:
+    lowered = text.lower()
+    if any(hint in lowered for hint in ACADEMIC_KEYWORDS):
+        return "academic"
+    if OFFICIAL_HINT_WORDS.search(text) or any(
+        hint in lowered for hint in OFFICIAL_HINTS_ZH
+    ):
+        return "official"
+    return "engineering"
 
 
 def build_queries(
     lesson: LessonPlan, concept_titles: list[str], budget: int
-) -> list[str]:
-    queries = list(lesson.queries)
-    queries.append(lesson.title)
-    queries.append(f"{lesson.title} {SITE_QUERY}")
-    queries.extend(concept_titles)
-    seen: list[str] = []
-    for query in queries:
-        if query and query not in seen:
-            seen.append(query)
-    return seen[:max(1, budget)]
+) -> list[ResearchQuery]:
+    candidates = [
+        *lesson.queries, lesson.title,
+        f"{lesson.title} {SITE_QUERY}", *concept_titles,
+    ]
+    buckets: dict[str, list[ResearchQuery]] = {kind: [] for kind in QUERY_KINDS}
+    seen: set[str] = set()
+    for text in candidates:
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        kind = classify_query(text)
+        buckets[kind].append(ResearchQuery(text, kind))
+    limit = max(1, budget)
+    ordered: list[ResearchQuery] = []
+    while len(ordered) < limit and any(buckets.values()):
+        for kind in QUERY_KINDS:
+            if len(ordered) >= limit:
+                break
+            if buckets[kind]:
+                ordered.append(buckets[kind].pop(0))
+    return ordered
 
 
 def run_research(
     lesson: LessonPlan,
     concept_titles: list[str],
-    search: SearchProvider,
-    budget: int,
+    search: SearchProvider | None = None,
+    budget: int = 1,
     progress: Callable[[int, int, int], None] | None = None,
     backend: str = "",
+    *,
+    route_for: Callable[[str], SearchRoute] | None = None,
 ) -> ResearchResult:
     queries = build_queries(lesson, concept_titles, budget)
     hits: list[SearchHit] = []
     seen: set[str] = set()
     errors: list[str] = []
+    names: list[str] = []
+    query_log: list[dict] = []
     for index, query in enumerate(queries, start=1):
+        if route_for is not None:
+            route = route_for(query.kind)
+            provider = route.provider
+            name = route.name
+        elif search is not None:
+            provider = search
+            name = backend
+        else:
+            raise TypeError("run_research requires search= or route_for=")
+        names.append(name)
         try:
-            for hit in search.search(query, count=8):
+            for hit in provider.search(query.text, count=8):
                 if hit.url in seen:
                     continue
                 seen.add(hit.url)
                 hits.append(hit)
         except Exception as exc:  # noqa: BLE001 - keep research going
-            errors.append(f"{query}: {type(exc).__name__}")
+            errors.append(f"{query.text}: {type(exc).__name__}")
+        query_log.append(
+            {"query": query.text, "kind": query.kind, "backend": name}
+        )
         if progress is not None:
             progress(index, len(queries), len(hits))
+    resolved_backend = backend or ",".join(dict.fromkeys(names))
     return ResearchResult(
-        lesson_id=lesson.lesson_id, queries=queries, hits=hits,
-        errors=errors, searches=len(queries), backend=backend,
+        lesson_id=lesson.lesson_id,
+        queries=[item.text for item in queries],
+        hits=hits,
+        errors=errors,
+        searches=len(queries),
+        backend=resolved_backend,
+        query_log=query_log,
     )
 
 
@@ -78,7 +142,8 @@ def render_research_html(lesson: LessonPlan, result: ResearchResult) -> str:
         rows.append(
             f'<li class="tb-hit"><a href="{html_lib.escape(hit.url)}">'
             f"{html_lib.escape(hit.title or hit.url)}</a> "
-            f'<span class="tb-trust">{trust_for(hit.authority)}</span>'
+            f'<span class="tb-trust">{trust_for_hit(hit)}</span> '
+            f'<span class="tb-kind">{classify_hit(hit)}</span>'
             f"<p>{html_lib.escape(hit.summary or hit.snippet)}</p></li>"
         )
     errors = "".join(
@@ -102,22 +167,32 @@ def write_research(
     draft_id: str,
     lesson: LessonPlan,
     result: ResearchResult,
+    *,
+    checks: dict | None = None,
 ) -> None:
+    hits = []
+    for hit in result.hits:
+        item = {
+            "title": hit.title, "url": hit.url, "snippet": hit.snippet,
+            "summary": hit.summary, "content": hit.content[:CONTENT_LIMIT],
+            "authority": hit.authority, "date": hit.date,
+            "is_oa": hit.is_oa, "oa_url": hit.oa_url,
+            "work_type": hit.work_type,
+            "trust": trust_for_hit(hit),
+            "kind": classify_hit(hit),
+        }
+        check = checks.get(hit.url) if checks else None
+        if check is not None:
+            item["check"] = check.as_dict()
+        hits.append(item)
     payload = {
         "lesson_id": result.lesson_id,
         "queries": result.queries,
         "searches": result.searches,
         "backend": result.backend,
         "errors": result.errors,
-        "hits": [
-            {
-                "title": hit.title, "url": hit.url, "snippet": hit.snippet,
-                "summary": hit.summary, "content": hit.content[:CONTENT_LIMIT],
-                "authority": hit.authority, "date": hit.date,
-                "trust": trust_for(hit.authority),
-            }
-            for hit in result.hits
-        ],
+        "query_log": result.query_log,
+        "hits": hits,
     }
     store.write(
         draft_id, f"research/{result.lesson_id}.json",
@@ -127,3 +202,91 @@ def write_research(
         draft_id, f"research/{result.lesson_id}.html",
         render_research_html(lesson, result),
     )
+
+
+def preflight_urls(hits: list[SearchHit], *, limit: int = 10) -> list[str]:
+    """Pick a kind-balanced, de-duplicated set of URLs to preflight.
+
+    One hit per :func:`classify_hit` kind is kept first, in first-seen order,
+    so a run that returns many hits of one kind still checks official docs.
+    Remaining slots are filled in original order. The result never exceeds
+    ``limit`` URLs and never repeats a URL.
+    """
+    if limit <= 0:
+        return []
+    chosen: list[str] = []
+    seen_urls: set[str] = set()
+    seen_kinds: set[str] = set()
+    for hit in hits:
+        kind = classify_hit(hit)
+        if kind in seen_kinds:
+            continue
+        seen_kinds.add(kind)
+        if not hit.url or hit.url in seen_urls:
+            continue
+        seen_urls.add(hit.url)
+        chosen.append(hit.url)
+        if len(chosen) >= limit:
+            return chosen
+    for hit in hits:
+        if len(chosen) >= limit:
+            break
+        if not hit.url or hit.url in seen_urls:
+            continue
+        seen_urls.add(hit.url)
+        chosen.append(hit.url)
+    return chosen
+
+
+def _check_ok(check: dict) -> bool:
+    status = check.get("status")
+    return (
+        not check.get("error")
+        and isinstance(status, int)
+        and status < 400
+        and not check.get("paywalled")
+    )
+
+
+def render_research_for_prompt(payload: str) -> str:
+    try:
+        data = json.loads(payload)
+    except (TypeError, json.JSONDecodeError):
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    hits = [hit for hit in data.get("hits") or [] if isinstance(hit, dict)]
+    # Once any hit has been checked, only checked-OK hits are usable: the
+    # lesson parser rejects required resources whose URL was not checked.
+    any_checked = any(isinstance(hit.get("check"), dict) for hit in hits)
+    lines = []
+    for hit in hits:
+        check = hit.get("check")
+        if any_checked:
+            if not isinstance(check, dict) or not _check_ok(check):
+                continue
+        lines.append(json.dumps({
+            key: hit.get(key)
+            for key in (
+                "title", "url", "summary", "content",
+                "authority", "trust", "kind", "check",
+            )
+        }, ensure_ascii=False))
+    return "\n".join(lines)
+
+
+def usable_urls_from_payload(payload: str) -> set[str] | None:
+    try:
+        data = json.loads(payload)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    hits = [hit for hit in data.get("hits") or [] if isinstance(hit, dict)]
+    if not any(isinstance(hit.get("check"), dict) for hit in hits):
+        return None
+    return {
+        str(hit.get("url") or "")
+        for hit in hits
+        if isinstance(hit.get("check"), dict) and _check_ok(hit["check"])
+    }

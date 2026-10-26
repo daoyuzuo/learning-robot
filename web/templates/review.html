@@ -2,18 +2,20 @@
 {% block title %}复习 · TestBridge{% endblock %}
 {% block content %}
 <h1>到期复习</h1>
-{% if not rows %}<p>今天没有到期卡。</p>{% else %}
-<p><a href="/review/session">开始复习</a></p>
+{% if not rows %}<p class="tb-callout" data-tone="info">今天没有到期卡。</p>{% else %}
+<p><a class="tb-btn tb-btn-primary" href="/review/session">开始复习</a></p>
+<div class="tb-table-wrap">
 <table>
 <tr><th>练习</th><th>概念</th><th>到期</th><th>课程</th></tr>
 {% for row in rows %}
 <tr>
   <td>{{ row.review.exercise_id }}</td>
   <td>{{ row.review.concept_ids|join(", ") }}</td>
-  <td>{{ row.review.due }}</td>
+  <td><span class="tb-badge">{{ row.review.due }}</span></td>
   <td>{% if row.lesson_id %}<a href="/lesson/{{ row.lesson_id }}">打开</a>{% endif %}</td>
 </tr>
 {% endfor %}
 </table>
+</div>
 {% endif %}
 {% endblock %}

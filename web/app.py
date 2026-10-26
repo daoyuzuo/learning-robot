@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,6 +81,7 @@ def create_app(
     studio_search=None,
     studio_config: TutorConfig | None = None,
     studio_inline: bool = True,
+    studio_url_checker=None,
     interview_banks: Path | None = None,
     interview_llm=None,
     interview_config: TutorConfig | None = None,
@@ -151,6 +153,20 @@ def create_app(
                 timeout=openalex_timeout,
             ),
         })
+    if (
+        studio_url_checker is None
+        and studio_cfg is not None
+        and os.environ.get("TESTBRIDGE_STUDIO_VERIFY", "1") != "0"
+    ):
+        from testbridge.studio.verify import check_urls
+
+        def studio_url_checker(urls):
+            client = httpx.Client(timeout=10.0, follow_redirects=True)
+            try:
+                return check_urls(client, urls)
+            finally:
+                client.close()
+
     mount_studio(
         app,
         templates,
@@ -160,6 +176,7 @@ def create_app(
         llm=studio_llm,
         search=studio_search,
         inline=studio_inline,
+        url_checker=studio_url_checker,
     )
 
     from testbridge.interview.store import InterviewStore

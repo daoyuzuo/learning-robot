@@ -209,6 +209,64 @@ def test_manifest_concepts_prefer_lesson_plan(tmp_path: Path) -> None:
     assert manifest["concepts"] == ["plan-a", "plan-b"]
 
 
+def _payload(**resource_overrides) -> str:
+    resource = {**PAYLOAD["resources"][0], **resource_overrides}
+    return json.dumps({**PAYLOAD, "resources": [resource]})
+
+
+def test_required_c_is_rejected() -> None:
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload(trust="C"), LESSON, {"executor-basics"}
+        )
+
+
+def test_supplementary_c_is_allowed() -> None:
+    output = parse_lesson_json(
+        _payload(trust="C", role="supplementary"), LESSON, {"executor-basics"}
+    )
+    assert output.resources[0]["role"] == "supplementary"
+    assert output.resources[0]["trust"] == "C"
+
+
+def test_d_trust_is_rejected_for_supplementary() -> None:
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload(trust="D", role="supplementary"),
+            LESSON, {"executor-basics"},
+        )
+
+
+def test_last_verified_is_cleared_without_a_check() -> None:
+    output = parse_lesson_json(
+        _payload(), LESSON, {"executor-basics"}
+    )
+    assert output.resources[0]["last_verified"] == ""
+
+
+def test_last_verified_is_set_for_checked_url() -> None:
+    output = parse_lesson_json(
+        _payload(), LESSON, {"executor-basics"},
+        usable_urls={"https://docs.ros.org/x"},
+    )
+    assert output.resources[0]["last_verified"]
+
+
+def test_required_must_pass_preflight() -> None:
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload(), LESSON, {"executor-basics"},
+            usable_urls={"https://other.example"},
+        )
+
+
+def test_missing_kind_is_derived_from_type() -> None:
+    output = parse_lesson_json(
+        _payload(type="paper"), LESSON, {"executor-basics"}
+    )
+    assert output.resources[0]["kind"] == "paper"
+
+
 def test_cross_lesson_id_collisions_are_namespaced(tmp_path: Path) -> None:
     store = setup(tmp_path)
     payload = {

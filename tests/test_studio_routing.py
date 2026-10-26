@@ -60,6 +60,15 @@ class RecordingRouter:
         return SearchRoute(self.route_name, FakeSearch())
 
 
+class KindRouter:
+    def __init__(self) -> None:
+        self.kinds: list[str] = []
+
+    def route_query(self, backend, kind, **kwargs):
+        self.kinds.append(kind)
+        return SearchRoute(f"auto:{kind}", FakeSearch())
+
+
 SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
 
 
@@ -71,6 +80,7 @@ def make_app(tmp_path: Path, router: RecordingRouter) -> TestClient:
         studio_llm=FakeLlm(),
         studio_search=router,
         studio_config=CONFIG,
+        studio_url_checker=lambda urls: {},
     ))
 
 
@@ -157,3 +167,14 @@ def test_research_row_shows_route_name(tmp_path: Path) -> None:
 
     page = html.unescape(app.get("/studio/demo").text)
     assert "auto:openalex->deepseek" in page
+
+
+def test_research_routes_each_query_by_kind(tmp_path: Path) -> None:
+    router = KindRouter()
+    app = make_app(tmp_path, router)
+    create_draft(app, backend="auto")
+
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+
+    assert "engineering" in router.kinds
+    assert "official" in router.kinds

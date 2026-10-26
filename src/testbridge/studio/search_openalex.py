@@ -40,24 +40,43 @@ def _doi_url(doi: Any) -> str:
     return "https://doi.org/" + value
 
 
+def _oa_url(work: dict) -> str:
+    open_access = work.get("open_access")
+    if isinstance(open_access, dict):
+        value = open_access.get("oa_url")
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            return value
+    return ""
+
+
 def _url_for(work: dict) -> str:
-    doi_url = _doi_url(work.get("doi"))
-    if doi_url:
-        return doi_url
+    oa_url = _oa_url(work)
+    if oa_url:
+        return oa_url
     primary = work.get("primary_location")
     if isinstance(primary, dict):
         landing = primary.get("landing_page_url")
         if isinstance(landing, str) and landing.startswith(("http://", "https://")):
             return landing
-    open_access = work.get("open_access")
-    if isinstance(open_access, dict):
-        oa_url = open_access.get("oa_url")
-        if isinstance(oa_url, str) and oa_url.startswith(("http://", "https://")):
-            return oa_url
+    doi_url = _doi_url(work.get("doi"))
+    if doi_url:
+        return doi_url
     work_id = work.get("id")
     if isinstance(work_id, str) and work_id.startswith(("http://", "https://")):
         return work_id
     return ""
+
+
+def _is_oa(work: dict) -> bool:
+    open_access = work.get("open_access")
+    if isinstance(open_access, dict) and open_access.get("is_oa") is True:
+        return True
+    return bool(_oa_url(work))
+
+
+def _work_type(work: dict) -> str | None:
+    value = work.get("type")
+    return str(value) if isinstance(value, str) and value else None
 
 
 def authority_for(work: dict) -> int:
@@ -99,6 +118,9 @@ def _to_hit(work: dict) -> SearchHit | None:
         content=abstract,
         authority=authority_for(work),
         date=_date_for(work),
+        is_oa=_is_oa(work),
+        oa_url=_oa_url(work) or None,
+        work_type=_work_type(work),
     )
 
 
