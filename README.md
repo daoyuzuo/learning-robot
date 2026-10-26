@@ -42,8 +42,8 @@ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli verify-resources content-p
 （本机 venv 未安装 `testbridge` 包时命令需 `PYTHONPATH=src`；安装后可直接用 `tb`。）
 
 required 资源的死链或付费墙会返回退出码 1；补充阅读失败只提示，不阻断。
-Studio 调研时默认会预检前 10 条命中；如需完全离线，设置
-`TESTBRIDGE_STUDIO_VERIFY=0`。
+Studio 调研时默认会对按来源类型均衡选取的至多 10 条命中做链接预检。
+`TESTBRIDGE_STUDIO_VERIFY=0` 只关闭链接预检，搜索与模型调用不受影响。
 
 ## AI 追问（可选）
 

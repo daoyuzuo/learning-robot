@@ -84,6 +84,8 @@ class Resource(StrictModel):
   Pydantic 默认值无法区分“未提供”，因此兼容映射放在 `content/repository.py`
   或 loader 里，用原始 YAML 的字段是否存在判断；`kind` 显式提供时以它为准。
 - 校验器新增：`supplementary` 的 C 级允许；D 级始终报错；`required` 的 C 级报错。
+  虽然 `tb/1` 只新增了可选字段，`required` + trust C 现在是校验硬错误；随附内容包
+  不含 C/D 资源，因此无需迁移。
 - `studio/lessons.py::_parse_resources` 同步改为按 `role` 校验：
   `required` 只允许 A/B，`supplementary` 允许 A/B/C；D 一律拒绝。
   旧草稿没有 `role` 时按 `required` 处理。
@@ -203,8 +205,9 @@ def check_url(client, url: str) -> ResourceCheck: ...
 
 使用点：
 
-1. **调研阶段**：对每课去重后的前 10 条命中做预检（可用 `--no-verify` 关闭）；
-   档案记录 `check` 结果；写课提示词只展示 `paywalled=False` 且 `status<400` 的命中。
+1. **调研阶段**：按来源类型均衡选取至多 10 条命中做预检（每类先取一条，再按原顺序
+   补满；可用 `--no-verify` 关闭）；档案记录 `check` 结果；写课提示词只展示
+   `paywalled=False` 且 `status<400` 的命中，存在任何检查记录时未检查的命中也不展示。
    关闭预检时不展示 `check` 字段，质量门禁按“未检查”处理（warning，不硬阻断）。
 2. **写课解析**：`required` 资源必须来自“已预检且可用”的命中；否则
    `LessonError`，由现有生成重试把错误反馈给模型一次。
@@ -240,12 +243,16 @@ def check_url(client, url: str) -> ResourceCheck: ...
   supplementary 不参与该指标。
 - 新增指标（仅在 `research_dir` 存在、即 `include_metrics=True` 时加入，
   避免已发布包的分数基线变化）：
-  - `provenance.source_mix`（5 分）：每课/每模块是否有官方/标准/工程来源；
+  - `provenance.source_mix`（5 分）：每课只要至少 1 条 required 资源的 `kind` 属于
+    官方/标准/仓库（`official_docs` / `standard` / `repository`）或工程实践
+    （`engineering_blog` / `tutorial`）即得分；
   - `provenance.reachable`（5 分）：required 资源可达比例。
 - 新增 warning：
   - `quality.supplementary_too_many`：每课 supplementary 超过软上限 3 条；
   - `quality.lesson_only_papers`：某课 required 全是 paper；
-  - `quality.lesson_no_ab_required`：某课没有 A/B required。
+  - `quality.lesson_no_ab_required`：某课没有 A/B required；
+  - `quality.lesson_no_practice_source`：某课所有资源（required 与 supplementary）
+    都不是 `engineering_blog` / `tutorial` / `repository`；只 warning，不扣分。
 - 保留 `quality.resource_metadata`（license / last_verified / why 缺失 warning）。
 
 软上限 3 条做成常量 `MAX_SUPPLEMENTARY_PER_LESSON = 3`，可在 spec 评审时调整；
@@ -274,7 +281,8 @@ prompt 版本：按实施顺序 O3 先落地，`studio/3`。旧草稿继续按 `
 
 ## 8. 兼容与边界
 
-- `tb/1` 只新增可选字段；旧内容包不改也能通过。
+- `tb/1` 只新增可选字段；旧内容包不改也能通过。但 `required` + trust C 是硬错误；
+  现有随附包不含 C/D 资源，因此无需迁移。
 - 旧草稿没有 `kind` / `role` 时按兼容映射处理；新生成资源写显式字段。
 - 手动选择检索后端时不静默回退；只有 `auto` 按查询回退。
 - `studio/` 仍不得 import `mastery` / `schedule` / `learning` / `evidence`。

@@ -528,15 +528,17 @@ O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 
 - 资源新增可选 `kind` / `role`；`required` 只允许 A/B，`supplementary` 允许 A/B/C，D 一律拒绝。
 - `auto` 按查询类型分流：学术走 OpenAlex，工程/官方走 DeepSeek；手动后端不回退。
 - OpenAlex 优先给 OA 链接，其次 landing page，最后 DOI。
-- 调研阶段预检前 10 条命中：状态码、最终 URL、正文长度、付费墙启发式；
-  档案记录 `kind` / `trust` / `check` 与逐查询 `backend`。
-- 写课只看到通过预检的命中；`required` 未通过预检直接拒绝。
+- 调研阶段按来源类型均衡选取至多 10 条命中预检：状态码、最终 URL、正文长度、
+  付费墙启发式；档案记录 `kind` / `trust` / `check` 与逐查询 `backend`。
+- 写课只看到通过预检的命中（存在检查记录时，未检查的命中也不展示）；
+  `required` 未通过预检直接拒绝。
 - `last_verified` 只在检查通过时写当天，不再自动填今天。
 - `tb verify-resources <pack>`：显式联网复查，required 失败返回 1。
-- 质量门禁：`provenance.trust` 只统计 required；新增 `source_mix`（5 分）与
-  `reachable`（5 分，仅在有检查记录时出现）；新增
-  `resource_unreachable` / `resource_unchecked` / `resource_stale` /
-  `supplementary_too_many` / `lesson_only_papers` / `lesson_no_ab_required`。
+- 质量门禁：`provenance.trust` 只统计 required；新增 `source_mix`（5 分，required
+  中有官方/标准/仓库或工程实践来源）与 `reachable`（5 分，仅在有检查记录时出现）；
+  新增 `resource_unreachable` / `resource_unchecked` / `resource_stale` /
+  `supplementary_too_many` / `lesson_only_papers` / `lesson_no_ab_required` /
+  `lesson_no_practice_source`（缺少工程实践来源只 warning，不扣分）。
 - prompt 版本 `studio/3`；旧草稿继续按 `studio/1` / `studio/2` 显示，不自动迁移。
 
 **不做：** 付费墙绕过、C 级自动升 B、SearXNG / Firecrawl / arXiv 适配器、
