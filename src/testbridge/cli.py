@@ -214,6 +214,61 @@ def _cmd_env_init(args) -> int:
     return 0
 
 
+def _cmd_doctor(args) -> int:
+    required = [
+        ("llm.base_url", "TESTBRIDGE_LLM_BASE_URL", display_url),
+        ("llm.model", "TESTBRIDGE_LLM_MODEL", str),
+        ("llm.api_key", "TESTBRIDGE_LLM_API_KEY", secret_status),
+    ]
+    missing = []
+    for label, name, formatter in required:
+        value = os.environ.get(name, "")
+        if not value:
+            missing.append(name)
+            print(f"{label:16} missing  {name}")
+            continue
+        print(f"{label:16} set      {formatter(value)}")
+
+    timeout = os.environ.get("TESTBRIDGE_LLM_TIMEOUT") or "30"
+    timeout_state = "set" if os.environ.get("TESTBRIDGE_LLM_TIMEOUT") else "default"
+    print(f"{'llm.timeout':16} {timeout_state:8} {timeout}s")
+
+    mailto = os.environ.get("TESTBRIDGE_OPENALEX_MAILTO")
+    print(f"{'openalex.mailto':16} {'set' if mailto else 'unset'}")
+    for name, default in (
+        ("TESTBRIDGE_OPENALEX_BASE_URL", "https://api.openalex.org"),
+        ("TESTBRIDGE_OPENALEX_TIMEOUT", "10"),
+    ):
+        value = os.environ.get(name)
+        state = "set" if value else "default"
+        print(f"{name.lower():16} {state:8} {value or default}")
+
+    if missing:
+        print("missing: " + ", ".join(missing), file=sys.stderr)
+        return 2
+    if not args.probe:
+        return 0
+
+    config = load_config()
+    if config is None:
+        print("ERROR doctor: missing environment variables", file=sys.stderr)
+        return 2
+    client = build_tutor_client(config)
+    started = time.perf_counter()
+    try:
+        reply = client.complete("你是连通性测试，请只回复 ok。", "ok")
+    except TutorTimeoutError:
+        print("ERROR doctor: upstream timed out", file=sys.stderr)
+        return 2
+    except TutorUpstreamError as exc:
+        print(f"ERROR doctor: {exc}", file=sys.stderr)
+        return 2
+    elapsed = (time.perf_counter() - started) * 1000
+    print(f"latency: {elapsed:.0f} ms")
+    print(f"reply: {reply.strip()[:40]}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -289,7 +344,13 @@ def main(argv: list[str] | None = None) -> int:
     env_init.add_argument("--timeout", default=None)
     env_init.add_argument("--dry-run", action="store_true")
 
+    doctor = sub.add_parser("doctor", help="check local configuration")
+    doctor.add_argument("--probe", action="store_true")
+
     args = parser.parse_args(argv)
+
+    if args.command == "doctor":
+        return _cmd_doctor(args)
 
     if args.command == "env":
         if args.env_command == "init":

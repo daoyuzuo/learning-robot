@@ -148,3 +148,52 @@ def test_env_init_rejects_bad_url(monkeypatch, capsys) -> None:
     assert code == 2
     assert written == {}
     assert "base URL" in capsys.readouterr().err
+
+
+def test_doctor_reports_missing(capsys) -> None:
+    code = main(["doctor"])
+    out = capsys.readouterr().out
+    assert code == 2
+    assert "TESTBRIDGE_LLM_BASE_URL" in out
+    assert "missing" in out
+
+
+def test_doctor_masks_key(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("TESTBRIDGE_LLM_BASE_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("TESTBRIDGE_LLM_API_KEY", "sk-secret")
+    monkeypatch.setenv("TESTBRIDGE_LLM_MODEL", "demo")
+    monkeypatch.setenv("TESTBRIDGE_LLM_TIMEOUT", "90")
+
+    code = main(["doctor"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "sk-secret" not in out
+    assert "https://api.example.com" in out
+    assert "/v1" not in out
+    assert "set (9 chars)" in out
+
+
+def test_doctor_probe_reports_reply(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("TESTBRIDGE_LLM_BASE_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("TESTBRIDGE_LLM_API_KEY", "sk-secret")
+    monkeypatch.setenv("TESTBRIDGE_LLM_MODEL", "demo")
+
+    class FakeClient:
+        def complete(self, system: str, user: str) -> str:
+            return "ok"
+
+    monkeypatch.setattr(
+        "testbridge.cli.build_tutor_client", lambda config: FakeClient()
+    )
+    code = main(["doctor", "--probe"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "latency" in out
+    assert "ok" in out
+    assert "sk-secret" not in out
+
+
+def test_doctor_probe_missing_config(capsys) -> None:
+    code = main(["doctor", "--probe"])
+    assert code == 2
+    assert "missing" in capsys.readouterr().err
