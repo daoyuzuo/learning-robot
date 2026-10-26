@@ -34,6 +34,9 @@ class SearchHit:
     content: str
     authority: int
     date: str | None = None
+    is_oa: bool = False
+    oa_url: str | None = None
+    work_type: str | None = None
 
 
 class SearchProvider(Protocol):
