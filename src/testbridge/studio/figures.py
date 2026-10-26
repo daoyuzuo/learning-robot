@@ -7,6 +7,7 @@ it into inline SVG with escaped text and no scripts, styles, or external URLs.
 from __future__ import annotations
 
 import html as html_lib
+import math
 import re
 from html.parser import HTMLParser
 
@@ -18,8 +19,13 @@ MIN_ITEMS = 2
 MAX_ITEMS = 8
 MAX_GROUPS = 4
 MAX_GROUP_ITEMS = 5
+MAX_FIGURES = 6
+MAX_EDGES_FACTOR = 2
 VIEWBOX_WIDTH = 800
 LINE_HEIGHT = 18
+BOX_HEIGHT = 64
+ROW_HEIGHT = 2 * LINE_HEIGHT + 8
+UNIT_PX = 8
 ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]*$")
 MOUNT_RE = re.compile(
     r'<div\b[^>]*\bdata-tb-figure\s*=\s*(["\'])([^"\']+)\1[^>]*>\s*</div>',
@@ -42,6 +48,12 @@ def _str(value: object, limit: int, *, field: str, allow_empty: bool = False) ->
     return text
 
 
+def _list(value: object, *, field: str) -> list:
+    if not isinstance(value, list):
+        raise FigureError(f"{field} 必须是数组")
+    return value
+
+
 def _items(value: object, *, field: str) -> list:
     if not isinstance(value, list) or not (MIN_ITEMS <= len(value) <= MAX_ITEMS):
         raise FigureError(f"{field} 需要 {MIN_ITEMS}–{MAX_ITEMS} 项")
@@ -51,7 +63,7 @@ def _items(value: object, *, field: str) -> list:
 def _parse_flow(item: dict) -> dict:
     nodes = []
     seen = set()
-    for raw in item.get("nodes") or []:
+    for raw in _list(item.get("nodes") or [], field="nodes"):
         if not isinstance(raw, dict):
             raise FigureError("flow.node 必须是对象")
         node_id = _str(raw.get("id"), LABEL_LIMIT, field="node.id")
@@ -68,8 +80,11 @@ def _parse_flow(item: dict) -> dict:
         )
     if not (MIN_ITEMS <= len(nodes) <= MAX_ITEMS):
         raise FigureError(f"flow 需要 {MIN_ITEMS}–{MAX_ITEMS} 个节点")
+    raw_edges = _list(item.get("edges") or [], field="edges")
+    if len(raw_edges) > MAX_EDGES_FACTOR * len(nodes):
+        raise FigureError(f"edges 不能超过节点数的 {MAX_EDGES_FACTOR} 倍")
     edges = []
-    for raw in item.get("edges") or []:
+    for raw in raw_edges:
         if not isinstance(raw, dict):
             raise FigureError("flow.edge 必须是对象")
         source = _str(raw.get("from"), LABEL_LIMIT, field="edge.from")
@@ -114,8 +129,8 @@ def _parse_block(item: dict) -> dict:
     for raw in groups:
         if not isinstance(raw, dict):
             raise FigureError("block.group 必须是对象")
-        items = raw.get("items")
-        if not isinstance(items, list) or not (1 <= len(items) <= MAX_GROUP_ITEMS):
+        items = _list(raw.get("items"), field="group.items")
+        if not (1 <= len(items) <= MAX_GROUP_ITEMS):
             raise FigureError(f"group.items 需要 1–{MAX_GROUP_ITEMS} 项")
         parsed.append(
             {
@@ -131,8 +146,8 @@ def _parse_block(item: dict) -> dict:
 def _parse_compare_side(value: object, name: str) -> dict:
     if not isinstance(value, dict):
         raise FigureError(f"compare.{name} 必须是对象")
-    items = value.get("items")
-    if not isinstance(items, list) or not (1 <= len(items) <= MAX_GROUP_ITEMS):
+    items = _list(value.get("items"), field=f"compare.{name}.items")
+    if not (1 <= len(items) <= MAX_GROUP_ITEMS):
         raise FigureError(f"compare.{name}.items 需要 1–{MAX_GROUP_ITEMS} 项")
     return {
         "title": _str(value.get("title"), LABEL_LIMIT, field=f"compare.{name}.title"),
@@ -162,6 +177,8 @@ def parse_figures(items: object, concept_ids: set[str]) -> list[dict]:
         return []
     if not isinstance(items, list):
         raise FigureError("figures 必须是数组")
+    if len(items) > MAX_FIGURES:
+        raise FigureError(f"每课最多 {MAX_FIGURES} 张图")
     figures = []
     seen: set[str] = set()
     for raw in items:
@@ -175,10 +192,10 @@ def parse_figures(items: object, concept_ids: set[str]) -> list[dict]:
         kind = str(raw.get("kind") or "").strip().lower()
         if kind not in _PARSERS:
             raise FigureError(f"不支持的 figure.kind：{kind}")
-        concepts = raw.get("concepts") or []
-        if not isinstance(concepts, list):
-            raise FigureError("figure.concepts 必须是数组")
+        concepts = _list(raw.get("concepts") or [], field="figure.concepts")
         for concept_id in concepts:
+            if not isinstance(concept_id, str):
+                raise FigureError("figure.concepts 必须只含概念 id 字符串")
             if concept_id not in concept_ids:
                 raise FigureError(f"figure 引用了不存在的概念：{concept_id}")
         parsed = {
@@ -198,6 +215,20 @@ def parse_figures(items: object, concept_ids: set[str]) -> list[dict]:
     return figures
 
 
+def _n(value: float) -> str:
+    """Format an SVG coordinate with one decimal and no long float reprs."""
+    return f"{value:.1f}"
+
+
+def _units(text: str) -> int:
+    return sum(2 if ord(char) >= 0x2E80 else 1 for char in text)
+
+
+def _fit(px: float, size: int = 16) -> int:
+    """How many half-width units fit in ``px`` at the given font size."""
+    return max(2, int(px * 2 / size))
+
+
 def _wrap(text: str, max_units: int) -> list[str]:
     lines: list[str] = []
     current = ""
@@ -214,6 +245,15 @@ def _wrap(text: str, max_units: int) -> list[str]:
     return lines or [""]
 
 
+def _ellipsize(text: str, max_units: int) -> str:
+    kept = ""
+    for char in text:
+        if _units(kept) + _units(char) + 1 > max_units:
+            break
+        kept += char
+    return kept + "…"
+
+
 def _text(
     x: float,
     y: float,
@@ -223,22 +263,43 @@ def _text(
     size: int = 16,
     anchor: str = "middle",
     weight: int = 400,
+    max_lines: int = 2,
 ) -> str:
-    lines = _wrap(text, max_units)[:4]
+    lines = _wrap(text, max_units)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = _ellipsize(lines[-1], max_units)
     spans = "".join(
-        f'<tspan x="{x}" dy="{0 if index == 0 else LINE_HEIGHT}">'
+        f'<tspan x="{_n(x)}" dy="{0 if index == 0 else LINE_HEIGHT}">'
         f"{html_lib.escape(line)}</tspan>"
         for index, line in enumerate(lines)
     )
     return (
-        f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}"'
+        f'<text x="{_n(x)}" y="{_n(y)}" font-size="{size}" font-weight="{weight}"'
         f' text-anchor="{anchor}" fill="currentColor">{spans}</text>'
     )
 
 
-def _svg(width: int, height: int, spec: dict, body: str) -> str:
+def _arrow(x1: float, y1: float, x2: float, y2: float) -> str:
+    """Triangle whose tip sits on ``(x2, y2)`` and points along the edge."""
+    length = math.hypot(x2 - x1, y2 - y1)
+    if length == 0:
+        return ""
+    ux, uy = (x2 - x1) / length, (y2 - y1) / length
+    px, py = -uy, ux
+    back, half = 7.0, 4.5
+    base_x, base_y = x2 - ux * back, y2 - uy * back
+    left = (base_x + px * half, base_y + py * half)
+    right = (base_x - px * half, base_y - py * half)
     return (
-        f'<svg viewBox="0 0 {width} {height}" width="100%" role="img"'
+        f'<polygon points="{_n(x2)},{_n(y2)} {_n(left[0])},{_n(left[1])} '
+        f'{_n(right[0])},{_n(right[1])}" fill="currentColor"/>'
+    )
+
+
+def _svg(width: int, height: float, spec: dict, body: str) -> str:
+    return (
+        f'<svg viewBox="0 0 {width} {_n(height)}" width="100%" role="img"'
         ' xmlns="http://www.w3.org/2000/svg">'
         f"<title>{html_lib.escape(spec['caption'])}</title>"
         f"<desc>{html_lib.escape(spec['alt'])}</desc>"
@@ -251,32 +312,34 @@ def _render_flow(spec: dict) -> str:
     edges = spec["edges"]
     horizontal = spec["direction"] == "LR"
     count = len(nodes)
+    margin = 40.0
+    box_h = BOX_HEIGHT
     positions: dict[str, tuple[float, float, float, float]] = {}
     if horizontal:
-        box_h, margin = 64, 40
-        # Shrink boxes when many nodes so they still fit inside the viewBox.
-        box_w = min(150, (VIEWBOX_WIDTH - 2 * margin) / count - 16)
+        # Shrink boxes when many nodes so two lines still fit without overlap.
+        box_w = min(150.0, (VIEWBOX_WIDTH - 2 * margin) / count - 16)
         gap = (VIEWBOX_WIDTH - 2 * margin - count * box_w) / max(1, count - 1)
-        height = 180
+        height = 2 * margin + box_h + 36
         for index, node in enumerate(nodes):
             x = margin + index * (box_w + gap)
-            positions[node["id"]] = (x, 50, box_w, box_h)
+            positions[node["id"]] = (x, margin + 10, box_w, box_h)
     else:
-        box_w, box_h, margin = 280, 56, 40
-        gap = 26
+        box_w = 280.0
+        gap = 26.0
         height = 2 * margin + count * box_h + (count - 1) * gap
         for index, node in enumerate(nodes):
             x = (VIEWBOX_WIDTH - box_w) / 2
             y = margin + index * (box_h + gap)
             positions[node["id"]] = (x, y, box_w, box_h)
+    label_units = _fit(box_w - 12)
     parts = []
     for node in nodes:
         x, y, w, h = positions[node["id"]]
         parts.append(
-            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8"'
+            f'<rect x="{_n(x)}" y="{_n(y)}" width="{_n(w)}" height="{_n(h)}" rx="8"'
             ' fill="currentColor" fill-opacity="0.06" stroke="currentColor"/>'
         )
-        parts.append(_text(x + w / 2, y + h / 2 + 5, node["label"], int(w / 9)))
+        parts.append(_text(x + w / 2, y + h / 2 - 3, node["label"], label_units))
     for edge in edges:
         sx, sy, sw, sh = positions[edge["from"]]
         tx, ty, tw, th = positions[edge["to"]]
@@ -287,80 +350,119 @@ def _render_flow(spec: dict) -> str:
             x1, y1 = sx + sw / 2, sy + sh
             x2, y2 = tx + tw / 2, ty
         parts.append(
-            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}"'
+            f'<line x1="{_n(x1)}" y1="{_n(y1)}" x2="{_n(x2)}" y2="{_n(y2)}"'
             ' stroke="currentColor" stroke-width="1.5"/>'
         )
-        angle = 6
-        parts.append(
-            f'<polygon points="{x2},{y2} {x2 - angle},{y2 - angle} '
-            f'{x2 - angle},{y2 + angle}" fill="currentColor"/>'
-        )
+        parts.append(_arrow(x1, y1, x2, y2))
         if edge["label"]:
-            parts.append(
-                _text((x1 + x2) / 2, (y1 + y2) / 2 - 8, edge["label"], 12, size=12)
-            )
-    return _svg(VIEWBOX_WIDTH, int(height), spec, "".join(parts))
+            if horizontal:
+                units = _fit(max(16.0, x2 - x1 - 8), 12)
+                parts.append(
+                    _text(
+                        (x1 + x2) / 2, (y1 + y2) / 2 - 8, edge["label"], units,
+                        size=12, max_lines=1,
+                    )
+                )
+            else:
+                units = _fit(box_w - 16, 12)
+                parts.append(
+                    _text(
+                        x1 + 8, (y1 + y2) / 2 + 4, edge["label"], units,
+                        size=12, anchor="start", max_lines=1,
+                    )
+                )
+    return _svg(VIEWBOX_WIDTH, height, spec, "".join(parts))
 
 
 def _render_timeline(spec: dict) -> str:
     events = spec["events"]
     count = len(events)
-    margin = 60
+    margin = 60.0
     step = (VIEWBOX_WIDTH - 2 * margin) / max(1, count - 1)
-    y = 105
+    axis_y = 105.0
+    label_y = axis_y + 30
+    detail_y = label_y + 2 * LINE_HEIGHT + 8
+    height = detail_y + 2 * LINE_HEIGHT + 24
+    label_units = _fit(step - 10)
+    detail_units = _fit(step - 10, 12)
     parts = [
         (
-            f'<line x1="{margin}" y1="{y}" x2="{VIEWBOX_WIDTH - margin}" y2="{y}"'
+            f'<line x1="{_n(margin)}" y1="{_n(axis_y)}"'
+            f' x2="{_n(VIEWBOX_WIDTH - margin)}" y2="{_n(axis_y)}"'
             ' stroke="currentColor" stroke-width="2"/>'
         )
     ]
     for index, event in enumerate(events):
         x = margin + index * step
-        parts.append(f'<circle cx="{x}" cy="{y}" r="6" fill="currentColor"/>')
-        parts.append(_text(x, y - 22, event["at"], 14, size=13, weight=600))
-        parts.append(_text(x, y + 34, event["label"], 16))
+        parts.append(
+            f'<circle cx="{_n(x)}" cy="{_n(axis_y)}" r="6" fill="currentColor"/>'
+        )
+        parts.append(
+            _text(x, axis_y - 22, event["at"], label_units, size=13, weight=600,
+                  max_lines=1)
+        )
+        parts.append(_text(x, label_y, event["label"], label_units))
         if event["detail"]:
-            parts.append(_text(x, y + 56, event["detail"], 20, size=12))
-    return _svg(VIEWBOX_WIDTH, 190, spec, "".join(parts))
+            parts.append(_text(x, detail_y, event["detail"], detail_units, size=12))
+    return _svg(VIEWBOX_WIDTH, height, spec, "".join(parts))
 
 
 def _render_block(spec: dict) -> str:
     groups = spec["groups"]
     count = len(groups)
-    gap = 20
-    margin = 30
+    gap = 20.0
+    margin = 30.0
     width = (VIEWBOX_WIDTH - 2 * margin - (count - 1) * gap) / count
-    height = 210
+    box_top = 30.0
+    title_y = box_top + 28
+    item_y = title_y + 2 * LINE_HEIGHT + 12
+    rows = max(len(group["items"]) for group in groups)
+    height = item_y + (rows - 1) * ROW_HEIGHT + 2 * LINE_HEIGHT + 24
+    title_units = _fit(width - 12)
+    item_units = _fit(width - 12, 13)
     parts = []
     for index, group in enumerate(groups):
         x = margin + index * (width + gap)
         parts.append(
-            f'<rect x="{x}" y="30" width="{width}" height="{height - 40}" rx="10"'
+            f'<rect x="{_n(x)}" y="{_n(box_top)}" width="{_n(width)}"'
+            f' height="{_n(height - 20)}" rx="10"'
             ' fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>'
         )
-        parts.append(
-            _text(x + width / 2, 58, group["label"], int(width / 9), weight=600)
-        )
+        parts.append(_text(x + width / 2, title_y, group["label"], title_units,
+                           weight=600))
         for row, item in enumerate(group["items"]):
             parts.append(
-                _text(x + width / 2, 92 + row * 24, item, int(width / 9), size=13)
+                _text(x + width / 2, item_y + row * ROW_HEIGHT, item, item_units,
+                      size=13)
             )
     return _svg(VIEWBOX_WIDTH, height, spec, "".join(parts))
 
 
 def _render_compare(spec: dict) -> str:
-    columns = (("left", 30), ("right", 420))
-    height = 220
+    columns = (("left", 30.0), ("right", 420.0))
+    col_w = 350.0
+    box_top = 30.0
+    title_y = box_top + 32
+    item_y = title_y + 2 * LINE_HEIGHT + 12
+    rows = max(len(spec["left"]["items"]), len(spec["right"]["items"]))
+    height = item_y + (rows - 1) * ROW_HEIGHT + 2 * LINE_HEIGHT + 24
+    title_units = _fit(col_w - 24)
+    item_units = _fit(col_w - 24, 13)
     parts = []
     for key, x in columns:
         side = spec[key]
         parts.append(
-            f'<rect x="{x}" y="30" width="350" height="{height - 50}" rx="10"'
+            f'<rect x="{_n(x)}" y="{_n(box_top)}" width="{_n(col_w)}"'
+            f' height="{_n(height - 20)}" rx="10"'
             ' fill="currentColor" fill-opacity="0.05" stroke="currentColor"/>'
         )
-        parts.append(_text(x + 175, 62, side["title"], 32, weight=600))
+        parts.append(_text(x + col_w / 2, title_y, side["title"], title_units,
+                           weight=600))
         for row, item in enumerate(side["items"]):
-            parts.append(_text(x + 175, 98 + row * 24, item, 32, size=13))
+            parts.append(
+                _text(x + col_w / 2, item_y + row * ROW_HEIGHT, item, item_units,
+                      size=13)
+            )
     return _svg(VIEWBOX_WIDTH, height, spec, "".join(parts))
 
 
@@ -388,12 +490,6 @@ class _MountScanner(HTMLParser):
             self.depth += 1
         names = {name.lower(): value for name, value in attrs}
         if lower == "div" and names.get("data-tb-figure"):
-            self.mounts.append((str(names["data-tb-figure"]), self.depth > 0))
-
-    def handle_startendtag(self, tag, attrs):
-        # A self-closing tag opens no scope, so <article/> must not raise depth.
-        names = {name.lower(): value for name, value in attrs}
-        if tag.lower() == "div" and names.get("data-tb-figure"):
             self.mounts.append((str(names["data-tb-figure"]), self.depth > 0))
 
     def handle_endtag(self, tag):
@@ -430,8 +526,11 @@ def embed_figures(html: str, figures: list[dict]) -> str:
 
     def replace(match: re.Match) -> str:
         figure_id = match.group(2)
+        figure = rendered.get(figure_id)
+        if figure is None:
+            raise FigureError(f"挂载点无法解析：{figure_id}")
         replaced.append(figure_id)
-        return rendered[figure_id]
+        return figure
 
     result = MOUNT_RE.sub(replace, html)
     if len(replaced) != len(scanner.mounts):

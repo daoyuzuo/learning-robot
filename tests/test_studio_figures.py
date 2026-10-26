@@ -5,6 +5,7 @@ import pytest
 
 from testbridge.contract.sanitize import sanitize_fragment
 from testbridge.studio.figures import (
+    LINE_HEIGHT,
     FigureError,
     embed_figures,
     parse_figures,
@@ -92,6 +93,33 @@ def test_parse_rejects_too_many_groups() -> None:
         parse_figures([broken], {"c"})
 
 
+@pytest.mark.parametrize(
+    "broken",
+    [
+        {**FLOW, "nodes": 3},
+        {**FLOW, "edges": 7},
+        {**FLOW, "concepts": "c"},
+        {**FLOW, "concepts": [{"a": 1}]},
+    ],
+)
+def test_parse_rejects_untrusted_shapes(broken) -> None:
+    with pytest.raises(FigureError):
+        parse_figures([broken], {"c"})
+
+
+def test_parse_rejects_too_many_figures() -> None:
+    figures = [{**FLOW, "id": f"FIG-{index}"} for index in range(1, 8)]
+    with pytest.raises(FigureError):
+        parse_figures(figures, {"c"})
+
+
+def test_parse_rejects_too_many_edges() -> None:
+    nodes = [{"id": f"n{index}", "label": "节点"} for index in range(1, 5)]
+    edges = [{"from": "n1", "to": "n2"} for _ in range(9)]
+    with pytest.raises(FigureError):
+        parse_figures([{**FLOW, "nodes": nodes, "edges": edges}], {"c"})
+
+
 @pytest.mark.parametrize("spec", [FLOW, TIMELINE, BLOCK, COMPARE])
 def test_render_contains_accessible_svg(spec) -> None:
     svg = render_figure(parse_figures([spec], {"c"})[0])
@@ -117,6 +145,69 @@ def test_render_survives_sanitizer(spec) -> None:
     assert "dy=" in clean
     assert "<polygon" in clean or "<circle" in clean or "<rect" in clean
     assert 'viewbox="0 0' in clean.lower()
+
+
+def test_render_truncates_long_label_with_ellipsis() -> None:
+    spec = {
+        **FLOW,
+        "nodes": [{"id": "n1", "label": "长" * 40}, {"id": "n2", "label": "回放"}],
+    }
+    svg = render_figure(parse_figures([spec], {"c"})[0])
+    blocks = re.findall(r"<text[^>]*>.*?</text>", svg)
+    target = next(block for block in blocks if "长" in block)
+    assert target.count("<tspan") == 2
+    assert "…" in target
+
+
+def test_render_flow_tb_direction() -> None:
+    svg = render_figure(parse_figures([{**FLOW, "direction": "TB"}], {"c"})[0])
+    line = re.search(
+        r'<line x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)"', svg
+    )
+    x1, y1, x2, y2 = (float(value) for value in line.groups())
+    assert x1 == x2
+    assert y2 > y1
+    polygon = re.search(r'<polygon points="([^"]+)"', svg)
+    points = [
+        tuple(float(part) for part in pair.split(","))
+        for pair in polygon.group(1).split()
+    ]
+    assert points[0] == (x2, y2)
+    assert points[0][1] == max(y for _, y in points)
+
+
+def test_render_block_rows_reserve_two_lines_and_grow() -> None:
+    long_item = "很长的说明文字" * 4
+    tall = {
+        **BLOCK,
+        "groups": [
+            {"label": "感知", "items": [long_item] * 5},
+            {"label": "判定", "items": ["规则", "模型"]},
+        ],
+    }
+    short = {
+        **BLOCK,
+        "groups": [
+            {"label": "感知", "items": ["相机", "IMU"]},
+            {"label": "判定", "items": ["规则", "模型"]},
+        ],
+    }
+    tall_svg = render_figure(parse_figures([tall], {"c"})[0])
+    short_svg = render_figure(parse_figures([short], {"c"})[0])
+    ys = [
+        float(y)
+        for y, body in re.findall(
+            r'<text x="[^"]+" y="([\d.]+)"[^>]*>(.*?)</text>', tall_svg
+        )
+        if "很长的说明文字" in body
+    ]
+    assert len(ys) == 5
+    assert all(second - first >= 2 * LINE_HEIGHT for first, second in itertools.pairwise(ys))
+
+    def height(svg: str) -> float:
+        return float(re.search(r'viewBox="0 0 800 ([\d.]+)"', svg).group(1))
+
+    assert height(tall_svg) > height(short_svg)
 
 
 def test_render_wide_flow_stays_inside_viewbox() -> None:
@@ -167,5 +258,11 @@ def test_embed_rejects_orphan_spec() -> None:
 
 def test_embed_rejects_mount_outside_article() -> None:
     html = '<article class="tb-lesson"><p>x</p></article><div data-tb-figure="FIG-1"></div>'
+    with pytest.raises(FigureError):
+        embed_figures(html, parse_figures([FLOW], {"c"}))
+
+
+def test_embed_rejects_encoded_mount_id() -> None:
+    html = '<article class="tb-lesson"><div data-tb-figure="FIG&#45;1"></div></article>'
     with pytest.raises(FigureError):
         embed_figures(html, parse_figures([FLOW], {"c"}))
