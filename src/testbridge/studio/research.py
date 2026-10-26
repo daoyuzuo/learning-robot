@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html as html_lib
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -20,9 +21,13 @@ from testbridge.studio.store import DraftStore
 SITE_QUERY = "site:docs.ros.org OR site:docs.ros2.org"
 CONTENT_LIMIT = 4000
 QUERY_KINDS = ("academic", "engineering", "official")
-OFFICIAL_HINTS = (
-    "site:", "docs.", "documentation", "官方文档", "标准", "spec", "reference",
+# English hints match whole words so "spec" does not hit "inspect" and
+# "reference" does not hit "preference". Chinese has no word boundaries, so
+# those hints stay substrings.
+OFFICIAL_HINT_WORDS = re.compile(
+    r"\b(?:site|docs|documentation|spec|reference)\b", re.IGNORECASE
 )
+OFFICIAL_HINTS_ZH = ("官方文档", "标准")
 
 
 @dataclass(frozen=True)
@@ -46,7 +51,9 @@ def classify_query(text: str) -> str:
     lowered = text.lower()
     if any(hint in lowered for hint in ACADEMIC_KEYWORDS):
         return "academic"
-    if any(hint in lowered for hint in OFFICIAL_HINTS):
+    if OFFICIAL_HINT_WORDS.search(text) or any(
+        hint in lowered for hint in OFFICIAL_HINTS_ZH
+    ):
         return "official"
     return "engineering"
 
@@ -169,6 +176,8 @@ def write_research(
             "title": hit.title, "url": hit.url, "snippet": hit.snippet,
             "summary": hit.summary, "content": hit.content[:CONTENT_LIMIT],
             "authority": hit.authority, "date": hit.date,
+            "is_oa": hit.is_oa, "oa_url": hit.oa_url,
+            "work_type": hit.work_type,
             "trust": trust_for_hit(hit),
             "kind": classify_hit(hit),
         }
@@ -195,6 +204,40 @@ def write_research(
     )
 
 
+def preflight_urls(hits: list[SearchHit], *, limit: int = 10) -> list[str]:
+    """Pick a kind-balanced, de-duplicated set of URLs to preflight.
+
+    One hit per :func:`classify_hit` kind is kept first, in first-seen order,
+    so a run that returns many hits of one kind still checks official docs.
+    Remaining slots are filled in original order. The result never exceeds
+    ``limit`` URLs and never repeats a URL.
+    """
+    if limit <= 0:
+        return []
+    chosen: list[str] = []
+    seen_urls: set[str] = set()
+    seen_kinds: set[str] = set()
+    for hit in hits:
+        kind = classify_hit(hit)
+        if kind in seen_kinds:
+            continue
+        seen_kinds.add(kind)
+        if not hit.url or hit.url in seen_urls:
+            continue
+        seen_urls.add(hit.url)
+        chosen.append(hit.url)
+        if len(chosen) >= limit:
+            return chosen
+    for hit in hits:
+        if len(chosen) >= limit:
+            break
+        if not hit.url or hit.url in seen_urls:
+            continue
+        seen_urls.add(hit.url)
+        chosen.append(hit.url)
+    return chosen
+
+
 def _check_ok(check: dict) -> bool:
     status = check.get("status")
     return (
@@ -212,13 +255,16 @@ def render_research_for_prompt(payload: str) -> str:
         return ""
     if not isinstance(data, dict):
         return ""
+    hits = [hit for hit in data.get("hits") or [] if isinstance(hit, dict)]
+    # Once any hit has been checked, only checked-OK hits are usable: the
+    # lesson parser rejects required resources whose URL was not checked.
+    any_checked = any(isinstance(hit.get("check"), dict) for hit in hits)
     lines = []
-    for hit in data.get("hits") or []:
-        if not isinstance(hit, dict):
-            continue
+    for hit in hits:
         check = hit.get("check")
-        if isinstance(check, dict) and not _check_ok(check):
-            continue
+        if any_checked:
+            if not isinstance(check, dict) or not _check_ok(check):
+                continue
         lines.append(json.dumps({
             key: hit.get(key)
             for key in (

@@ -621,6 +621,51 @@ def test_only_papers_warning_and_source_mix(tmp_path: Path) -> None:
     assert reachable.earned == 5
 
 
+def test_missing_practice_source_warns_without_cutting_source_mix(
+    tmp_path: Path,
+) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.lesson_no_practice_source"
+        and issue.lesson_id == "L-ONE"
+        for issue in result.warnings
+    )
+    mix = next(
+        metric for metric in result.metrics if metric.key == "provenance.source_mix"
+    )
+    # The metric is earned by the official required source; only a warning
+    # points out the missing engineering-practice source.
+    assert mix.earned == 5
+
+
+def test_practice_source_suppresses_the_warning(tmp_path: Path) -> None:
+    extra = {
+        **default_resource(), "id": "DOC-2", "kind": "tutorial",
+        "role": "supplementary", "trust": "C",
+        "url": "https://blog.example/tutorial/1",
+    }
+    resources = [default_resource(), extra]
+    pack = build_pack(
+        tmp_path / "pack", resources=resources,
+        lesson_resources=["DOC-1", "DOC-2"],
+    )
+    research = write_research(tmp_path / "pack", hits=[
+        {"url": "https://docs.example/x", "trust": "A"},
+        {"url": "https://blog.example/tutorial/1", "trust": "C"},
+    ])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert not any(
+        issue.code == "quality.lesson_no_practice_source"
+        for issue in result.warnings
+    )
+
+
 def test_published_pack_has_no_new_metrics(tmp_path: Path) -> None:
     pack = build_pack(tmp_path / "pack")
     research = write_research(tmp_path / "pack")

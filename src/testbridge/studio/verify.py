@@ -79,16 +79,45 @@ def _paywalled(status: int, final_url: str, text: str, ctype: str) -> bool:
     return False
 
 
+def _capped_text(response) -> str:
+    """Read at most ``MAX_BYTES`` from a streaming response, then stop."""
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in response.iter_bytes():
+        if not chunk:
+            continue
+        remaining = MAX_BYTES - total
+        if remaining <= 0:
+            break
+        piece = bytes(chunk[:remaining])
+        chunks.append(piece)
+        total += len(piece)
+        if total >= MAX_BYTES:
+            break
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
 def check_url(client, url: str) -> ResourceCheck:
     try:
-        response = client.get(url, follow_redirects=True)
+        stream = getattr(client, "stream", None)
+        if callable(stream):
+            # Do not materialise the whole body: read the capped slice only.
+            with stream("GET", url, follow_redirects=True) as response:
+                status = int(getattr(response, "status_code", 0) or 0)
+                final_url = str(getattr(response, "url", "") or url)
+                headers = getattr(response, "headers", {}) or {}
+                ctype = str(headers.get("content-type", "") or "").lower()
+                text = _capped_text(response)
+        else:
+            # Fallback for clients (mostly test fakes) without ``stream``.
+            response = client.get(url, follow_redirects=True)
+            status = int(getattr(response, "status_code", 0) or 0)
+            final_url = str(getattr(response, "url", "") or url)
+            headers = getattr(response, "headers", {}) or {}
+            ctype = str(headers.get("content-type", "") or "").lower()
+            text = str(getattr(response, "text", "") or "")[:MAX_BYTES]
     except Exception as exc:  # noqa: BLE001 - any transport error is a failure
         return ResourceCheck(url, None, url, 0, False, type(exc).__name__)
-    status = int(getattr(response, "status_code", 0) or 0)
-    final_url = str(getattr(response, "url", "") or url)
-    text = str(getattr(response, "text", "") or "")[:MAX_BYTES]
-    headers = getattr(response, "headers", {}) or {}
-    ctype = str(headers.get("content-type", "") or "").lower()
     return ResourceCheck(
         url=url,
         status=status,

@@ -21,6 +21,10 @@ def test_build_creates_standalone(tmp_path: Path) -> None:
     assert "TB_EXERCISES" in html
     assert "localStorage" in html
     assert "tb-exercise" in html
+    # The lesson body already starts with <article class="tb-lesson">; the
+    # standalone template must not wrap it a second time.
+    assert html.count('<article class="tb-lesson">') == 1
+    assert '<main class="tb-main tb-lesson-main">' in html
     assert (tmp_path / "fixture" / "assets" / "widgets" / "demo.svg").is_file()
 
 

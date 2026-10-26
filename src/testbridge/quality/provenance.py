@@ -316,6 +316,13 @@ def evaluate_provenance(
             for item in lesson_required
         ):
             mix_ok += 1
+        if not any(item.kind in PRACTICE_KINDS for item in lesson_resources):
+            result.warnings.append(_warning(
+                "quality.lesson_no_practice_source",
+                f"{manifest.id} 没有工程实践类资源"
+                "（engineering_blog / tutorial / repository）",
+                lesson_id=manifest.id,
+            ))
         supplementary = [
             item for item in lesson_resources if item.role == "supplementary"
         ]

@@ -146,9 +146,12 @@ LESSON_JSON = (
 
 
 class FakeLlm:
-    def __init__(self, outline_json: str = OUTLINE_JSON) -> None:
+    def __init__(
+        self, outline_json: str = OUTLINE_JSON, lesson_json: str = LESSON_JSON
+    ) -> None:
         self.calls = 0
         self.outline_json = outline_json
+        self.lesson_json = lesson_json
         self.outline_prompts: list[str] = []
         self.lesson_prompts: list[str] = []
 
@@ -158,7 +161,7 @@ class FakeLlm:
             self.outline_prompts.append(user)
             return self.outline_json
         self.lesson_prompts.append(user)
-        return LESSON_JSON
+        return self.lesson_json
 
 
 class FakeSearch:
@@ -184,13 +187,14 @@ def make_app(
     llm: FakeLlm | None = None,
     *,
     checker=ok_checker,
+    search=None,
 ) -> TestClient:
     return TestClient(create_app(
         SAMPLE, tmp_path / "e.db",
         studio_drafts=tmp_path / "drafts",
         studio_packs=tmp_path / "packs",
         studio_llm=llm or FakeLlm(),
-        studio_search=FakeSearch(),
+        studio_search=search or FakeSearch(),
         studio_config=CONFIG,
         studio_url_checker=checker,
     ))
@@ -477,6 +481,88 @@ def test_paywalled_hit_is_hidden_from_the_model(tmp_path: Path) -> None:
     assert "<research>" in llm.lesson_prompts[-1]
     assert "docs.ros.org/x" not in llm.lesson_prompts[-1]
     assert response.status_code >= 400
+
+
+OFFICIAL_URL = "https://docs.ros.org/official"
+
+
+class ManyHitsSearch:
+    """More than ten hits across kinds, with the official URL last."""
+
+    def search(self, query: str, count: int = 10) -> list[SearchHit]:
+        hits = [
+            SearchHit(
+                title=f"Tutorial {index}",
+                url=f"https://blog.example/tutorial/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(4)
+        ]
+        hits += [
+            SearchHit(
+                title=f"Post {index}",
+                url=f"https://blog.example/posts/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(5)
+        ]
+        hits += [
+            SearchHit(
+                title=f"Other {index}",
+                url=f"https://other.example/{index}",
+                snippet="", summary="", content="", authority=2,
+            )
+            for index in range(2)
+        ]
+        hits.append(SearchHit(
+            title="Official", url=OFFICIAL_URL, snippet="", summary="",
+            content="", authority=3,
+        ))
+        return hits
+
+    def fetch(self, url: str) -> str:
+        return ""
+
+
+def test_research_preflights_across_kinds_and_hides_unchecked_urls(
+    tmp_path: Path,
+) -> None:
+    checked: list[str] = []
+
+    def checker(urls):
+        checked.extend(urls)
+        return {url: ResourceCheck(url, 200, url, 4000, False, "") for url in urls}
+
+    lesson_json = LESSON_JSON.replace("https://docs.ros.org/x", OFFICIAL_URL)
+    llm = FakeLlm(lesson_json=lesson_json)
+    app = make_app(
+        tmp_path, llm, checker=checker, search=ManyHitsSearch(),
+    )
+    create_draft(app)
+
+    research = app.post(
+        "/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"}
+    )
+    assert research.status_code == 200, research.text
+    # The official hit is last, but the kind-balanced preflight still checks it.
+    assert OFFICIAL_URL in checked
+    assert len(checked) <= 10
+
+    dossier = json.loads(app.app.state.studio_store.read(
+        "demo", "research/L-EXEC-001.json"
+    ))
+    unchecked = [hit["url"] for hit in dossier["hits"] if "check" not in hit]
+    assert unchecked
+
+    lesson = app.post(
+        "/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"}
+    )
+
+    assert lesson.status_code == 200, lesson.text
+    prompt = llm.lesson_prompts[-1]
+    assert OFFICIAL_URL in prompt
+    for url in unchecked:
+        assert url not in prompt
 
 
 def test_studio_enabled_builds_default_url_checker(

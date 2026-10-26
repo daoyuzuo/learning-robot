@@ -80,7 +80,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .tb-skip-link {
   position: absolute;
   left: var(--tb-space-4);
-  top: calc(-1 * var(--tb-space-8));
+  top: -4rem;
   z-index: 100;
   padding: var(--tb-space-2) var(--tb-space-4);
   border-radius: var(--tb-radius-sm);
@@ -320,18 +320,20 @@ th {
    render a stray pill or dot. */
 .tb-badge:empty { display: none; }
 
+/* screening is neutral: application received, no outcome yet. */
 .tb-badge[data-status="pending"],
 .tb-badge[data-status="draft"],
-.tb-badge[data-status="withdrawn"] {
+.tb-badge[data-status="withdrawn"],
+.tb-badge[data-status="screening"] {
   color: var(--tb-muted);
-  background: color-mix(in srgb, var(--tb-muted) 10%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-muted) 6%, var(--tb-bg));
   border-color: color-mix(in srgb, var(--tb-muted) 35%, var(--tb-line));
 }
 
 .tb-badge[data-status="running"],
 .tb-badge[data-status="applied"] {
   color: var(--tb-accent);
-  background: color-mix(in srgb, var(--tb-accent) 12%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-accent) 6%, var(--tb-bg));
   border-color: color-mix(in srgb, var(--tb-accent) 40%, var(--tb-line));
 }
 
@@ -339,7 +341,7 @@ th {
 .tb-badge[data-status="completed"],
 .tb-badge[data-status="offer"] {
   color: var(--tb-success);
-  background: color-mix(in srgb, var(--tb-success) 12%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-success) 6%, var(--tb-bg));
   border-color: color-mix(in srgb, var(--tb-success) 40%, var(--tb-line));
 }
 
@@ -347,13 +349,14 @@ th {
 .tb-badge[data-status="abandoned"],
 .tb-badge[data-status="rejected"] {
   color: var(--tb-danger);
-  background: color-mix(in srgb, var(--tb-danger) 12%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-danger) 6%, var(--tb-bg));
   border-color: color-mix(in srgb, var(--tb-danger) 40%, var(--tb-line));
 }
 
-.tb-badge[data-status="interviewing"] {
+.tb-badge[data-status="interviewing"],
+.tb-badge[data-status="weak"] {
   color: var(--tb-warning);
-  background: color-mix(in srgb, var(--tb-warning) 12%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-warning) 6%, var(--tb-bg));
   border-color: color-mix(in srgb, var(--tb-warning) 40%, var(--tb-line));
 }
 
@@ -396,19 +399,25 @@ th {
   border: 1px solid var(--tb-line);
   border-left: 4px solid var(--tb-accent);
   border-radius: var(--tb-radius-sm);
-  background: color-mix(in srgb, var(--tb-accent) 8%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-accent) 6%, var(--tb-bg));
   padding: var(--tb-space-3) var(--tb-space-4);
   margin: var(--tb-space-4) 0;
 }
 
 .tb-callout[data-tone="warn"] {
   border-left-color: var(--tb-warning);
-  background: color-mix(in srgb, var(--tb-warning) 10%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-warning) 6%, var(--tb-bg));
 }
 
 .tb-callout[data-tone="error"] {
   border-left-color: var(--tb-danger);
-  background: color-mix(in srgb, var(--tb-danger) 10%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-danger) 6%, var(--tb-bg));
+}
+
+/* Muted copy inside a tinted callout must still reach AA contrast; blend it
+   towards the body ink instead of using the plain muted token. */
+.tb-callout .tb-meta {
+  color: color-mix(in srgb, var(--tb-muted) 70%, var(--tb-ink));
 }
 
 /* Figures */
@@ -483,9 +492,6 @@ th {
 .tb-form > label > input[type="radio"],
 .tb-field > input[type="checkbox"],
 .tb-field > input[type="radio"] { margin-right: var(--tb-space-1); }
-
-/* Reserved for the lesson table of contents (not implemented in O5). */
-.tb-toc { display: none; }
 
 /* -------------------------------------------------------------- lesson page */
 
@@ -610,12 +616,12 @@ th {
   font-size: .8rem;
   padding: .1rem .4rem;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--tb-accent) 12%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-accent) 6%, var(--tb-bg));
   color: var(--tb-accent);
 }
 
 .tb-tutor-basis[data-basis="general"] {
-  background: color-mix(in srgb, var(--tb-warning) 15%, var(--tb-bg));
+  background: color-mix(in srgb, var(--tb-warning) 6%, var(--tb-bg));
   color: var(--tb-warning);
 }
 
@@ -676,7 +682,11 @@ th {
 
 .tb-status { font-size: .8rem; color: var(--tb-muted); }
 .tb-progress { font-size: .8rem; color: var(--tb-accent); margin-left: var(--tb-space-1); }
-.tb-batch { font-size: var(--tb-text-sm); color: var(--tb-muted); }
+.tb-batch {
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
+  white-space: normal;
+}
 
 .tb-issues {
   white-space: pre-wrap;
@@ -805,17 +815,6 @@ th {
 /* ---------------------------------------------------------- accessibility */
 
 :focus-visible {
-  outline: 2px solid var(--tb-accent);
-  outline-offset: 2px;
-}
-
-a:focus-visible,
-button:focus-visible,
-summary:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[tabindex]:focus-visible {
   outline: 2px solid var(--tb-accent);
   outline-offset: 2px;
 }

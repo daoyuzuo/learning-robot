@@ -55,6 +55,7 @@ from testbridge.studio.prompts import (
     render_outline_prompt,
 )
 from testbridge.studio.research import (
+    preflight_urls,
     render_research_for_prompt,
     usable_urls_from_payload,
 )
@@ -269,8 +270,9 @@ def mount_studio(
         checks = None
         if url_checker is not None:
             # The injected checker batches URLs itself; cap the fan-out so one
-            # lesson never triggers more than the check budget.
-            checks = url_checker([hit.url for hit in result.hits][:10])
+            # lesson never triggers more than the check budget. Pick one hit
+            # per kind first so official docs are not crowded out by one kind.
+            checks = url_checker(preflight_urls(result.hits))
         research_runner.write_research(
             store, draft_id, plan, result, checks=checks
         )

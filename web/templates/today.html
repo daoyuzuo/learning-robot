@@ -9,7 +9,7 @@
   <ol class="tb-plan">
   {% for item in plan.items %}
     <li class="tb-card">
-      <strong class="tb-badge" data-status="{% if item.type == 'review' %}pending{% elif item.type == 'weak' %}failed{% else %}running{% endif %}">{{ item.type }}</strong> · {{ item.reason }} · {{ item.estimated_minutes }} 分钟
+      <strong class="tb-badge" data-status="{% if item.type == 'review' %}pending{% elif item.type == 'weak' %}weak{% else %}running{% endif %}">{{ item.type }}</strong> · {{ item.reason }} · {{ item.estimated_minutes }} 分钟
       {% if item.lesson_id %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ item.lesson_id }}">打开课程</a>{% endif %}
       {% if item.exercise_id %}<span class="tb-meta">{{ item.exercise_id }}</span>{% endif %}
     </li>

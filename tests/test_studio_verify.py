@@ -1,4 +1,11 @@
-from testbridge.studio.verify import ResourceCheck, check_url, check_urls, reason, usable_urls
+from testbridge.studio.verify import (
+    MAX_BYTES,
+    ResourceCheck,
+    check_url,
+    check_urls,
+    reason,
+    usable_urls,
+)
 
 
 class FakeResponse:
@@ -83,3 +90,53 @@ def test_check_urls_respects_limit_and_dedupes() -> None:
 def test_check_round_trips_through_dict() -> None:
     check = ResourceCheck("https://x", 200, "https://x", 10, False, "")
     assert ResourceCheck.from_dict(check.as_dict()) == check
+
+
+class StreamedResponse:
+    """Context-managed response yielding a fixed list of chunks."""
+
+    def __init__(self, chunks: list[bytes], status: int = 200,
+                 url: str = "https://ok", ctype: str = "text/html") -> None:
+        self.chunks = chunks
+        self.status_code = status
+        self.url = url
+        self.headers = {"content-type": ctype}
+        self.consumed = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+    def iter_bytes(self):
+        for chunk in self.chunks:
+            self.consumed += 1
+            yield chunk
+
+
+class StreamClient:
+    def __init__(self, response: StreamedResponse) -> None:
+        self.response = response
+        self.calls: list[tuple[str, str, dict]] = []
+
+    def stream(self, method: str, url: str, **kwargs):
+        self.calls.append((method, url, kwargs))
+        return self.response
+
+
+def test_check_url_stops_reading_at_the_byte_cap() -> None:
+    chunk = b"x" * 50_000
+    response = StreamedResponse([chunk] * 6)
+    client = StreamClient(response)
+
+    check = check_url(client, "https://ok")
+
+    # 200KB cap / 50KB chunks = 4 chunks consumed; the 5th and 6th are never
+    # requested from the stream.
+    assert response.consumed == MAX_BYTES // 50_000
+    assert check.content_length == MAX_BYTES
+    assert check.ok is True
+    assert client.calls == [
+        ("GET", "https://ok", {"follow_redirects": True}),
+    ]

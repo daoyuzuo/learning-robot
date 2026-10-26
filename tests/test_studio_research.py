@@ -5,6 +5,8 @@ from testbridge.studio.outline import LessonPlan
 from testbridge.studio.research import (
     ResearchResult,
     build_queries,
+    classify_query,
+    preflight_urls,
     render_research_for_prompt,
     render_research_html,
     run_research,
@@ -190,6 +192,9 @@ def test_render_research_for_prompt_drops_unusable_hits() -> None:
              "check": {"status": 200, "paywalled": False}},
             {"title": "wall", "url": "https://wall.example",
              "check": {"status": 200, "paywalled": True}},
+            {"title": "404", "url": "https://gone.example",
+             "check": {"status": 404, "paywalled": False}},
+            {"title": "unchecked", "url": "https://unchecked.example"},
         ]
     })
 
@@ -197,6 +202,81 @@ def test_render_research_for_prompt_drops_unusable_hits() -> None:
 
     assert "https://ok.example" in text
     assert "wall.example" not in text
+    assert "gone.example" not in text
+    # When any hit carries a check, unchecked hits are unusable too: the
+    # lesson parser only accepts required URLs that were checked OK.
+    assert "unchecked.example" not in text
+
+
+def test_render_research_for_prompt_keeps_all_hits_without_checks() -> None:
+    payload = json.dumps({
+        "hits": [
+            {"title": "a", "url": "https://a.example"},
+            {"title": "b", "url": "https://b.example"},
+        ]
+    })
+
+    text = render_research_for_prompt(payload)
+
+    assert "https://a.example" in text
+    assert "https://b.example" in text
+
+
+def test_preflight_urls_keeps_one_hit_per_kind_within_limit() -> None:
+    hits = [
+        SearchHit("t1", "https://docs.example/tutorial/1", "", "", "", 2),
+        SearchHit("t2", "https://docs.example/tutorial/2", "", "", "", 2),
+        SearchHit("b1", "https://blog.example/posts/1", "", "", "", 2),
+        SearchHit("b2", "https://blog.example/posts/2", "", "", "", 2),
+        SearchHit("b3", "https://blog.example/posts/3", "", "", "", 2),
+        SearchHit("o1", "https://other.example/1", "", "", "", 2),
+        SearchHit("o2", "https://other.example/2", "", "", "", 2),
+        SearchHit("official", "https://docs.ros.org/guide", "", "", "", 3),
+    ]
+
+    urls = preflight_urls(hits, limit=6)
+
+    assert "https://docs.ros.org/guide" in urls
+    assert len(urls) <= 6
+    assert len(urls) == len(set(urls))
+    # First pass covers each seen kind in first-seen order.
+    assert urls[:4] == [
+        "https://docs.example/tutorial/1",
+        "https://blog.example/posts/1",
+        "https://other.example/1",
+        "https://docs.ros.org/guide",
+    ]
+
+
+def test_classify_query_matches_english_hints_on_word_boundaries() -> None:
+    assert classify_query("inspect the executor") == "engineering"
+    assert classify_query("user preference settings") == "engineering"
+    assert classify_query("ROS 2 executor spec") == "official"
+    assert classify_query("quick reference guide") == "official"
+    assert classify_query("官方文档") == "official"
+
+
+def test_write_research_persists_oa_triage_fields(tmp_path: Path) -> None:
+    store = DraftStore(tmp_path / "drafts")
+    store.create(
+        draft_id="demo", topic="t", level="L2", lesson_count=1,
+        searches_per_lesson=5, model="m", prompt_version="studio/1",
+    )
+    hit = SearchHit(
+        "Paper", "https://doi.org/10.1/x", "", "", "", 3,
+        is_oa=True, oa_url="https://repo.example/x.pdf", work_type="article",
+    )
+    result = ResearchResult(
+        lesson_id="L-1", queries=["q"], searches=1, hits=[hit],
+    )
+
+    write_research(store, "demo", LESSON, result)
+
+    payload = json.loads(store.read("demo", "research/L-1.json"))
+    first = payload["hits"][0]
+    assert first["is_oa"] is True
+    assert first["oa_url"] == "https://repo.example/x.pdf"
+    assert first["work_type"] == "article"
 
 
 def test_usable_urls_from_payload() -> None:

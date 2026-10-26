@@ -21,9 +21,7 @@ STANDALONE_TEMPLATE = """<!doctype html>
 </head>
 <body data-lesson-id="__LESSON_ID__">
 <main class="tb-main tb-lesson-main">
-<article class="tb-lesson">
 __BODY__
-</article>
 <button id="tb-export">导出证据 JSONL</button>
 </main>
 <script>const TB_EXERCISES = __DATA__; const TB_LESSON_ID = "__LESSON_ID__";</script>
