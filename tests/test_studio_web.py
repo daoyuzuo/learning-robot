@@ -221,6 +221,25 @@ def test_studio_list_page_renders(tmp_path: Path) -> None:
     assert "新建草稿" in make_app(tmp_path).get("/studio").text
 
 
+def test_studio_pages_expose_ui_components(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    assert 'class="tb-form tb-card"' in app.get("/studio").text
+
+    store = seed_multi_draft(app)
+    store.set_step(
+        "multi", "batch", status="running",
+        extra={"mode": "research", "done": 1, "total": 2},
+    )
+    draft = app.get("/studio/multi").text
+    assert 'class="tb-step tb-card"' in draft
+    assert 'class="tb-status tb-badge"' in draft
+    assert 'class="tb-progress-bar"' in draft
+
+    evolution = app.get("/studio/evolution").text
+    assert 'class="tb-evo-draft tb-card"' in evolution
+    assert "tb-badge" in evolution
+
+
 def test_studio_list_offers_module_fields(tmp_path: Path) -> None:
     page = make_app(tmp_path).get("/studio").text
     assert 'name="module_count"' in page

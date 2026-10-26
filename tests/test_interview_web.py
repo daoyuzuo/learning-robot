@@ -235,6 +235,20 @@ def test_confirm_writes_evidence_and_summary(tmp_path: Path) -> None:
     assert "我的回答" in summary.text
 
 
+def test_interview_pages_expose_ui_components(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+
+    start = c.get("/interview").text
+    assert 'class="tb-interview-form tb-form tb-card"' in start
+    assert 'class="tb-table-wrap"' in start
+
+    session_id = start_session(c)
+    session = c.get(f"/interview/session/{session_id}").text
+    assert 'class="tb-interview-session tb-card"' in session
+    assert 'class="tb-table-wrap"' in session
+    assert 'class="tb-btn tb-btn-primary"' in session
+
+
 def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
     c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
     session_id = start_session(c)
@@ -251,7 +265,9 @@ def test_progress_shows_interview_evidence(tmp_path: Path) -> None:
         json=confirm_payload(question_id, graded),
     )
     text = c.get("/progress").text
-    assert re.search(r"<td>\s*面试\s*</td>", text)
+    assert re.search(
+        r'<td>\s*<span class="tb-badge">\s*面试\s*</span>\s*</td>', text
+    )
     assert f"/interview/session/{session_id}/summary" in text
 
 

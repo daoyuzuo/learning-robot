@@ -2,25 +2,28 @@
 {% block title %}目标 · TestBridge{% endblock %}
 {% block content %}
 <h1>目标岗位</h1>
-{% if error %}<p class="tb-target-error">{{ error }}</p>{% endif %}
+{% if error %}<p class="tb-target-error tb-callout" data-tone="error">{{ error }}</p>{% endif %}
 {% if target %}
   <h2>{{ target.target_role or "未命名岗位" }}</h2>
   <p class="tb-meta">更新于 {{ target.updated_at }}{% if target.model %} · 模型 {{ target.model }}{% endif %}</p>
-  <p class="tb-target-score">岗位匹配度 {{ "%.2f"|format(report.readiness.total) }}</p>
+  <p class="tb-target-score tb-card">岗位匹配度 {{ "%.2f"|format(report.readiness.total) }}</p>
   {% if report.readiness.gate_active %}
-  <p class="tb-meta">门控：{{ report.readiness.gate_reasons|join("；") }}</p>
+  <p class="tb-meta tb-callout" data-tone="warn">门控：{{ report.readiness.gate_reasons|join("；") }}</p>
   {% endif %}
 
   <h2>按模块</h2>
+  <div class="tb-table-wrap">
   <table>
     <tr><th>模块</th><th>加权掌握度</th></tr>
     {% for module_id, value in report.readiness.by_module.items() %}
     <tr><td>{{ module_id }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
     {% endfor %}
   </table>
+  </div>
 
   <h2>未达标概念</h2>
   {% if report.gaps %}
+  <div class="tb-table-wrap">
   <table>
     <tr><th>概念</th><th>权重</th><th>掌握度</th><th>当前</th><th>目标</th><th>差</th></tr>
     {% for row in report.gaps %}
@@ -31,8 +34,9 @@
     </tr>
     {% endfor %}
   </table>
+  </div>
   {% else %}
-  <p>JD 相关概念都已达到目标等级。</p>
+  <p class="tb-callout" data-tone="info">JD 相关概念都已达到目标等级。</p>
   {% endif %}
 
   <h2>最该补的 3 个</h2>
@@ -55,15 +59,15 @@
     <summary>JD 原文</summary>
     <pre>{{ target.source_text }}</pre>
   </details>
-  <p><a href="/today">去今日计划</a></p>
+  <p><a class="tb-btn tb-btn-ghost" href="/today">去今日计划</a></p>
 {% else %}
-  <p>还没有目标 JD。粘贴一份 JD 开始。</p>
+  <p class="tb-callout" data-tone="info">还没有目标 JD。粘贴一份 JD 开始。</p>
 {% endif %}
 
 <h2>{{ "更新目标 JD" if target else "粘贴 JD" }}</h2>
-<form method="post" action="/target/parse" class="tb-target-form">
+<form method="post" action="/target/parse" class="tb-target-form tb-form tb-card">
   <textarea name="jd_text" rows="12" required placeholder="粘贴岗位描述"></textarea>
-  <p class="tb-meta">解析会把 JD 文本发送到你配置的模型服务。</p>
-  <button type="submit">解析并预览</button>
+  <p class="tb-meta tb-callout" data-tone="info">解析会把 JD 文本发送到你配置的模型服务。</p>
+  <button type="submit" class="tb-btn tb-btn-primary">解析并预览</button>
 </form>
 {% endblock %}

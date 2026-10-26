@@ -89,6 +89,18 @@ def confirm_data(requirements: str = GOOD) -> dict:
     }
 
 
+def test_pages_expose_ui_components(tmp_path: Path) -> None:
+    c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
+    empty = c.get("/target").text
+    assert 'class="tb-target-form tb-form tb-card"' in empty
+    assert 'class="tb-callout"' in empty
+
+    review = parse_form(c).text
+    assert 'class="tb-target-form tb-form tb-card"' in review
+    assert 'class="tb-table-wrap"' in review
+    assert 'class="tb-target-score tb-card"' in review
+
+
 def test_parse_renders_review_without_writing(tmp_path: Path) -> None:
     c = make_app(tmp_path, llm=FakeClient(), config=CONFIG)
     response = parse_form(c)

@@ -2,31 +2,36 @@
 {% block title %}进度 · TestBridge{% endblock %}
 {% block content %}
 <h1>进度</h1>
-<h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
-{% if readiness.gate_active %}<p>门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
+<section class="tb-card">
+  <h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
+  {% if readiness.gate_active %}<p class="tb-callout" data-tone="warn">门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
+</section>
 <h2>掌握度</h2>
+<div class="tb-table-wrap">
 <table>
 <tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th></tr>
 {% for concept_id, view in views.items() %}
-<tr><td>{{ concept_id }}</td><td>{{ "%.2f"|format(view.estimate) }}</td><td>{{ view.level }}</td><td>{{ pack.concepts[concept_id].target_level }}</td></tr>
+<tr><td>{{ concept_id }}</td><td>{{ "%.2f"|format(view.estimate) }}</td><td><span class="tb-badge">{{ view.level }}</span></td><td>{{ pack.concepts[concept_id].target_level }}</td></tr>
 {% endfor %}
 </table>
+</div>
 <h2>{% if selected %}概念 {{ selected }} 的证据{% else %}证据{% endif %}</h2>
 {% if selected %}
-<p>已按概念筛选：{{ selected }} · 本概念 {{ filtered_total }} 条 / 全局 {{ total }} 条（显示最近 {{ events|length }} 条）</p>
+<p class="tb-callout" data-tone="info">已按概念筛选：{{ selected }} · 本概念 {{ filtered_total }} 条 / 全局 {{ total }} 条（显示最近 {{ events|length }} 条）</p>
 {% else %}
-<p>共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
+<p class="tb-meta">共 {{ total }} 条证据（显示最近 {{ events|length }} 条）</p>
 {% endif %}
+<div class="tb-table-wrap">
 <table>
 <tr><th>时间</th><th>类型</th><th>课程</th><th>练习</th><th>结果</th><th>分数</th><th>详情</th></tr>
 {% for event in events %}
 <tr>
   <td>{{ event.created_at }}</td>
   <td>
-    {% if event.kind == "interview" %}面试
+    <span class="tb-badge">{% if event.kind == "interview" %}面试
     {% elif event.kind == "self_assess" %}自评
     {% elif event.kind == "artifact" %}产出物
-    {% else %}练习{% endif %}
+    {% else %}练习{% endif %}</span>
   </td>
   <td>{{ event.lesson_id or "" }}</td>
   <td>{{ event.exercise_id or "" }}</td>
@@ -40,4 +45,5 @@
 </tr>
 {% endfor %}
 </table>
+</div>
 {% endblock %}

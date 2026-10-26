@@ -2,11 +2,11 @@
 {% block title %}{{ application.company }} · 求职{% endblock %}
 {% block content %}
 <h1>{{ application.company }} · {{ application.role }}</h1>
-{% if error %}<p class="tb-app-error">{{ error }}</p>{% endif %}
+{% if error %}<p class="tb-app-error tb-callout" data-tone="error">{{ error }}</p>{% endif %}
 <p class="tb-meta">状态 {{ status_labels[application.status] }} · 更新于 {{ application.updated_at }}</p>
 {% if application.notes %}<pre class="tb-app-notes">{{ application.notes }}</pre>{% endif %}
 
-<form method="post" action="/applications/{{ application.id }}" class="tb-app-form">
+<form method="post" action="/applications/{{ application.id }}" class="tb-app-form tb-form tb-card">
   <label>公司 <input type="text" name="company" maxlength="200" required value="{{ form.company if form else application.company }}"></label>
   <label>岗位 <input type="text" name="role" maxlength="200" required value="{{ form.role if form else application.role }}"></label>
   <label>渠道 <input type="text" name="source" maxlength="100" value="{{ form.source if form else application.source }}"></label>
@@ -20,13 +20,13 @@
   <label>下一步 <input type="text" name="next_action" maxlength="200" value="{{ form.next_action if form else application.next_action }}"></label>
   <label>跟进日期 <input type="date" name="next_action_at" value="{{ form.next_action_at if form else (application.next_action_at or '') }}"></label>
   <label>笔记 <textarea name="notes" rows="6" maxlength="5000">{{ form.notes if form else application.notes }}</textarea></label>
-  <button type="submit">保存</button>
-  <a href="/applications">返回列表</a>
+  <button type="submit" class="tb-btn tb-btn-primary">保存</button>
+  <a class="tb-btn tb-btn-ghost" href="/applications">返回列表</a>
 </form>
 
 {% if not terminal %}
-<form method="post" action="/applications/{{ application.id }}/withdraw" class="tb-app-form">
-  <button type="submit">撤回这次投递</button>
+<form method="post" action="/applications/{{ application.id }}/withdraw" class="tb-app-form tb-card">
+  <button type="submit" class="tb-btn">撤回这次投递</button>
 </form>
 {% endif %}
 {% endblock %}

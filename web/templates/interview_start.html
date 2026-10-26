@@ -3,17 +3,19 @@
 {% block content %}
 <h1>面试模拟</h1>
 {% if bank_error %}
-  <p class="tb-interview-error">题库不可用：{{ bank_error }}</p>
+  <p class="tb-interview-error tb-callout" data-tone="error">题库不可用：{{ bank_error }}</p>
 {% else %}
   <p class="tb-meta">按当前弱项抽题，一次 3 或 5 题；每题评分确认后才写入证据。</p>
   <h2>当前弱项</h2>
+  <div class="tb-table-wrap">
   <table>
     <tr><th>概念</th><th>掌握度</th></tr>
     {% for item in weak %}
     <tr><td>{{ item.title }}</td><td>{{ "%.2f"|format(item.estimate) }}</td></tr>
     {% endfor %}
   </table>
-  <form method="post" action="/interview" class="tb-interview-form">
+  </div>
+  <form method="post" action="/interview" class="tb-interview-form tb-form tb-card">
     <fieldset>
       <legend>题量</legend>
       <label><input type="radio" name="question_count" value="3" checked> 3 题</label>
@@ -25,17 +27,18 @@
       <label><input type="checkbox" name="concepts" value="{{ concept.id }}"> {{ concept.title }}</label>
       {% endfor %}
     </fieldset>
-    <button type="submit">开始模拟</button>
+    <button type="submit" class="tb-btn tb-btn-primary">开始模拟</button>
   </form>
   <h2>最近会话</h2>
   {% if sessions %}
   {% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
+  <div class="tb-table-wrap">
   <table>
     <tr><th>时间</th><th>状态</th><th>题数</th><th></th></tr>
     {% for session in sessions %}
     <tr>
       <td>{{ session.created_at }}</td>
-      <td data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</td>
+      <td data-status="{{ session.status }}"><span class="tb-badge" data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</span></td>
       <td>{{ session.question_ids|length }}</td>
       <td>
         {% if session.status == "running" %}
@@ -47,8 +50,9 @@
     </tr>
     {% endfor %}
   </table>
+  </div>
   {% else %}
-  <p>还没有面试记录。</p>
+  <p class="tb-meta">还没有面试记录。</p>
   {% endif %}
 {% endif %}
 {% endblock %}
