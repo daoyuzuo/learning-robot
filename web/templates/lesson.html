@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ view.lesson.manifest.title }} · TestBridge{% endblock %}
 {% block lesson_id %}{{ view.lesson.manifest.id }}{% endblock %}
+{% block main_class %}tb-lesson-main{% endblock %}
 {% block content %}
 <nav class="tb-breadcrumb">{{ view.module.title }}</nav>
 <h1>{{ view.lesson.manifest.title }}</h1>
 <p class="tb-meta">{{ view.lesson.manifest.minutes }} 分钟 · {{ view.lesson.manifest.target_level }}</p>
 <ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
 <article class="tb-lesson">{{ view.body_html | safe }}</article>
-<section class="tb-tutor" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
+<section class="tb-tutor tb-card" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
   <h2>追问</h2>
   {% if not tutor %}
-    <p class="tb-tutor-hint">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
+    <p class="tb-tutor-hint tb-callout" data-tone="warn">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
   {% else %}
     <label class="tb-tutor-anchor-label">围绕
       <select class="tb-tutor-anchor">
@@ -19,8 +20,8 @@
       </select>
     </label>
     <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
-    <button type="button" class="tb-tutor-submit">提问</button>
-    <p class="tb-tutor-error" hidden></p>
+    <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">提问</button>
+    <p class="tb-tutor-error tb-callout" data-tone="error" hidden></p>
     <div class="tb-tutor-log">
       {% for message in tutor_history %}
         <div class="tb-tutor-message" data-role="{{ message.role }}">
@@ -38,13 +39,13 @@
     </div>
   {% endif %}
 </section>
-<aside class="tb-resources">
+<aside class="tb-resources tb-card">
   <h2>资源</h2>
   <ul>{% for item in view.resources %}<li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>{% endfor %}</ul>
 </aside>
 <nav class="tb-pager">
-  {% if view.prev_lesson %}<a href="/lesson/{{ view.prev_lesson.manifest.id }}">← {{ view.prev_lesson.manifest.title }}</a>{% endif %}
-  {% if view.next_lesson %}<a href="/lesson/{{ view.next_lesson.manifest.id }}">{{ view.next_lesson.manifest.title }} →</a>{% endif %}
+  {% if view.prev_lesson %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ view.prev_lesson.manifest.id }}">← {{ view.prev_lesson.manifest.title }}</a>{% endif %}
+  {% if view.next_lesson %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ view.next_lesson.manifest.id }}">{{ view.next_lesson.manifest.title }} →</a>{% endif %}
 </nav>
 {% endblock %}
 {% block scripts %}

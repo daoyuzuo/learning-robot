@@ -4,13 +4,13 @@
 <h1>今日计划</h1>
 <p>预算 {{ plan.budget_minutes }} 分钟，已排 {{ plan.total_minutes }} 分钟。</p>
 {% if plan.empty %}
-  <p>今天没有必须做的事。{% if plan.suggestion %}{{ plan.suggestion }}{% endif %}</p>
+  <p class="tb-callout" data-tone="info">今天没有必须做的事。{% if plan.suggestion %}{{ plan.suggestion }}{% endif %}</p>
 {% else %}
   <ol class="tb-plan">
   {% for item in plan.items %}
-    <li>
-      <strong>{{ item.type }}</strong> · {{ item.reason }} · {{ item.estimated_minutes }} 分钟
-      {% if item.lesson_id %}<a href="/lesson/{{ item.lesson_id }}">打开课程</a>{% endif %}
+    <li class="tb-card">
+      <strong class="tb-badge" data-status="{% if item.type == 'review' %}pending{% elif item.type == 'weak' %}failed{% else %}running{% endif %}">{{ item.type }}</strong> · {{ item.reason }} · {{ item.estimated_minutes }} 分钟
+      {% if item.lesson_id %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ item.lesson_id }}">打开课程</a>{% endif %}
       {% if item.exercise_id %}<span class="tb-meta">{{ item.exercise_id }}</span>{% endif %}
     </li>
   {% endfor %}

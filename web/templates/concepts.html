@@ -2,14 +2,15 @@
 {% block title %}概念 · TestBridge{% endblock %}
 {% block content %}
 <h1>概念掌握度</h1>
-{% if graph %}<div class="tb-graph-wrap">{{ graph | safe }}</div>{% endif %}
+{% if graph %}<div class="tb-graph-wrap tb-card">{{ graph | safe }}</div>{% endif %}
+<div class="tb-table-wrap">
 <table>
 <tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th><th>到期</th><th>先修</th><th>课程</th></tr>
 {% for concept_id, view in views.items() %}
 <tr>
   <td><a href="/progress?concept={{ concept_id }}">{{ concept_id }}</a></td>
   <td>{{ "%.2f"|format(view.estimate) }}</td>
-  <td>{{ view.level }}</td>
+  <td><span class="tb-badge">{{ view.level }}</span></td>
   <td>{{ pack.concepts[concept_id].target_level }}</td>
   <td>{{ due_counts.get(concept_id, 0) }}</td>
   <td>{{ pack.concepts[concept_id].prerequisites|join(", ") }}</td>
@@ -17,4 +18,5 @@
 </tr>
 {% endfor %}
 </table>
+</div>
 {% endblock %}
