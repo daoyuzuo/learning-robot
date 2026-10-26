@@ -504,22 +504,22 @@ P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATIO
 | O1 | 模型配置一次生效（用户级环境变量 + `tb doctor`） | P0 | 否：不引入仓库内 `.env` | 已完成 |
 | O3 | 参考资料工程化与可达性（来源配比、按查询路由、付费墙/404 预检；C 级可作补充阅读） | P1 | 是：质量门禁 trust 语义 | 已完成 |
 | O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 | 已完成 |
-| O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 | 待开始 |
+| O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 | 已完成 |
 | O5 | 页面排版与样式 | P3 | 否：只动 `web/` | 已完成 |
 
-**进度：** O1、O2、O3、O5 已实现并合并到 master（O2 于 2026-10-27 完成）。O3/O5
-完成时默认 `pytest` 833 passed、3 deselected；O2 完成时默认 `pytest` 892 passed、
-3 deselected，两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
-100/100。下一步 O4。
+**进度：** O1–O5 已全部实现并合并到 master（O2 与 O4 于 2026-10-27 完成）。
+实际执行顺序为 O1 → O3 → O5 → O2 → O4。O3/O5 完成时默认 `pytest` 833 passed、
+3 deselected；O2 完成时默认 `pytest` 892 passed、3 deselected；O4 完成时默认
+`pytest` 968 passed、3 deselected，两个现有包 `tb validate` 0/0，
+`tb quality content-packs/sample-sensors` 100/100。优化清单没有下一个待办项。
 
-排期建议：O1、O2、O3、O5 已完成；下一步 O4（实施计划已写入
-[2026-10-27-o4-course-planning-dialogue.md](superpowers/plans/2026-10-27-o4-course-planning-dialogue.md)）。
-五份 spec 已写入
+排期：优化清单已收尾，无下一项。五份 spec 与实施记录见
 [O1](superpowers/specs/2026-10-26-o1-llm-config-persistence-design.md)、
 [O2](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)、
 [O3](superpowers/specs/2026-10-26-o3-resource-quality-design.md)、
 [O4](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)、
-[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)。
+[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md) 与
+[O4 实施计划](superpowers/plans/2026-10-27-o4-course-planning-dialogue.md)。
 
 ---
 
@@ -633,6 +633,59 @@ quality: 100/100                # exit 0
 
 $ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/robot-quality-system
 quality: 100/100                # exit 0；13 条 quality.resource_stale warning，分数不变
+```
+
+---
+
+## O4 自动规划课时与对话修正（已完成，2026-10-27）
+
+**范围：**
+
+- 确定性课时计划（`src/testbridge/studio/planning.py`，纯函数、无 LLM）：输入每周小时、
+  周期、目的（interview / project / systematic）与必须覆盖主题，按利用率 0.65 与级别
+  单课分钟给出模块数 / 每模块课数 / 单课分钟 / 理由；上限 3 模块 × 5 课 = 15 课，
+  越界时在理由里建议拆包。非法输入 400，不写草稿。
+- 新建草稿可勾选「自动规划课时」：写入 `draft.json` 的可选 `plan` 字段，并用计算结果
+  填充三个计数字段；不勾选时行为与以前完全一致，旧草稿没有 `plan` 也照常工作。
+- 草稿页新增「0 计划」卡片：展示 inputs / computed / 理由 / 写作方向，数字可改；
+  保存把 `confirmed` 置回 false，确认才同步 `module_count` / `lessons_per_module` /
+  `lesson_count`。
+- 对话修订 `POST /studio/{id}/plan/chat`：模型只返回结构化建议（`plan/1` 提示词），
+  服务端确定性校验范围、乘积 ≤ 15、guidance / changes 长度、不静默丢弃 must_cover；
+  对话只追加 `plan.messages`（最近 20 条）并计数，不改数字、不改 guidance、不改
+  confirmed；用户点「应用建议」后才走 `POST /studio/{id}/plan` 落盘。并发对话 409，
+  无模型 503，非法输出 422 且旧计划不变。
+- `guidance` 接入：确认后的计划把 `guidance` 作为 `<guidance>` 段传给
+  `render_outline_prompt` / `render_lesson_prompt`（最多 5 行、每行 80 字）；
+  未确认计划不参与提示词。
+- 大纲门禁：计划未确认时 `POST /api/studio/{id}/outline` 返回 409
+  `plan_unconfirmed`，页面按钮同步置灰；无 `plan` 的旧草稿不受影响。
+- prompt 版本 `studio/5`；计划对话单独记 `plan/1`，不混入课程 prompt 版本。
+
+**不做：** 逐课大纲级对话、逐模块不等分配、自动重写已完成课程、从 `learning` 读取目标、
+多进程计划对话互斥。
+
+**设计：** [O4 自动规划课时与对话修正](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)
+（实施计划：[2026-10-27-o4-course-planning-dialogue.md](superpowers/plans/2026-10-27-o4-course-planning-dialogue.md)）
+
+**未自动化：** 真实模型的一次端到端验收（勾选自动规划 → 对话「少讲论文，多讲测试实操」
+→ 应用/确认 → 重新生成大纲，检查 objectives / research_queries 有可解释变化）需要配置
+模型服务，本轮未执行；默认 `pytest` 全程离线，对话用假 LLM 测试。
+
+**验证命令（2026-10-27；本机 venv 未安装 `testbridge` 包，CLI 需 `PYTHONPATH=src`）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+968 passed, 3 deselected in 297.65s (0:04:57)
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
+quality: 100/100                # exit 0
 ```
 
 ---

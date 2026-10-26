@@ -1,6 +1,7 @@
 # TestBridge 优化清单（体验债）
 
-- 状态：Spec 已写，待评审；O1 / O2 / O3 的方向已于 2026-10-26 确认（见 §0.1）
+- 状态：O1–O5 已全部实现并合并到 master（2026-10-26 至 2026-10-27）；实际执行顺序为
+  O1 → O3 → O5 → O2 → O4。本文保留问题与验收记录，不再有待实现项。
 - 来源：P4.3 完成后的真实使用反馈
 - 定位：跨期体验债，不是新一期设计。每项落地前按 `CLAUDE.md` 的流程补
   spec / 实施计划；涉及质量门禁或内容契约的先更新 spec 与 `ROADMAP.md`。
@@ -25,14 +26,17 @@
 | O4 | [2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md) |
 | O5 | [2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md) |
 
-**进度：** O1、O2、O3、O5 已实现（O1/O3/O5 于 2026-10-26，O2 于 2026-10-27；
-O5 经 merge `925ca62` 合入）。O3 完成来源角色、按查询路由、链接预检与质量门禁调整；
-O5 完成 token / 深色模式、响应式顶栏与统一组件样式。O2 完成确定性 SVG 图示：写课
-输出 flow / timeline / block / compare 规格，服务端渲染内联 SVG 并嵌入课程，
-prompt 版本升到 `studio/4`；质量侧只新增 `lesson_no_figure` warning 与
-`figure_mount_unresolved` 硬错误，已发布包分数基线不变。O2 完成时默认 `pytest`
-892 passed、3 deselected；两个现有包 `tb validate` 0/0，
-`tb quality content-packs/sample-sensors` 100/100。下一步 O4。
+**进度：** O1–O5 均已实现（O1/O3/O5 于 2026-10-26，O2 与 O4 于 2026-10-27；
+O5 经 merge `925ca62` 合入）。实际执行顺序为 O1 → O3 → O5 → O2 → O4：O1 先去摩擦，
+O3 决定内容可信度，O5 先统一组件样式，O2 的图形沿用 O3 的来源信息，O4 是最后的新能力。
+O3 完成来源角色、按查询路由、链接预检与质量门禁调整；O5 完成 token / 深色模式、
+响应式顶栏与统一组件样式。O2 完成确定性 SVG 图示：写课输出 flow / timeline / block /
+compare 规格，服务端渲染内联 SVG 并嵌入课程，prompt 版本升到 `studio/4`；质量侧只新增
+`lesson_no_figure` warning 与 `figure_mount_unresolved` 硬错误，已发布包分数基线不变。
+O4 完成确定性课时计划、计划卡片、只建议的对话修订（`plan/1`）、确认后 `guidance`
+接入大纲与写课提示词、未确认计划的大纲门禁，prompt 版本升到 `studio/5`。
+O4 完成时默认 `pytest` 968 passed、3 deselected；两个现有包 `tb validate` 0/0，
+`tb quality content-packs/sample-sensors` 100/100。优化清单到此全部完成，没有下一个优化项。
 
 ---
 
@@ -501,13 +505,14 @@ O4 是新能力，需要先想清楚交互与边界；O5 按你的意见放最�
   允许 A/B，C 级不计入 A/B 分子。
 - **O2**：先只做确定性 SVG 图；外部图片与 AI 生图暂缓。
 
-**仍待确认（不阻塞 O1 开工）：**
+**已确认并落地（2026-10-26 至 2026-10-27）：**
 
-1. **O3**：初始“可信工程来源”白名单（官方文档、标准、厂商博客、开源项目文档）。
-2. **O3**：补充阅读软上限默认 3 条/课，是否需要更高？
-3. **O4**：规划输入用“每周小时 + 周期”还是“目标日期 + 每天分钟”？是否接受
-   暂时维持 15 课上限、超出时建议拆包？对话修正先做到计划层还是逐课大纲层？
-4. **O5**：深色模式是否现在一起做？
+1. **O3**：可信工程来源按资源 `kind` / `trust` 判定；质量门禁用 `source_mix` 检查
+   required 中是否有官方 / 标准 / 仓库或工程实践来源，C 级只作补充阅读。
+2. **O3**：补充阅读软上限保持 3 条/课（超出只 warning，不扣分）。
+3. **O4**：规划输入采用“每周小时 + 周期 + 目的 + 必须覆盖”；维持 3 模块 × 5 课 = 15 课
+   上限，超出时在理由里建议拆包；对话修正只做到计划层，不做到逐课大纲层。
+4. **O5**：深色模式随 O5 一起完成（`prefers-color-scheme`）。
 
-按 `CLAUDE.md` 的分层流程：O1/O5 可直接做；O2 第 1 层可直接做；
+五项均已按 `CLAUDE.md` 的分层流程落地：O1/O5 直接做，O2 第 1 层直接做，
 O3/O4 先补 spec 与实施计划。
