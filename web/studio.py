@@ -48,9 +48,11 @@ from testbridge.studio.outline import (
     write_outline,
 )
 from testbridge.studio.planning import (
+    MAX_RATIONALE,
     PlanError,
     parse_plan_input,
     suggest_plan,
+    validate_plan,
 )
 from testbridge.studio.prompts import (
     LESSON_SYSTEM,
@@ -641,6 +643,77 @@ def mount_studio(
             runner.start(draft_id, "outline", lambda: generate_outline(draft_id))
         return RedirectResponse(url=f"/studio/{draft_id}", status_code=303)
 
+    def _save_plan(draft_id: str, payload: dict) -> dict:
+        def invalid(message: str) -> HTTPException:
+            return HTTPException(
+                status_code=400,
+                detail={"code": "plan_invalid", "message": message},
+            )
+
+        def plan_int(value: object, name: str) -> int:
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise invalid(f"{name} 必须是整数")
+            return value
+
+        draft = draft_or_404(draft_id)
+        try:
+            inputs = parse_plan_input(payload.get("inputs") or {})
+        except PlanError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": exc.code, "message": exc.message},
+            ) from None
+        computed = payload.get("computed") or {}
+        if not isinstance(computed, dict):
+            raise invalid("computed 必须是对象")
+        guidance = payload.get("guidance") or []
+        if not isinstance(guidance, list):
+            raise invalid("guidance 必须是列表")
+        modules = plan_int(computed.get("module_count"), "module_count")
+        per_module = plan_int(computed.get("lessons_per_module"), "lessons_per_module")
+        minutes = plan_int(computed.get("lesson_minutes"), "lesson_minutes")
+        # Totals are always recomputed: a client-supplied total is not trusted.
+        total_lessons = modules * per_module
+        plan = {
+            "inputs": {
+                "weekly_hours": inputs.weekly_hours,
+                "horizon_weeks": inputs.horizon_weeks,
+                "purpose": inputs.purpose,
+                "must_cover": list(inputs.must_cover),
+            },
+            "computed": {
+                "module_count": modules,
+                "lessons_per_module": per_module,
+                "lesson_minutes": minutes,
+                "total_lessons": total_lessons,
+                "total_minutes": total_lessons * minutes,
+            },
+            "rationale": str(payload.get("rationale") or "")[:MAX_RATIONALE],
+            "guidance": [str(item) for item in guidance],
+            "confirmed": bool(payload.get("confirm")),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "messages": list((draft.get("plan") or {}).get("messages") or []),
+        }
+        try:
+            validate_plan(plan)
+        except PlanError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": exc.code, "message": exc.message},
+            ) from None
+        draft["plan"] = plan
+        if plan["confirmed"]:
+            draft["module_count"] = plan["computed"]["module_count"]
+            draft["lessons_per_module"] = plan["computed"]["lessons_per_module"]
+            draft["lesson_count"] = plan["computed"]["total_lessons"]
+        store.save(draft)
+        outline_exists = (store.path(draft_id) / "outline.html").is_file()
+        return {"ok": True, "outline_exists": outline_exists}
+
+    @router.post("/studio/{draft_id}/plan")
+    def studio_plan(draft_id: str, payload: dict):
+        return _save_plan(draft_id, payload)
+
     @router.get("/studio/{draft_id}", response_class=HTMLResponse)
     def studio_draft(request: Request, draft_id: str):
         draft = draft_or_404(draft_id)
@@ -706,7 +779,16 @@ def mount_studio(
 
     @router.post("/api/studio/{draft_id}/outline")
     def regenerate_outline(draft_id: str):
-        draft_or_404(draft_id)
+        draft = draft_or_404(draft_id)
+        plan = draft.get("plan")
+        if isinstance(plan, dict) and not plan.get("confirmed"):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "plan_unconfirmed",
+                    "message": "请先确认课时计划",
+                },
+            )
         require_enabled()
         try:
             runner.start(draft_id, "outline", lambda: generate_outline(draft_id))

@@ -4,6 +4,10 @@
   const draftId = root.dataset.draft;
   const enabled = root.dataset.enabled === "true";
   const error = root.querySelector(".tb-error");
+  const planForm = root.querySelector("[data-plan-form]");
+  const planDataNode = document.getElementById("tb-plan-data");
+  // Filled by the plan chat and applied by the "apply" button.
+  let pendingSuggestion = null;
   let timer = null;
 
   function showError(message) {
@@ -138,12 +142,66 @@
     if (!timer) timer = setInterval(poll, 2000);
   }
 
+  function planData() {
+    if (!planDataNode) return {};
+    try {
+      return JSON.parse(planDataNode.textContent) || {};
+    } catch (err) {
+      return {};
+    }
+  }
+
+  function planPayload(confirm) {
+    const data = planData();
+    return {
+      inputs: data.inputs || {},
+      computed: {
+        module_count: Number(planForm.querySelector("[name=module_count]").value),
+        lessons_per_module: Number(planForm.querySelector("[name=lessons_per_module]").value),
+        lesson_minutes: Number(planForm.querySelector("[name=lesson_minutes]").value),
+      },
+      guidance: data.guidance || [],
+      rationale: data.rationale || "",
+      confirm: Boolean(confirm),
+    };
+  }
+
+  async function postPlan(body) {
+    const response = await fetch("/studio/" + draftId + "/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      showError((data.detail && data.detail.message) || "保存计划失败");
+      return null;
+    }
+    return response.json();
+  }
+
   root.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", async () => {
-      if (!enabled) return;
-      error.hidden = true;
       const action = button.dataset.action;
       const lesson = button.dataset.lesson || null;
+      // Saving a plan is deterministic, so it works without a model.
+      if (action === "plan-save" || action === "plan-confirm") {
+        if (!planForm) return;
+        error.hidden = true;
+        try {
+          const saved = await postPlan(planPayload(action === "plan-confirm"));
+          if (!saved) return;
+          if (action === "plan-confirm" && saved.outline_exists) {
+            window.alert("计划已确认，请重新生成大纲。");
+          }
+          location.reload();
+        } catch (err) {
+          showError(err.message);
+        }
+        return;
+      }
+      if (!enabled) return;
+      error.hidden = true;
       try {
         if (action === "save-outline") {
           const editor = root.querySelector(".tb-outline-editor");

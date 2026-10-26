@@ -7,12 +7,56 @@
   检索源 {{ draft.get("search_backend", "auto") }}</p>
 {% if not enabled %}<p class="tb-warn tb-callout" data-tone="warn">未配置模型服务，缺少：{{ missing|join("、") }}</p>{% endif %}
 {% set batch = draft.steps.get("batch") or {} %}
+{% set plan = draft.get("plan") %}
 <div id="studio" data-draft="{{ draft.id }}" data-enabled="{{ 'true' if enabled else 'false' }}">
+  <section class="tb-step tb-card" data-step="plan">
+    <h2>0 计划
+      <span class="tb-status tb-badge" data-status="{{ 'done' if plan and plan.confirmed else 'pending' }}">
+        {{ "已确认" if plan and plan.confirmed else "未确认" }}</span>
+    </h2>
+    {% if plan %}{% set computed = plan.get("computed") or {} %}{% set inputs = plan.get("inputs") or {} %}
+    <script type="application/json" id="tb-plan-data">{{ plan | tojson }}</script>
+    <p class="tb-meta">每周 {{ inputs.get("weekly_hours") }} 小时 · {{ inputs.get("horizon_weeks") }} 周 ·
+      目的 {{ {"interview": "面试导向", "project": "项目导向", "systematic": "系统补齐"}.get(inputs.get("purpose"), inputs.get("purpose")) }}
+      {% if inputs.get("must_cover") %} · 必须覆盖：{{ inputs.get("must_cover") | join("、") }}{% endif %}</p>
+    <p class="tb-meta">{{ computed.get("module_count") }} 模块 ×
+      {{ computed.get("lessons_per_module") }} 课 · 单课 {{ computed.get("lesson_minutes") }} 分钟 ·
+      共 {{ computed.get("total_lessons") }} 课（{{ computed.get("total_minutes") }} 分钟）</p>
+    <p>{{ plan.get("rationale") }}</p>
+    {% if plan.get("guidance") %}<p class="tb-meta">写作方向：{{ plan.get("guidance") | join("、") }}</p>{% endif %}
+    <div class="tb-form" data-plan-form>
+      <label>模块数 <input name="module_count" type="number" min="1" max="3" value="{{ computed.get('module_count') }}"></label>
+      <label>每模块课数 <input name="lessons_per_module" type="number" min="1" max="5" value="{{ computed.get('lessons_per_module') }}"></label>
+      <label>单课分钟 <input name="lesson_minutes" type="number" min="20" max="60" value="{{ computed.get('lesson_minutes') }}"></label>
+    </div>
+    <p>
+      <button type="button" class="tb-btn" data-action="plan-save">保存计划</button>
+      <button type="button" class="tb-btn tb-btn-primary" data-action="plan-confirm">确认计划</button>
+    </p>
+    <div class="tb-plan-chat">
+      <label>对话调整 <input data-plan-message placeholder="例如：少讲论文，多讲测试实操"></label>
+      <p>
+        <button type="button" class="tb-btn tb-btn-ghost" data-quick-plan="更实操">更实操</button>
+        <button type="button" class="tb-btn tb-btn-ghost" data-quick-plan="更理论">更理论</button>
+        <button type="button" class="tb-btn tb-btn-ghost" data-quick-plan="减少课时">减少课时</button>
+        <button type="button" class="tb-btn tb-btn-ghost" data-quick-plan="增加项目">增加项目</button>
+        <button type="button" class="tb-btn" data-action="plan-chat">发送</button>
+      </p>
+      <div data-plan-diff class="tb-callout" data-tone="info"></div>
+      <ul data-plan-messages>
+        {% for message in plan.get("messages") or [] %}<li><strong>{{ message.role }}</strong>：{{ message.content }}</li>{% endfor %}
+      </ul>
+      <button type="button" class="tb-btn tb-btn-primary" data-action="plan-apply" hidden>应用建议</button>
+    </div>
+    {% else %}
+    <p class="tb-meta">手动模式：直接填写模块数与每模块课数。</p>
+    {% endif %}
+  </section>
   <section class="tb-step tb-card" data-step="outline">
     <h2>1 大纲 <span class="tb-status tb-badge" data-status-for="outline" data-status="{{ draft.steps.outline.status }}">{{ draft.steps.outline.status }}</span></h2>
     <div class="tb-outline-editor" contenteditable="{{ 'true' if enabled else 'false' }}">{{ outline_html | safe }}</div>
     <p><button type="button" class="tb-btn" data-action="save-outline" {% if not enabled %}disabled{% endif %}>保存大纲</button>
-       <button type="button" class="tb-btn" data-action="regen-outline" {% if not enabled %}disabled{% endif %}>重新生成</button></p>
+       <button type="button" class="tb-btn" data-action="regen-outline" {% if not enabled or (plan and not plan.confirmed) %}disabled{% endif %}>重新生成</button></p>
   </section>
   <section class="tb-step tb-card" data-step="research">
     <h2>2 调研</h2>
