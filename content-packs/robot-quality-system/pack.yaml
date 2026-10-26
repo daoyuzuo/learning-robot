@@ -1,0 +1,11 @@
+schema: tb/1
+id: robot-quality-system
+version: 0.1.0
+title: 机器人测试与质量体系（L3）
+description: 机器人测试与质量体系：测试策略与风险、测试设计与任务链、测试预言与量化指标、缺陷与根因、覆盖率与版本准入、实验统计、标准与合规
+language: zh-CN
+license: CC-BY-4.0
+authors:
+- studio
+created: '2026-10-25'
+fixture: false

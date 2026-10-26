@@ -1,0 +1,483 @@
+schema: tb/1
+resources:
+- id: DOC-001
+  title: ISO/IEC/IEEE 29119-1:2022 软件测试标准（测试策略与基于风险的测试节选）
+  url: https://www.vde-verlag.de/iec-standards/free-document-download/250673/
+  type: standard
+  trust: A
+  license: ISO/IEC/IEEE 版权，VDE Verlag 提供免费预览文档，仅供学习参考，不得再分发
+  last_verified: '2026-10-25'
+  coverage:
+  - test-strategy-risk
+  why: 权威国际标准，明确给出测试策略的构成要素、产品风险与项目风险的区分、风险暴露（影响×可能性）的计算与优先级排序方法，以及测试方法选择本身会引入项目风险的权衡观点，是本节课策略与分级主线的直接依据。
+- id: DOC-002
+  title: Recent Results on Classifying Risk-Based Testing Approaches（基于风险测试的分类学）
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 非独占分发许可，可在线阅读
+  last_verified: '2026-10-25'
+  coverage:
+  - test-strategy-risk
+  why: 系统梳理了基于风险测试的三层结构（上下文设定、风险评估、基于风险的测试策略），并给出风险值 R=P×I 的计算、风险等级划分与按等级定义测试强度的完整步骤，可直接支撑本节课第二、三部分的流程讲解。
+- id: DOC-003
+  title: Fuzzifying ODD：离散与模糊情境超空间的风险表征与测试优先级对比
+  url: https://eprints.whiterose.ac.uk/id/eprint/239981/1/Fuzzifying_ODD.pdf
+  type: paper
+  trust: A
+  license: White Rose Research Online 开放获取，作者/机构保留版权，可免费下载
+  last_verified: '2026-10-25'
+  coverage:
+  - test-strategy-risk
+  why: 提供了风险分级失准的量化证据：225 个用例中离散分级相对连续评估出现 42 例低估（含 7 例高→低严重低估），约占 19%，直接说明风险低估如何导致危险场景得不到足够测试优先级，是本节课第四部分的实证支撑。
+- id: DOC-004
+  title: 移动服务机器人预期功能安全标准草案（含 RXL 风险等级评价模型）
+  url: http://www.caicv.org.cn/upload/2026/06/05/17806289486521f74np.pdf
+  type: standard_draft
+  trust: A
+  license: 标准草案公示文件，公开发布供征求意见，版权归起草组所有
+  last_verified: '2026-10-25'
+  coverage:
+  - test-strategy-risk
+  why: 给出机器人领域本土化的风险分级方法：基于伤害严重度 S、暴露频度 E、可控性 C、发生概率 P 的综合风险等级 RXL 模型，以及“场景—触发条件—功能不足—危害”的风险链构建方法，可支撑本节课第三部分机器人场景实践。
+- id: DOC-005
+  title: Risk-Based Testing 实践手册（风险登记册、质量门与发布决策）
+  url: https://github.com/harhala7/qa-test-strategy-risk-based
+  type: repository
+  trust: B
+  license: GitHub 公开仓库，具体许可见仓库 LICENSE 文件
+  last_verified: '2026-10-25'
+  coverage:
+  - test-strategy-risk
+  why: 以工程手册形式展示如何把产品上下文转成风险登记册、再由风险推导测试策略与退出准则，包含质量门与发布 GO/NO-GO 决策示例，可作为学员撰写自己风险测试策略时的参考模板（社区资源，权威性低于标准，故标
+    B）。
+- id: L-001-002-DOC-001
+  title: 'RoboHarness: Memory-Driven Orchestration of Heterogeneous Robot Policies
+    for Long-Horizon Planning'
+  url: https://ar5iv.labs.arxiv.org/html/2607.18060#5
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款（作者保留版权）
+  last_verified: '2026-02-14'
+  coverage:
+  - test-design-taskchain
+  why: 给出长程任务链的真实分解与执行时扰动注入清单（重新藏起目标物、拆散已完成结构、位姿加 5%–10% 噪声、加入干扰物），可直接支撑失效传播测试用例设计。
+- id: L-001-002-DOC-003
+  title: Developing semi-autonomous humanoid robots that perform various composite
+    tasks via a task sequencer and dynamics simulator
+  url: https://researchmap.jp/read0004851/published_papers/11720425?lang=ja
+  type: paper
+  trust: A
+  license: IEEE 会议论文，版权归 IEEE，需通过出版方获取全文
+  last_verified: '2026-02-14'
+  coverage:
+  - test-design-taskchain
+  why: 把任务序列定义为基于传感数据、运动规划器与控制器的结构化过程，并说明可在动力学仿真器中先测试序列而不必真实动机器人，是任务链建模与链级测试结合的权威依据。
+- id: L-001-002-DOC-004
+  title: Failure cascades in activity-on-node task networks (PLOS ONE)
+  url: https://core.ac.uk/download/pdf/33131553.pdf
+  type: paper
+  trust: A
+  license: PLOS ONE 开放获取（CC BY）
+  last_verified: '2026-02-14'
+  coverage:
+  - test-design-taskchain
+  - test-strategy-risk
+  why: 以有向任务网络建模依赖关系，量化单个节点失效引发的级联规模，并指出少数上游节点可造成远大于自身规模的影响，为关键节点识别与失效传播测试提供方法依据。
+- id: L-001-002-DOC-005
+  title: A Practical Approach to Combinatorial Test Design
+  url: https://arxiv.org/html/2410.19522v1#5
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款（作者保留版权）
+  last_verified: '2026-02-14'
+  coverage:
+  - test-design-taskchain
+  why: 演示如何把链上分支组合从上百年组合约简到可执行规模，同时强调必须保留极端情形与中间路线情形，可直接用于任务链分支的用例约简。
+- id: DOC-006
+  title: Recent Results on Classifying Risk-Based Testing Approaches
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812#3
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款（作者保留版权）
+  last_verified: '2026-02-14'
+  coverage:
+  - test-strategy-risk
+  why: 系统给出风险分级流程：估计可能性与影响、按 R=P×I 计算风险值、划分风险等级、按等级定义测试策略与强度，并建议将可能性与影响作为两个维度分别审视。
+- id: DOC-007
+  title: 《软件测试技术实战 设计、工具及管理》第4章 基于风险的软件测试（连载）
+  url: https://developer.aliyun.com/article/1158846#1
+  type: article
+  trust: A
+  license: 阿里云开发者社区文章，版权归作者与平台，引用需注明出处
+  last_verified: '2026-02-14'
+  coverage:
+  - test-strategy-risk
+  why: 提供中文语境下的风险级别计算与动态调整示例（按缺陷严重度加权调整发生可能性），说明风险等级应随测试暴露的缺陷而更新，适合作为课堂演算素材。
+- id: DOC-008
+  title: ISO/IEC/IEEE 29119-1:2022 软件测试标准（测试策略与基于风险的测试节选）
+  url: https://www.vde-verlag.de/iec-standards/free-document-download/250673/#5#9#5
+  type: standard
+  trust: A
+  license: ISO/IEC/IEEE 标准，版权归各标准组织，免费预览文档仅限合理引用
+  last_verified: '2026-02-14'
+  coverage:
+  - test-strategy-risk
+  why: 权威界定产品风险与项目风险的区别、风险暴露水平的建立方式，以及测试策略内容与测试方法选择如何由风险驱动，可作为风险分级术语与流程的规范来源。
+- id: L-001-003-DOC-001
+  title: Checklist to Transparently Define Test Oracles for TP, FP, and FN Objects
+    in Automated Driving (arXiv:2308.07106)
+  url: https://www.x-mol.com/paper/1691504103417204736/t
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 非独占分发许可（作者保留版权）
+  last_verified: '2026-02-20'
+  coverage:
+  - oracle-metrics
+  why: 系统给出影响预言机行为的功能方面与实现细节清单（视野、遮挡处理、安全相关区域、匹配标准、时间与概率问题等），直接支撑“为机器人行为定义测试预言”这一目标，并说明预言透明度对结果可比性的意义。
+- id: L-001-003-DOC-002
+  title: Metamorphic Testing of Vision-Language Action-Enabled Robots
+  url: https://www.zhuanzhiai.com/paper/7c08c6d809cf995ae498d8bb54b509c8
+  type: paper
+  trust: B
+  license: 二次转载页面，原文版权归原作者；引用请以原文为准
+  last_verified: '2026-02-20'
+  coverage:
+  - oracle-metrics
+  - test-design-taskchain
+  why: 明确指出 VLA 机器人面临双重预言困境：为每条指令定义预言不可泛化，现有预言只能评估任务正确性而无法评估执行质量；并提出蜕变关系模式来缓解预言问题，与本课“预言
+    + 质量指标”的主线高度契合。
+- id: L-001-003-DOC-003
+  title: T/SAIAS 工业机器人一致性 第 1 部分：整机评价方法及要求（征求意见稿）
+  url: https://www.ttbz.org.cn/upload/file/20250831/6389227151738252453092089.pdf
+  type: standard
+  trust: A
+  license: 团体标准公开征求意见稿，用于学习引用，正式使用需获取标准文本授权
+  last_verified: '2026-02-20'
+  coverage:
+  - oracle-metrics
+  why: 给出评价指标选取的全面性、易测性、科学性原则，以及一级/二级指标体系（位置准确度、位置重复性、轨迹准确度、循环时间等），是设计可量化质量指标与评估阈值合理性的直接参照。
+- id: L-001-003-DOC-004
+  title: T/SRIMA 002-2023 工业机器人性能综合评价指标体系
+  url: https://www.spc.org.cn/online/01252a4aed64f8972fcbd02695188c46.html
+  type: standard
+  trust: A
+  license: 团体标准，标准文本不公开，页面信息可用于学习引用
+  last_verified: '2026-02-20'
+  coverage:
+  - oracle-metrics
+  why: 规定了工业机器人性能综合评价的评分模型、评价方法和评价指标体系，可作为“把多维指标组织成可评分体系”的范例，支撑指标分层与权重设计。
+- id: L-001-003-DOC-005
+  title: 'Quality Function Deployment (QFD) for human-robot collaboration: Systematic
+    selection of key performance indicators in HRC'
+  url: https://www.sciencedirect.com/science/article/pii/S2212827124013295
+  type: paper
+  trust: A
+  license: Elsevier 期刊论文，订阅内容，引用需遵循出版方条款
+  last_verified: '2026-02-20'
+  coverage:
+  - oracle-metrics
+  - test-design-taskchain
+  why: 指出人机协作缺乏标准化测量标准与系统化评估方法，提出用 QFD 把 KPI 与流程负责人需求对齐后再排序，支撑“指标要服务于风险与需求，而非堆砌数字”的设计观。
+- id: L-001-003-DOC-006
+  title: Recent Results on Classifying Risk-Based Testing Approaches (arXiv:1801.06812)
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 非独占分发许可
+  last_verified: '2026-02-20'
+  coverage:
+  - test-design-taskchain
+  - oracle-metrics
+  why: 给出基于风险的测试分类框架：风险值 = 可能性 × 影响，按风险等级确定测试强度与覆盖准则，支撑“阈值与测试深度应随风险分级调整”的判断。
+- id: L-001-004-DOC-001
+  title: 'CaRE: Finding Root Causes of Configuration Issues in Highly-Configurable
+    Robots'
+  url: https://jokane.net/pubs/HosKha+23.html
+  type: paper
+  trust: A
+  license: 作者个人主页公开的论文页面，引用信息标注为 IEEE Robotics and Automation Letters 8(7):4115-4122,
+    2023，DOI 10.1109/LRA.2023.3280810；正式使用请遵循 IEEE 版权与出版方条款
+  last_verified: '2026-05-07'
+  coverage:
+  - defect-rootcause
+  - oracle-metrics
+  why: 系统讲解如何用因果结构学习与因果效应估计定位高可配置机器人的配置类根因，并在 Husky、TurtleBot 3 与 Gazebo 上验证，同时展示仿真学到的因果模型可迁移到实机；对理解“相关性不等于因果、需干预验证”以及以性能指标为量化依据的根因定位非常直接。
+- id: L-001-004-DOC-002
+  title: Carson classifies failures according to where the failures happen（含按根因的失效分类、鱼骨图、FTA、FMEA
+    与 RPN）
+  url: http://dl.icdst.org/pdfs/files/eed2cb9cd60d2627c1664946bcbb305c.pdf
+  type: pdf
+  trust: A
+  license: 公开可访问的 PDF 文档，版权归原作者/出版方所有，引用与转载需遵循原始文档的版权声明
+  last_verified: '2026-05-07'
+  coverage:
+  - defect-rootcause
+  why: 给出无人地面车辆失效按根因分类的完整框架（设计、技术局限、制造、环境、操作），并系统介绍鱼骨图、故障树分析、FMEA 与 RPN=S×O×D 的计算与使用场景，是本课根因分析方法部分的主要依据。
+- id: L-001-004-DOC-003
+  title: 'Alpha: Systematic Fault Injection and Robustness Evaluation for LLM-Driven
+    Embodied Manipulation'
+  url: https://arxiv.org/pdf/2610.30197
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款与论文自身许可声明
+  last_verified: '2026-05-07'
+  coverage:
+  - defect-rootcause
+  - oracle-metrics
+  why: 提供感知、执行、运动学、序列化四个边界的故障分类与强度标定方法，并说明当二值成功率饱和时应改用连续度量（如最终放置误差），以及如何用匹配对照实验把性能差异归因到具体故障类别，直接支撑本课的复现、故障注入与量化指标内容。
+- id: L-001-004-DOC-004
+  title: Enum CorrelationMode（ros2_medkit_fault_manager 故障关联模式）
+  url: https://docs.ros.org/en/jazzy/p/ros2_medkit_fault_manager/generated/enum_types_8hpp_1a67451973797ba35cb252cc975cdf88ff.html
+  type: docs
+  trust: A
+  license: ROS 文档站点内容，遵循 ROS 文档与对应软件包的开放许可（以站点与包内声明为准）
+  last_verified: '2026-05-07'
+  coverage:
+  - defect-rootcause
+  why: 给出机器人中间件中故障关联的两种工程模式：层次化（根因→症状，根因被检出后后续匹配故障作为症状被抑制）与自动聚类（时间窗口内共现故障成簇），为“区分根因故障与症状故障、避免告警风暴”提供可落地的实现参考。
+- id: L-002-001-DOC-001
+  title: 'Towards Reliable AI: Adequacy Metrics for Ensuring the Quality of System-Level
+    Testing of Autonomous Vehicles (ICSE 2024)'
+  url: https://ar5iv.labs.arxiv.org/html/2311.08049
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款；正式版由 ACM 出版（DOI 10.1145/3597503.3623314），引用请以出版版本为准
+  last_verified: '2026-10-20'
+  coverage:
+  - coverage-release-gate
+  why: 提出 TISA 黑盒测试充分性指标，说明传统白盒覆盖率对学习型系统不适用，并论证充分性指标应与缺陷检出能力相关——这正是本课“覆盖率是证据不是结论”的核心依据。
+- id: L-002-001-DOC-002
+  title: 'STARS: A Tool for Measuring Scenario Coverage When Testing Autonomous Robotic
+    Systems (EDCC 2024 Workshops, CCIS 2078)'
+  url: https://library.cnu.ac.kr/eds/detail/edssjb_edssjb.978.3.031.56776.6.6
+  type: paper
+  trust: A
+  license: Springer Nature 版权，© The Author(s), under exclusive license to Springer
+    Nature Switzerland AG 2024；仅限合法订阅访问
+  last_verified: '2026-10-20'
+  coverage:
+  - coverage-release-gate
+  why: 直接面向自主机器人系统，给出通过语义化环境特征度量场景覆盖率的方法，支撑本课“场景/实例空间覆盖”这一度量维度与“还差多少场景”的可量化陈述。
+- id: L-002-001-DOC-003
+  title: Release Gating and Regression Prevention（MethodAtlas 文档）
+  url: https://accenture.github.io/MethodAtlas/ci/release-gating/
+  type: docs
+  trust: A
+  license: Accenture MethodAtlas 项目公开文档，随项目仓库发布，使用请遵循其仓库许可与署名要求
+  last_verified: '2026-10-20'
+  coverage:
+  - coverage-release-gate
+  why: 给出可操作的门禁条件表（删除安全相关测试阻断、计数下降阻断、编辑仅告警）与基线管理策略，是本课“版本准入准则”与“门禁本身也要被测试”的直接实践来源。
+- id: L-002-001-DOC-004
+  title: 'Quality guide: ensuring code quality — Code coverage analysis（ROS 2 官方文档）'
+  url: https://docs.ros.org/en/ros2_documentation/crystal/Contributing/Quality-Guide.html
+  type: docs
+  trust: A
+  license: ROS 2 文档采用 Creative Commons Attribution 4.0（CC BY 4.0），转载需署名
+  last_verified: '2026-10-20'
+  coverage:
+  - coverage-release-gate
+  why: ROS 2 官方质量指南中的覆盖率分析模式，说明覆盖率工具选型要点（覆盖类型、CI 集成）并明确指出覆盖率无法反映测试质量，与本课立场一致。注意该页面对应已
+    EOL 版本，仅作方法论参考。
+- id: L-002-001-DOC-005
+  title: Security Robots 预审批要求（IMDA Pre-approval Guide）
+  url: https://preapproval-guide.imda.gov.sg/~/revisions/R43tLGbjNdr5GYDcYJjN/pre-approval-guide/stage-1-vendor-self-assessment/identify-suitable-solution-category/security/security-robots.md
+  type: docs
+  trust: A
+  license: 新加坡 IMDA 官方公开指南页面，供查阅与引用，转载需注明来源
+  last_verified: '2026-10-20'
+  coverage:
+  - coverage-release-gate
+  why: 提供机器人方案准入的强制性要求清单实例（如近 12 个月内由合格第三方完成安全漏洞评估并提交报告），可作为本课“安全与合规条件”与“证据须可审计”的真实参照。
+- id: L-002-002-DOC-001
+  title: fieldtrial：面向机器人策略的真实世界统计评估框架
+  url: https://pypi.org/project/fieldtrial/
+  type: documentation
+  trust: A
+  license: 开源项目文档（PyPI 页面，遵循项目自身开源许可）
+  last_verified: '2026-10-01'
+  coverage:
+  - experiment-statistics
+  - coverage-release-gate
+  why: 给出预注册设计、随机化盲测、精确 McNemar 检验与置信区间、样本量与功效规划的完整工作流，直接支撑本课的实验设计与准入判据。
+- id: L-002-002-DOC-002
+  title: How Many Trials Do You Need To Evaluate A Robot Policy?
+  url: https://www.bifrost.ai/blog/how-many-trials-to-evaluate-a-robot-policy/
+  type: article
+  trust: B
+  license: 网站文章，版权归原作者所有，引用需注明出处
+  last_verified: '2026-10-01'
+  coverage:
+  - experiment-statistics
+  why: 提供 Wilson 与 Clopper-Pearson 区间宽度查表及两比例样本量计算，说明小样本下 2 个百分点差异不可分辨，适合作为区间与功效教学的量化依据。
+- id: L-002-002-DOC-003
+  title: How Generalizable Is My Behavior Cloning Policy? A Statistical Approach to
+    Trustworthy Performance Evaluation
+  url: https://export.arxiv.org/pdf/2405.05439
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 分发许可
+  last_verified: '2026-10-01'
+  coverage:
+  - experiment-statistics
+  why: 用最少 rollout 构造性能下界并给出置信水平与紧度权衡，说明小样本评估中区间方法优于点估计。
+- id: L-002-002-DOC-004
+  title: Is Your Imitation Learning Policy Better than Mine? Policy Comparison with
+    Near-Optimal Stopping
+  url: https://ar5iv.labs.arxiv.org/html/2503.10966
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 分发许可
+  last_verified: '2026-10-01'
+  coverage:
+  - experiment-statistics
+  why: 讨论小样本策略比较中的序贯检验与提前停止，说明为何不能随意追加试验，支撑显著性与停止规则的讲解。
+- id: L-002-002-DOC-005
+  title: Recent Results on Classifying Risk-Based Testing Approaches
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 分发许可
+  last_verified: '2026-10-01'
+  coverage:
+  - coverage-release-gate
+  why: 给出风险值 R=P×I、风险分级与按级别定义测试策略的流程，是把覆盖率与准入判据按风险分层的直接依据。
+- id: L-002-002-DOC-006
+  title: Design of Experiments（ETH Zurich 课程）
+  url: https://csb.ethz.ch/education/lectures/DesignOfExperiments.html
+  type: course
+  trust: A
+  license: 课程页面内容版权归 ETH Zurich，仅作教学引用
+  last_verified: '2026-10-01'
+  coverage:
+  - experiment-statistics
+  why: 系统覆盖随机化、区组、重复、样本量与功效、多重比较等实验设计基础，为本课设计原则提供权威教学来源。
+- id: L-002-003-DOC-001
+  title: Towards Evaluating Safety of Robot Systems According to Official Standards（IEEE）
+  url: https://ieeexplore.ieee.org/document/11301290
+  type: paper
+  trust: A
+  license: IEEE Xplore 订阅访问，版权归 IEEE 与作者所有
+  last_verified: '2026-10-20'
+  coverage:
+  - standards-compliance
+  why: 提出在机器人系统参数与 ISO 官方标准安全要求之间建立映射的方法，直接支撑“条款→系统变量→测试活动”的映射思路，并指出安全关键变量未被清晰识别是当前评估困难的根源。
+- id: L-002-003-DOC-002
+  title: Compliance Matrix（Invariant Robotics 公开合规矩阵）
+  url: https://github.com/clay-good/invariant/blob/main/docs/compliance-matrix.md
+  type: code
+  trust: A
+  license: 随仓库发布（以仓库 LICENSE 为准）
+  last_verified: '2026-10-20'
+  coverage:
+  - standards-compliance
+  why: 给出标准条款到实现代码路径与测试的可核查映射实例，并说明“—”表示由流程或外部 CI 满足，是构建合规矩阵与识别隐性缺口的直接范本。
+- id: L-002-003-DOC-003
+  title: 机器人功能安全法规框架浅析（A/B/C 三层标准与 PL/SIL 体系）
+  url: https://www.eet-china.com/mp/a507764.html
+  type: article
+  trust: B
+  license: 网站内容，版权归原作者与发布平台所有
+  last_verified: '2026-10-20'
+  coverage:
+  - standards-compliance
+  why: 中文梳理 A/B/C 三层标准结构、C 类优先原则、PL 与 SIL 两套评价体系及 ISO 10218 新版变化，适合作为标准体系入门与适用性判断的参考。
+- id: L-002-003-DOC-004
+  title: 'The Compliance Evidence Gap: Why Engineering Teams Struggle to Prove What
+    They Already Did（Jama Software）'
+  url: https://www.jamasoftware.com/blog/compliance-evidence/
+  type: article
+  trust: B
+  license: 网站内容，版权归 Jama Software 所有
+  last_verified: '2026-10-20'
+  coverage:
+  - standards-compliance
+  why: 系统归纳合规证据缺口的四种失效模式（链条断裂、版本歧义、责任分散、重建文化）与“为证据而设计”的五项做法，是本课缺口识别与补齐路径的主要依据。
+- id: L-002-003-DOC-005
+  title: Valid Compliance Evidence for Fleets of Autonomous Robots（Zenodo）
+  url: https://zenodo.org/records/21802470
+  type: paper
+  trust: A
+  license: Zenodo 开放获取，版权归作者所有
+  last_verified: '2026-10-20'
+  coverage:
+  - standards-compliance
+  - experiment-statistics
+  why: 以规范形式给出独立一致性监控的十一条要求，并推导出系统测量不确定度决定可分辨最小偏差、单次启动瞬态会放宽参考包络等结论，直接支撑本课的统计判定与静默失效讨论。
+- id: L-002-003-DOC-006
+  title: Recent Results on Classifying Risk-Based Testing Approaches（arXiv）
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812
+  type: paper
+  trust: A
+  license: arXiv 预印本，版权归作者所有
+  last_verified: '2026-10-20'
+  coverage:
+  - experiment-statistics
+  why: 给出风险值 R=P×I 的计算、风险等级划分与按等级定义测试策略的流程，说明测试强度如何随风险分级调整，可用于把统计判定规则与风险等级绑定。
+- id: L-002-003-DOC-007
+  title: ISO/IEC/IEEE 29119-1:2022 软件测试 第1部分（免费预览文档）
+  url: https://www.vde-verlag.de/iec-standards/free-document-download/250673/
+  type: standard
+  trust: A
+  license: ISO/IEC/IEEE 标准，VDE Verlag 提供免费预览，正式使用需购买授权
+  last_verified: '2026-10-20'
+  coverage:
+  - experiment-statistics
+  - standards-compliance
+  why: 明确测试应基于已识别的风险、测试策略需记录测试方法选择与完成判据，并区分产品风险与项目风险，为把标准要求转化为测试活动提供规范依据。
+- id: L-002-004-DOC-001
+  title: 合格评定引领国产机器人崛起——访上海电器科学研究所（集团）有限公司副总裁郑军奇
+  url: https://www.cqn.com.cn/zgzlb/content/2026-01/13/content_9139665.htm
+  type: article
+  trust: A
+  license: 中国质量报（中国质量报刊社）版权所有，仅限阅读引用
+  last_verified: '2026-10-01'
+  coverage:
+  - standards-compliance
+  why: 权威媒体对中国机器人认证（CR 认证）体系的专访，说明 2016 年推出、2022 年升级为 L1–L5“符合性 + 等级”架构，覆盖可靠性、信息安全、功能安全、智能水平四大领域，并给出
+    MTBF 等可量化指标的行业实践，是理解机器人合规与准入要求的核心资料。
+- id: L-002-004-DOC-002
+  title: 【团体标准】质量管理体系成熟度 要求和评价准则 人形机器人行业（T/ZRIA 002-2026）
+  url: https://www.spc.org.cn/online/91bb753bd8afcdda7842aaa7ae432404.html
+  type: standard
+  trust: A
+  license: 标准文本版权归发布部门所有，本站为标准信息检索页面
+  last_verified: '2026-10-01'
+  coverage:
+  - standards-compliance
+  why: 标准信息页明确了该团体标准的适用范围：适用于人形机器人整机、关键系统与零部件的设计开发、制造、装配、集成与服务组织的质量成熟度评价，可用于供应商准入审核、年度复评、专项改进验证及第三方评价，直接支撑本课的合规评估与准入审核演练。
+- id: L-002-004-DOC-003
+  title: 机器人系统性能检测评估_质量特性评估（广电计量）
+  url: https://www.grgtmall.com/views/4040.html
+  type: article
+  trust: A
+  license: 广电计量官方网站内容，版权归其所有，仅限阅读引用
+  last_verified: '2026-10-01'
+  coverage:
+  - standards-compliance
+  - experiment-statistics
+  why: 系统列出机器人检测所依据的标准（如 GB/T 12642 性能规范及试验方法、GB/T 5080.1 可靠性试验的试验条件与统计检验原理、GB/T 39590.1
+    机器人可靠性通用导则）与检测项目，是把“标准要求”落到“测试与统计证据”的实用索引。
+- id: L-002-004-DOC-004
+  title: Recent Results on Classifying Risk-Based Testing Approaches（基于风险的测试分类与流程）
+  url: https://ar5iv.labs.arxiv.org/html/1801.06812
+  type: paper
+  trust: A
+  license: arXiv 预印本，遵循 arXiv 使用条款
+  last_verified: '2026-10-01'
+  coverage:
+  - coverage-release-gate
+  - experiment-statistics
+  why: 给出基于风险的测试流程：风险识别、概率与影响评估、风险值计算与分级、按风险等级定义测试策略与覆盖强度。可直接用于本课“按风险分级设定覆盖率门槛”的准入模型，并为测试资源分配提供方法依据。
+- id: L-002-004-DOC-005
+  title: ISO/IEC/IEEE 29119-1:2022 软件测试标准（测试策略与风险管理节选）
+  url: https://www.vde-verlag.de/iec-standards/free-document-download/250673/
+  type: standard
+  trust: A
+  license: ISO/IEC/IEEE 标准预览文档，版权归各标准组织所有
+  last_verified: '2026-10-01'
+  coverage:
+  - coverage-release-gate
+  - standards-compliance
+  why: 标准正文说明测试应基于感知风险，区分产品风险与项目风险，并给出测试策略应包含的内容（测试方法选择、完成准则、进入与退出准则、度量指标等），是设计版本准入门槛与测试完成准则的权威依据。

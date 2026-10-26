@@ -1,0 +1,99 @@
+schema: tb/1
+concepts:
+- id: test-strategy-risk
+  title: 测试策略与风险分级
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites: []
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-tsr-1
+    description: 能针对机器人任务场景划分风险等级并给出对应测试策略
+    level: L3
+  - id: ec-tsr-2
+    description: 能说明策略选择与资源约束之间的权衡
+    level: L3
+- id: test-design-taskchain
+  title: 测试设计与任务链建模
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - test-strategy-risk
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-tdt-1
+    description: 能将机器人任务分解为可测试的任务链并设计用例
+    level: L3
+  - id: ec-tdt-2
+    description: 能识别任务链中的关键节点与失效传播路径
+    level: L3
+- id: oracle-metrics
+  title: 测试预言与量化指标
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - test-design-taskchain
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-om-1
+    description: 能为机器人行为定义可判定的测试预言与量化指标
+    level: L3
+  - id: ec-om-2
+    description: 能评估指标的可测量性与阈值合理性
+    level: L3
+- id: defect-rootcause
+  title: 缺陷管理与根因分析
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - oracle-metrics
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-dr-1
+    description: 能对机器人缺陷进行分类、复现与根因定位
+    level: L3
+  - id: ec-dr-2
+    description: 能提出可验证的纠正与预防措施
+    level: L3
+- id: coverage-release-gate
+  title: 覆盖率与版本准入
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - defect-rootcause
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-crg-1
+    description: 能设计覆盖率度量与版本准入准则
+    level: L3
+  - id: ec-crg-2
+    description: 能基于证据做出准入/拒绝判断并说明依据
+    level: L3
+- id: experiment-statistics
+  title: 实验设计与统计推断
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - coverage-release-gate
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-es-1
+    description: 能设计对照实验并用统计方法评估机器人测试结果
+    level: L3
+  - id: ec-es-2
+    description: 能解释置信区间与显著性对结论的影响
+    level: L3
+- id: standards-compliance
+  title: 标准与合规
+  domain: 机器人质量体系
+  target_level: L3
+  prerequisites:
+  - experiment-statistics
+  weight: 1.0
+  evidence_criteria:
+  - id: ec-sc-1
+    description: 能将相关机器人安全与质量标准映射到测试活动
+    level: L3
+  - id: ec-sc-2
+    description: 能识别合规证据缺口并规划补齐路径
+    level: L3

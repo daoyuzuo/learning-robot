@@ -1,0 +1,15 @@
+schema: tb/1
+id: M01
+title: 测试策略、设计与预言
+priority: P1
+concepts:
+- test-strategy-risk
+- test-design-taskchain
+- oracle-metrics
+- defect-rootcause
+lessons:
+- L-001-001
+- L-001-002
+- L-001-003
+- L-001-004
+order: 1

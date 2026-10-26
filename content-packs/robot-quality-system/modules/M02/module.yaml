@@ -1,0 +1,14 @@
+schema: tb/1
+id: M02
+title: 覆盖率、准入、统计与合规
+priority: P1
+concepts:
+- coverage-release-gate
+- experiment-statistics
+- standards-compliance
+lessons:
+- L-002-001
+- L-002-002
+- L-002-003
+- L-002-004
+order: 2
