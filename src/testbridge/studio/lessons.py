@@ -10,6 +10,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 
 import yaml
 from pydantic import ValidationError
@@ -32,6 +33,48 @@ class LessonError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+class _ImageSrcScanner(HTMLParser):
+    """Collect ``img`` sources from raw model HTML.
+
+    Attribute values arrive entity-decoded, so ``http&#58;//`` is seen as
+    ``http://``; quoting style does not matter either.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.sources: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != "img":
+            return
+        for name, value in attrs:
+            if name.lower() == "src" and isinstance(value, str):
+                self.sources.append(value)
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+
+
+_CONTROL_RE = re.compile(r"[\x00-\x20\x7f]+")
+
+
+def _external_image(html: str) -> str | None:
+    """Return the first remote ``img`` source, if any.
+
+    Spaces and control characters are stripped before the check so obfuscated
+    schemes and protocol-relative URLs are still caught. Relative sources stay
+    allowed; the prompt forbids them but they cannot leak a remote fetch.
+    """
+    scanner = _ImageSrcScanner()
+    scanner.feed(html)
+    scanner.close()
+    for source in scanner.sources:
+        cleaned = _CONTROL_RE.sub("", source).lower()
+        if cleaned.startswith("//") or cleaned.startswith(("http:", "https:")):
+            return source
+    return None
 
 
 @dataclass(frozen=True)
@@ -149,9 +192,7 @@ def parse_lesson_json(
         raise LessonError("正文不得包含脚本")
     if re.search(r"<\s*svg", html, re.IGNORECASE):
         raise LessonError("正文不得直接包含 SVG，请使用 figures 规格")
-    if re.search(
-        r'<img\b[^>]*\bsrc\s*=\s*["\']https?://', html, re.IGNORECASE
-    ):
+    if _external_image(html) is not None:
         raise LessonError("正文不得引用外部图片")
     clean = sanitize_fragment(html)
     if "<article" not in clean:

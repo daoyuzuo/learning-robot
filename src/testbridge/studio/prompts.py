@@ -55,7 +55,7 @@ LESSON_SYSTEM = (
     '<div data-tb-figure="FIG-1"></div>，并在 figures 数组中给出规格。\n'
     "   每张图必须有 caption（图注）与 alt（说明图表达的关系），中文≤200 字；"
     "图形 kind 只能是 flow / timeline / block / compare，仅使用本课概念。\n"
-    "   正文只允许 figure / figcaption 标签，禁止 svg / img / script / style。\n"
+    "   图片相关只允许 figure / figcaption，禁止 svg / img / script / style。\n"
     "8. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"manifest": {"title", "minutes", "objectives"}, "html": "...", '
     '"exercises": [...], "resources": [...], "figures": [...]}'

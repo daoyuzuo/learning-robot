@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from testbridge.content.repository import load_pack
-from testbridge.quality.evaluate import evaluate_pack
+from testbridge.quality.evaluate import evaluate_pack, _prompt_versions
 from testbridge.quality.figures import evaluate_figures
 
 FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "minimal-pack"
@@ -84,3 +86,22 @@ def test_published_pack_has_no_figure_warnings(tmp_path: Path) -> None:
     report = evaluate_pack(root)
 
     assert not any(issue.code == "quality.lesson_no_figure" for issue in report.warnings)
+
+
+@pytest.mark.parametrize("payload", [
+    "{not json",
+    json.dumps({"steps": ["lessons"]}),
+    json.dumps({"steps": {"lessons": {"L-ONE": "studio/4"}}}),
+    json.dumps(["not", "an", "object"]),
+])
+def test_malformed_draft_json_yields_no_prompt_versions(
+    tmp_path: Path, payload: str
+) -> None:
+    root = copy_pack(tmp_path)
+    (root / "draft.json").write_text(payload, encoding="utf-8")
+
+    assert _prompt_versions(root) == {}
+    report = evaluate_pack(root)
+    assert not any(
+        issue.code == "quality.lesson_no_figure" for issue in report.warnings
+    )

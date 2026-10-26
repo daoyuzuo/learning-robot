@@ -595,3 +595,33 @@ def test_verify_env_zero_disables_default_url_checker(
     ))
 
     assert app.app.state.studio_url_checker is None
+
+
+def lesson_json_with_figure() -> str:
+    payload = json.loads(LESSON_JSON)
+    payload["html"] = payload["html"].replace(
+        "</article>", '<div data-tb-figure="FIG-1"></div></article>'
+    )
+    payload["figures"] = [{
+        "id": "FIG-1", "kind": "flow", "caption": "流程",
+        "alt": "采集到判定的流程",
+        "nodes": [{"id": "n1", "label": "采集"}, {"id": "n2", "label": "判定"}],
+        "edges": [{"from": "n1", "to": "n2"}],
+    }]
+    return json.dumps(payload)
+
+
+def test_lesson_step_records_figure_count(tmp_path: Path) -> None:
+    app = make_app(tmp_path, FakeLlm(lesson_json=lesson_json_with_figure()))
+    create_draft(app)
+
+    app.post("/api/studio/demo/research", json={"lesson_id": "L-EXEC-001"})
+    lesson = app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
+
+    assert lesson.status_code == 200, lesson.text
+    entry = app.app.state.studio_store.load("demo")["steps"]["lessons"]["L-EXEC-001"]
+    assert entry["figure_count"] == 1
+    html = app.app.state.studio_store.read(
+        "demo", "modules/M01/lessons/L-EXEC-001.html"
+    )
+    assert '<figure class="tb-figure">' in html

@@ -359,3 +359,44 @@ def test_lesson_without_figures_still_works() -> None:
         json.dumps({**PAYLOAD, "figures": []}), LESSON, {"executor-basics"}
     )
     assert output.figures == []
+
+
+@pytest.mark.parametrize("src", [
+    "https://example.com/x.png",
+    "//example.com/x.png",
+    "http&#58;//example.com/x.png",
+])
+def test_lesson_rejects_obfuscated_external_image(src: str) -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        f'<img src="{src}" alt="x"></article>'
+    )
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload_with_figure(html=body, figures=[]),
+            LESSON, {"executor-basics"},
+        )
+
+
+def test_lesson_rejects_unquoted_external_image() -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        '<img src=https://example.com/x.png alt=x></article>'
+    )
+    with pytest.raises(LessonError):
+        parse_lesson_json(
+            _payload_with_figure(html=body, figures=[]),
+            LESSON, {"executor-basics"},
+        )
+
+
+def test_lesson_allows_relative_image() -> None:
+    body = (
+        '<article class="tb-lesson"><div data-tb-exercise="EX-1"></div>'
+        '<img src="images/x.png" alt="x"></article>'
+    )
+    output = parse_lesson_json(
+        _payload_with_figure(html=body, figures=[]),
+        LESSON, {"executor-basics"},
+    )
+    assert 'src="images/x.png"' in output.html
