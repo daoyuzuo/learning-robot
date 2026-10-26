@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -24,6 +26,13 @@ from testbridge.tutor.client import (
     TutorUpstreamError,
 )
 from testbridge.tutor.config import TutorConfig, load_config, missing_vars
+from testbridge.tutor.env_store import (
+    EnvWriteError,
+    display_url,
+    export_lines,
+    secret_status,
+    write_user_env,
+)
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -114,6 +123,97 @@ def _run_quality(
     return 0 if report.ok else 1
 
 
+REQUIRED_LLM_VARS = (
+    "TESTBRIDGE_LLM_BASE_URL",
+    "TESTBRIDGE_LLM_API_KEY",
+    "TESTBRIDGE_LLM_MODEL",
+)
+
+
+def _valid_base_url(value: str) -> bool:
+    from urllib.parse import urlsplit
+
+    try:
+        parts = urlsplit(value.strip())
+    except ValueError:
+        return False
+    return parts.scheme in {"http", "https"} and bool(parts.hostname)
+
+
+def _prompt_value(label: str, current: str, *, secret: bool = False) -> str:
+    shown = secret_status(current) if secret else current
+    suffix = f" [{shown}]" if current else ""
+    prompt = f"{label}{suffix}: "
+    value = getpass.getpass(prompt) if secret else input(prompt)
+    return value.strip() or current
+
+
+def _cmd_env_init(args) -> int:
+    current = {name: os.environ.get(name, "") for name in REQUIRED_LLM_VARS}
+    base_url = args.base_url or _prompt_value(
+        "TESTBRIDGE_LLM_BASE_URL", current["TESTBRIDGE_LLM_BASE_URL"]
+    )
+    model = args.model or _prompt_value(
+        "TESTBRIDGE_LLM_MODEL", current["TESTBRIDGE_LLM_MODEL"]
+    )
+    timeout = args.timeout or _prompt_value(
+        "TESTBRIDGE_LLM_TIMEOUT", os.environ.get("TESTBRIDGE_LLM_TIMEOUT", "")
+    ) or "90"
+    api_key = _prompt_value(
+        "TESTBRIDGE_LLM_API_KEY", current["TESTBRIDGE_LLM_API_KEY"], secret=True
+    )
+
+    if not _valid_base_url(base_url):
+        print(
+            "ERROR env: base URL must start with http:// or https://",
+            file=sys.stderr,
+        )
+        return 2
+    if not model:
+        print("ERROR env: model must not be empty", file=sys.stderr)
+        return 2
+    try:
+        timeout_value = float(timeout)
+    except ValueError:
+        timeout_value = 0
+    if timeout_value <= 0:
+        print("ERROR env: timeout must be > 0", file=sys.stderr)
+        return 2
+    if not api_key:
+        print("ERROR env: API key must not be empty", file=sys.stderr)
+        return 2
+
+    values = {
+        "TESTBRIDGE_LLM_BASE_URL": base_url,
+        "TESTBRIDGE_LLM_API_KEY": api_key,
+        "TESTBRIDGE_LLM_MODEL": model,
+        "TESTBRIDGE_LLM_TIMEOUT": timeout,
+    }
+    print("will set:")
+    for name, value in values.items():
+        shown = secret_status(value) if name == "TESTBRIDGE_LLM_API_KEY" else value
+        print(f"  {name} = {shown}")
+
+    if args.dry_run:
+        return 0
+    answer = input("write these to your user environment? [y/N] ").strip().lower()
+    if answer not in {"y", "yes"}:
+        print("cancelled")
+        return 1
+    if os.name != "nt":
+        print("add these lines to your shell profile, then restart the shell:")
+        for line in export_lines(values):
+            print(line)
+        return 0
+    try:
+        write_user_env(values)
+    except EnvWriteError as exc:
+        print(f"ERROR env: could not write user environment: {exc}", file=sys.stderr)
+        return 2
+    print("saved. reopen your terminal and restart any running Web service.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -181,7 +281,19 @@ def main(argv: list[str] | None = None) -> int:
     tutor_sub = tutor.add_subparsers(dest="tutor_command", required=True)
     tutor_sub.add_parser("check", help="verify the configured LLM endpoint")
 
+    env = sub.add_parser("env", help="manage user-level configuration")
+    env_sub = env.add_subparsers(dest="env_command", required=True)
+    env_init = env_sub.add_parser("init", help="write TESTBRIDGE_LLM_* once")
+    env_init.add_argument("--base-url", default=None)
+    env_init.add_argument("--model", default=None)
+    env_init.add_argument("--timeout", default=None)
+    env_init.add_argument("--dry-run", action="store_true")
+
     args = parser.parse_args(argv)
+
+    if args.command == "env":
+        if args.env_command == "init":
+            return _cmd_env_init(args)
 
     if args.command == "validate":
         report = validate_pack(Path(args.pack))
