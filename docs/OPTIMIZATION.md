@@ -25,11 +25,14 @@
 | O4 | [2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md) |
 | O5 | [2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md) |
 
-**进度：** O1、O3、O5 已实现（2026-10-26，分支 `p5-optimization`；O5 经 merge
-`925ca62` 合入）。O3 完成来源角色、按查询路由、链接预检与质量门禁调整；
-O5 完成 token / 深色模式、响应式顶栏与统一组件样式。完成时默认 `pytest` 833 passed、
-3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
-100/100。下一步 O2，然后 O4。
+**进度：** O1、O2、O3、O5 已实现（O1/O3/O5 于 2026-10-26，O2 于 2026-10-27；
+O5 经 merge `925ca62` 合入）。O3 完成来源角色、按查询路由、链接预检与质量门禁调整；
+O5 完成 token / 深色模式、响应式顶栏与统一组件样式。O2 完成确定性 SVG 图示：写课
+输出 flow / timeline / block / compare 规格，服务端渲染内联 SVG 并嵌入课程，
+prompt 版本升到 `studio/4`；质量侧只新增 `lesson_no_figure` warning 与
+`figure_mount_unresolved` 硬错误，已发布包分数基线不变。O2 完成时默认 `pytest`
+892 passed、3 deselected；两个现有包 `tb validate` 0/0，
+`tb quality content-packs/sample-sensors` 100/100。下一步 O4。
 
 ---
 

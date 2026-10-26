@@ -89,6 +89,9 @@ export TESTBRIDGE_LLM_TIMEOUT=90
 批量与单课任务互斥（运行中返回 409），批量不会自动定稿。
 旧草稿（单模块、扁平 outline、无模块字段）仍按单模块 `M01` 继续可用。
 
+写课输出的图（flow / timeline / block / compare）由服务端确定性渲染为内联 SVG，
+随课程 HTML 一起落盘，页面与 `tb build` 产物都不发起外部图片请求。
+
 草稿在 `drafts/`（已 gitignore）；密钥仍走 `TESTBRIDGE_LLM_*` 环境变量。
 真实调用的测试需显式开启：
 

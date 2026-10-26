@@ -503,21 +503,23 @@ P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATIO
 |---|---|---|---|---|
 | O1 | 模型配置一次生效（用户级环境变量 + `tb doctor`） | P0 | 否：不引入仓库内 `.env` | 已完成 |
 | O3 | 参考资料工程化与可达性（来源配比、按查询路由、付费墙/404 预检；C 级可作补充阅读） | P1 | 是：质量门禁 trust 语义 | 已完成 |
-| O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 | 待开始 |
+| O2 | 课程图文并茂（本轮只做确定性 SVG，外部图/AI 生图暂缓） | P1 | 否：不动内容契约 | 已完成 |
 | O4 | 自动规划课时 + 对话修正方向 | P2 | 否：只动 `studio/` 与草稿 | 待开始 |
 | O5 | 页面排版与样式 | P3 | 否：只动 `web/` | 已完成 |
 
-**进度：** O1 已实现（2026-10-26）；O3 已实现（2026-10-26，分支 `p5-optimization`）；
-O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 `pytest` 833 passed、
-3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
-100/100。下一步 O2，然后 O4。
+**进度：** O1、O2、O3、O5 已实现并合并到 master（O2 于 2026-10-27 完成）。O3/O5
+完成时默认 `pytest` 833 passed、3 deselected；O2 完成时默认 `pytest` 892 passed、
+3 deselected，两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
+100/100。下一步 O4。
 
-排期建议：O1、O3、O5 已完成；下一步 O2，然后 O4。五份 spec 已写入
+排期建议：O1、O2、O3、O5 已完成；下一步 O4（实施计划已写入
+[2026-10-27-o4-course-planning-dialogue.md](superpowers/plans/2026-10-27-o4-course-planning-dialogue.md)）。
+五份 spec 已写入
 [O1](superpowers/specs/2026-10-26-o1-llm-config-persistence-design.md)、
 [O2](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)、
 [O3](superpowers/specs/2026-10-26-o3-resource-quality-design.md)、
 [O4](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)、
-[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)；O2/O4 待写实施计划。
+[O5](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)。
 
 ---
 
@@ -588,6 +590,50 @@ quality: 100/100                # exit 0；13 条 quality.resource_stale warning
 
 **验证（2026-10-26）：** 合并后默认 `pytest` 833 passed、3 deselected；
 `tb build` 产物与 Web 共用同一份 `tb.css`。320/768/1280 三档与键盘走查仍由人工完成。
+
+---
+
+## O2 课程图文并茂（已完成，2026-10-27）
+
+- 写课输出 `figures` 规格：flow / timeline / block / compare；服务端确定性渲染内联 SVG。
+- 每课 1–2 张图；`caption` / `alt` 必填；正文禁止直接 `<svg>` 或外部 `<img>`。
+- 挂载点缺失/重复/多余、规格非法 → `LessonError`，沿用一次重试。
+- 净化器白名单增加 `title` / `desc` / `role` / aria 属性 / `font-weight` / `fill-opacity`；
+  仍禁止 `style`、`script`、事件属性与外部 URL。
+- 质量：`quality.lesson_no_figure` 仅对 `studio/4` 草稿 warning；
+  `quality.figure_mount_unresolved` 为硬错误；分数基线不变。
+- prompt 版本 `studio/4`；旧草稿保持旧版本，不自动迁移。
+- `tb build` 产物内联 SVG，离线可用，无外部请求。
+
+**不做：** 外部图片搜索/下载/署名、AI 生图、图形编辑器；不改 `tb/1` 内容契约。
+
+**设计：** [O2 课程图文并茂](superpowers/specs/2026-10-26-o2-lesson-figures-design.md)
+（实施计划：[2026-10-27-o2-lesson-figures.md](superpowers/plans/2026-10-27-o2-lesson-figures.md)）
+
+**未自动化：** 2×2 草稿的真实模型生成验收（需配置模型服务）留待你在真实环境跑一次。
+默认 `pytest` 全程离线；subagent 环境未配置模型，因此未执行该验收。
+
+**验证命令（2026-10-27；本机 venv 未安装 `testbridge` 包，需 `PYTHONPATH=src`）：**
+
+```text
+$ .venv/Scripts/python -m pytest -q
+892 passed, 3 deselected in 277.74s (0:04:37)
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/sample-sensors
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/robot-quality-system
+0 error(s), 0 warning(s)        # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/sample-sensors
+quality: 100/100                # exit 0
+
+$ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli quality content-packs/robot-quality-system
+quality: 100/100                # exit 0；13 条 quality.resource_stale warning，分数不变
+```
 
 ---
 
