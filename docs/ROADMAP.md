@@ -508,7 +508,7 @@ P4.3 之后的真实使用反馈，单独记录在 [OPTIMIZATION.md](OPTIMIZATIO
 | O5 | 页面排版与样式 | P3 | 否：只动 `web/` | 已完成 |
 
 **进度：** O1 已实现（2026-10-26）；O3 已实现（2026-10-26，分支 `p5-optimization`）；
-O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 `pytest` 825 passed、
+O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 `pytest` 833 passed、
 3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
 100/100。下一步 O2，然后 O4。
 
@@ -546,11 +546,14 @@ O5 已实现并合并（2026-10-26，merge `925ca62`）。O3/O5 完成时默认 
 
 **设计：** [O3 参考资料工程化](superpowers/specs/2026-10-26-o3-resource-quality-design.md)
 
+**未自动化：** spec §9 的真实端到端验收（真实检索后端 + 真实链接的具身智能主题草稿）
+尚未执行，默认测试全程离线；需要联网环境时单独跑一次并记录结果。
+
 **验证命令（2026-10-26；本机 venv 未安装 `testbridge` 包，需 `PYTHONPATH=src`）：**
 
 ```text
 $ PYTHONPATH=src .venv/Scripts/python -m pytest -q
-825 passed, 3 deselected in 291.81s
+833 passed, 3 deselected in 253.00s
 
 $ PYTHONPATH=src .venv/Scripts/python -m testbridge.cli validate content-packs/ros2-qos
 0 error(s), 0 warning(s)        # exit 0
@@ -583,7 +586,7 @@ quality: 100/100                # exit 0；13 条 quality.resource_stale warning
 
 **设计：** [O5 页面排版与样式](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)
 
-**验证（2026-10-26）：** 合并后默认 `pytest` 825 passed、3 deselected；
+**验证（2026-10-26）：** 合并后默认 `pytest` 833 passed、3 deselected；
 `tb build` 产物与 Web 共用同一份 `tb.css`。320/768/1280 三档与键盘走查仍由人工完成。
 
 ---

@@ -27,7 +27,7 @@
 
 **进度：** O1、O3、O5 已实现（2026-10-26，分支 `p5-optimization`；O5 经 merge
 `925ca62` 合入）。O3 完成来源角色、按查询路由、链接预检与质量门禁调整；
-O5 完成 token / 深色模式、响应式顶栏与统一组件样式。完成时默认 `pytest` 825 passed、
+O5 完成 token / 深色模式、响应式顶栏与统一组件样式。完成时默认 `pytest` 833 passed、
 3 deselected；两个现有包 `tb validate` 0/0，`tb quality content-packs/sample-sensors`
 100/100。下一步 O2，然后 O4。
 
