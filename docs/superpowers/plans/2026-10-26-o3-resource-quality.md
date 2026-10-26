@@ -1617,6 +1617,13 @@ def test_required_must_pass_preflight() -> None:
             _payload(), LESSON, {"executor-basics"},
             usable_urls={"https://other.example"},
         )
+
+
+def test_missing_kind_is_derived_from_type() -> None:
+    output = parse_lesson_json(
+        _payload(type="paper"), LESSON, {"executor-basics"}
+    )
+    assert output.resources[0]["kind"] == "paper"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1626,7 +1633,9 @@ Expected: FAIL — supplementary C 被拒；`usable_urls` 参数不存在；`las
 
 - [ ] **Step 3: Write minimal implementation**
 
-`src/testbridge/studio/lessons.py`，替换常量与 `_parse_resources`：
+`src/testbridge/studio/lessons.py`：import 区增加
+`from testbridge.content.repository import KIND_BY_TYPE`，并替换常量与
+`_parse_resources`：
 
 ```python
 ALLOWED_REQUIRED_TRUST = {"A", "B"}
@@ -1674,6 +1683,10 @@ def _parse_resources(
         ):
             raise LessonError(f"required 资源未通过可达性检查：{resource_id}")
         data = resource.model_dump(exclude_none=True)
+        if "kind" not in item:
+            data["kind"] = KIND_BY_TYPE.get(
+                resource.type.strip().lower(), "other"
+            )
         data["last_verified"] = today if resource.url in verified else ""
         parsed.append(data)
         seen.add(resource_id)
@@ -1926,7 +1939,8 @@ def mount_studio(
             )
 
         result = research_runner.run_research(
-            plan, titles, draft["searches_per_lesson"],
+            plan, titles,
+            budget=draft["searches_per_lesson"],
             progress=progress,
             route_for=lambda kind: route_for_query(draft, titles, domains, kind),
         )
@@ -2082,17 +2096,9 @@ def test_supplementary_c_is_allowed_and_not_scored(tmp_path: Path) -> None:
     assert trust.detail == "1/1"
 
 
-def test_d_supplementary_is_an_error(tmp_path: Path) -> None:
-    resources = [{**default_resource(), "trust": "D", "role": "supplementary"}]
-    pack = build_pack(tmp_path / "pack", resources=resources)
-    research = write_research(tmp_path / "pack", hits=[
-        {"url": "https://docs.example/x", "trust": "D"},
-    ])
-
-    result = evaluate_provenance(load_pack(pack), research, budget=2)
-
-    assert any(issue.code == "quality.resource_trust" for issue in result.errors)
-
+（`trust=D` 已在契约层被 `validate_pack` 拒绝（Task 1 的
+`test_validator_rejects_d_for_any_role`），`load_pack` 因此到不了质量层；本任务不为
+不可达分支补测试。`provenance` 里保留的 D 分支只是防御性代码。）
 
 def test_unreachable_required_is_an_error(tmp_path: Path) -> None:
     pack = build_pack(tmp_path / "pack")
