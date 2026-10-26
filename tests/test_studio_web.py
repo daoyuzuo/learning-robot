@@ -625,3 +625,57 @@ def test_lesson_step_records_figure_count(tmp_path: Path) -> None:
         "demo", "modules/M01/lessons/L-EXEC-001.html"
     )
     assert '<figure class="tb-figure">' in html
+
+
+def test_confirmed_plan_guidance_reaches_outline_prompt(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    create_draft(app)
+    app.post("/studio/demo/plan", json={
+        "inputs": {"weekly_hours": 2, "horizon_weeks": 2,
+                   "purpose": "interview", "must_cover": []},
+        "computed": {"module_count": 1, "lessons_per_module": 1,
+                     "lesson_minutes": 30},
+        "guidance": ["多讲测试实操"],
+        "confirm": True,
+    })
+
+    app.post("/api/studio/demo/outline")
+
+    llm = app.app.state.studio_llm
+    assert "多讲测试实操" in llm.outline_prompts[-1]
+
+
+def test_unconfirmed_plan_guidance_skips_lesson_prompt(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    create_draft(app)
+    app.post("/studio/demo/plan", json={
+        "inputs": {"weekly_hours": 2, "horizon_weeks": 2,
+                   "purpose": "interview", "must_cover": []},
+        "computed": {"module_count": 1, "lessons_per_module": 1,
+                     "lesson_minutes": 30},
+        "guidance": ["多讲测试实操"],
+        "confirm": False,
+    })
+
+    app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
+
+    llm = app.app.state.studio_llm
+    assert "多讲测试实操" not in llm.lesson_prompts[-1]
+
+
+def test_confirmed_plan_guidance_reaches_lesson_prompt(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    create_draft(app)
+    app.post("/studio/demo/plan", json={
+        "inputs": {"weekly_hours": 2, "horizon_weeks": 2,
+                   "purpose": "interview", "must_cover": []},
+        "computed": {"module_count": 1, "lessons_per_module": 1,
+                     "lesson_minutes": 30},
+        "guidance": ["多讲测试实操"],
+        "confirm": True,
+    })
+
+    app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
+
+    llm = app.app.state.studio_llm
+    assert "多讲测试实操" in llm.lesson_prompts[-1]

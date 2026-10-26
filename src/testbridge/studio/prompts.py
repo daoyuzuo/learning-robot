@@ -102,23 +102,52 @@ def render_concepts_text(level: str, concepts: list[dict]) -> str:
     return "\n".join(lines)
 
 
+MAX_GUIDANCE_LINES = 5
+MAX_GUIDANCE_CHARS = 80
+
+
+def _guidance_block(guidance: list[str] | None) -> str:
+    """Render confirmed plan guidance as prompt text, never as templates."""
+    items = [
+        str(item).strip()[:MAX_GUIDANCE_CHARS]
+        for item in (guidance or [])
+        if str(item).strip()
+    ]
+    if not items:
+        return ""
+    lines = "\n".join(f"- {item}" for item in items[:MAX_GUIDANCE_LINES])
+    return (
+        "<guidance>\n写作方向（必须落到 objectives 与 research_queries）：\n"
+        f"{lines}\n</guidance>\n"
+    )
+
+
 def render_outline_prompt(
-    topic: str, level: str, module_count: int, lessons_per_module: int
+    topic: str,
+    level: str,
+    module_count: int,
+    lessons_per_module: int,
+    guidance: list[str] | None = None,
 ) -> str:
     return (
         f"主题：{topic}\n目标级别：{level}\n"
         f"模块数：{module_count}\n每模块课数：{lessons_per_module}\n"
         f"每模块概念上限：{min(4, lessons_per_module * 2)}\n"
+        f"{_guidance_block(guidance)}"
         "请输出课程包大纲 JSON。"
     )
 
 
 def render_lesson_prompt(
-    lesson_html: str, concepts_text: str, research_text: str
+    lesson_html: str,
+    concepts_text: str,
+    research_text: str,
+    guidance: list[str] | None = None,
 ) -> str:
     return (
         f"<outline>\n{lesson_html}\n</outline>\n"
         f"<concepts>\n{concepts_text}\n</concepts>\n"
         f"<research>\n{research_text}\n</research>\n"
+        f"{_guidance_block(guidance)}"
         "请输出这一节课的 JSON。"
     )

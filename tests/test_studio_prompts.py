@@ -71,3 +71,36 @@ def test_lesson_prompt_requires_figures() -> None:
     assert "figures" in LESSON_SYSTEM
     assert "data-tb-figure" in LESSON_SYSTEM
     assert "caption" in LESSON_SYSTEM and "alt" in LESSON_SYSTEM
+
+
+def test_outline_prompt_includes_guidance() -> None:
+    prompt = render_outline_prompt(
+        "ROS2", "L3", 2, 3, guidance=["多讲测试实操", "少讲论文"]
+    )
+    assert "写作方向" in prompt
+    assert "多讲测试实操" in prompt
+    assert "少讲论文" in prompt
+
+
+def test_lesson_prompt_includes_guidance() -> None:
+    prompt = render_lesson_prompt(
+        "<article>x</article>", "概念", "资料", guidance=["多讲测试实操"]
+    )
+    assert "写作方向" in prompt
+    assert "多讲测试实操" in prompt
+
+
+def test_guidance_is_truncated_and_limited() -> None:
+    prompt = render_outline_prompt(
+        "t", "L2", 1, 1, guidance=["长" * 200] * 8
+    )
+    assert len(prompt) < 2000
+    block = prompt.split("<guidance>")[1]
+    assert "长" * 80 in block
+    assert "长" * 81 not in block
+    assert block.count("- ") == 5
+
+
+def test_prompt_without_guidance_has_no_block() -> None:
+    assert "<guidance>" not in render_outline_prompt("t", "L2", 1, 1)
+    assert "<guidance>" not in render_lesson_prompt("x", "概念", "资料")

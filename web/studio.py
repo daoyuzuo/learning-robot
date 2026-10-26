@@ -241,6 +241,13 @@ def mount_studio(
             return result
         raise OutlineError("模型没有返回可用的内容")
 
+    def plan_guidance(draft: dict) -> list[str]:
+        """Only a confirmed plan steers the prompts."""
+        plan = draft.get("plan")
+        if isinstance(plan, dict) and plan.get("confirmed"):
+            return [str(item) for item in plan.get("guidance") or []]
+        return []
+
     def generate_outline(draft_id: str) -> None:
         draft = store.load(draft_id)
         module_count = int(draft.get("module_count") or 1)
@@ -251,7 +258,8 @@ def mount_studio(
             draft_id,
             OUTLINE_SYSTEM,
             render_outline_prompt(
-                draft["topic"], draft["level"], module_count, lessons_per_module
+                draft["topic"], draft["level"], module_count, lessons_per_module,
+                guidance=plan_guidance(draft),
             ),
             lambda raw: outline_writer.parse_outline_json(
                 raw, module_count, lessons_per_module
@@ -324,6 +332,7 @@ def mount_studio(
                 render_lesson_outline(plan),
                 concepts_text(draft_id, plan.concepts),
                 research_text(draft_id, lesson_id),
+                guidance=plan_guidance(store.load(draft_id)),
             ),
             lambda raw: lesson_writer.parse_lesson_json(
                 raw, plan, concept_ids, usable_urls=usable
