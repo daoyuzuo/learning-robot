@@ -648,7 +648,7 @@ def test_confirmed_plan_guidance_reaches_outline_prompt(tmp_path: Path) -> None:
 def test_unconfirmed_plan_guidance_skips_lesson_prompt(tmp_path: Path) -> None:
     app = make_app(tmp_path)
     create_draft(app)
-    app.post("/studio/demo/plan", json={
+    saved = app.post("/studio/demo/plan", json={
         "inputs": {"weekly_hours": 2, "horizon_weeks": 2,
                    "purpose": "interview", "must_cover": []},
         "computed": {"module_count": 1, "lessons_per_module": 1,
@@ -656,6 +656,11 @@ def test_unconfirmed_plan_guidance_skips_lesson_prompt(tmp_path: Path) -> None:
         "guidance": ["多讲测试实操"],
         "confirm": False,
     })
+
+    assert saved.status_code == 200
+    plan = app.app.state.studio_store.load("demo")["plan"]
+    assert plan["guidance"] == ["多讲测试实操"]
+    assert plan["confirmed"] is False
 
     app.post("/api/studio/demo/lessons", json={"lesson_id": "L-EXEC-001"})
 

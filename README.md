@@ -133,8 +133,9 @@ OpenAlex 可信度：期刊/会议/书籍章节/review 记 A，预印本记 B，
    vs 当前内容”的摘要；若快照与当前一致会明确标注。不渲染完整 HTML，不提供恢复按钮。
 
 版本记录：新生成的课程写当前 prompt 版本（`src/testbridge/studio/version.py` 的
-`PROMPT_VERSION`，当前为 `studio/5`）；没有该字段的旧草稿按其声明的旧版本处理。版本随课程记录在
-`draft.json` 的 `steps.lessons[<id>].prompt_version`，因此同一草稿可能混有不同版本。
+`PROMPT_VERSION`，当前为 `studio/5`），记录在 `draft.json` 的
+`steps.lessons[<id>].prompt_version`，因此同一草稿可能混有不同版本。读取时优先用课程自己的
+记录；没有该字段时回落到草稿级 `prompt_version`，再回落到 `studio/1`。
 升级只做记录与对比，不自动迁移、不自动重写旧草稿。
 
 失败与并发：单课失败不影响其它课/草稿；目标草稿有运行中的批量或单课任务时，该草稿整组失败；

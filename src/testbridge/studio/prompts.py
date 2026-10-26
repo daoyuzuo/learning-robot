@@ -5,6 +5,8 @@ Model output is untrusted: callers must parse and sanitize it before writing.
 
 from __future__ import annotations
 
+from testbridge.studio.planning import MAX_GUIDANCE, MAX_GUIDANCE_CHARS
+
 OUTLINE_SYSTEM = (
     "你是 TestBridge 的课程设计师。为给定主题设计一个多模块课程包。\n"
     "要求：\n"
@@ -124,20 +126,20 @@ def render_concepts_text(level: str, concepts: list[dict]) -> str:
     return "\n".join(lines)
 
 
-MAX_GUIDANCE_LINES = 5
-MAX_GUIDANCE_CHARS = 80
-
-
 def _guidance_block(guidance: list[str] | None) -> str:
-    """Render confirmed plan guidance as prompt text, never as templates."""
-    items = [
-        str(item).strip()[:MAX_GUIDANCE_CHARS]
-        for item in (guidance or [])
-        if str(item).strip()
-    ]
+    """Render confirmed plan guidance as prompt text, never as templates.
+
+    Each item is collapsed to one line first, so stored newlines cannot add
+    bullets beyond the documented limit.
+    """
+    items = []
+    for item in guidance or []:
+        line = " ".join(str(item).split())[:MAX_GUIDANCE_CHARS]
+        if line:
+            items.append(line)
     if not items:
         return ""
-    lines = "\n".join(f"- {item}" for item in items[:MAX_GUIDANCE_LINES])
+    lines = "\n".join(f"- {item}" for item in items[:MAX_GUIDANCE])
     return (
         "<guidance>\n写作方向（必须落到 objectives 与 research_queries）：\n"
         f"{lines}\n</guidance>\n"

@@ -144,3 +144,46 @@ def test_plan_prompt_caps_history_to_six_short_lines() -> None:
 def test_plan_prompt_without_history_has_no_block() -> None:
     assert "<history>" not in render_plan_prompt({}, "调整")
     assert "<history>" not in render_plan_prompt({}, "调整", messages=[])
+
+
+def test_guidance_newlines_stay_within_five_bullets() -> None:
+    prompt = render_outline_prompt(
+        "t", "L2", 1, 1,
+        guidance=[
+            "多讲实操\n少讲论文", "更理论\n更项目", "减少课时\n聚焦测试",
+            "多写代码\n少写论文", "加练题\n加图", "第六条",
+        ],
+    )
+
+    block = prompt.split("<guidance>")[1].split("</guidance>")[0].strip().splitlines()
+
+    assert block[0] == "写作方向（必须落到 objectives 与 research_queries）："
+    bullets = block[1:]
+    assert len(bullets) == 5
+    assert all(line.startswith("- ") for line in bullets)
+    assert "- 多讲实操 少讲论文" in bullets
+
+
+def test_guidance_braces_are_emitted_literally() -> None:
+    prompt = render_outline_prompt(
+        "t", "L2", 1, 1, guidance=["使用 {topic} 模板与 {{escaped}} 占位"]
+    )
+
+    assert "使用 {topic} 模板与 {{escaped}} 占位" in prompt
+
+
+def test_outline_prompt_without_guidance_matches_legacy_exactly() -> None:
+    expected = (
+        "主题：ROS2\n目标级别：L3\n模块数：2\n每模块课数：3\n"
+        "每模块概念上限：4\n请输出课程包大纲 JSON。"
+    )
+    assert render_outline_prompt("ROS2", "L3", 2, 3) == expected
+
+
+def test_whitespace_only_guidance_emits_no_block() -> None:
+    assert "<guidance>" not in render_outline_prompt(
+        "t", "L2", 1, 1, guidance=["   ", "\n", "\t"]
+    )
+    assert render_lesson_prompt("x", "概念", "资料", guidance=["  "]) == (
+        render_lesson_prompt("x", "概念", "资料")
+    )

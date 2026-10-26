@@ -245,8 +245,8 @@ Content-Type: application/json
 - `render_lesson_prompt(...)` 增加同一 `guidance` 段，避免写课时丢掉方向；
 - `guidance` 只作为提示词文本，不做字符串替换或模板注入；用户输入仍按不可信文本
   处理并限长。
-- 按实施顺序（O1 → O3 → O2 → O4），O4 落地时课程 prompt 版本升到 `studio/5`；
-  计划对话单独用 `plan/1`，不混入课程 prompt 版本记录。
+- 按实际执行顺序（O1 → O3 → O5 → O2 → O4），O4 落地时课程 prompt 版本升到
+  `studio/5`；计划对话单独用 `plan/1`，不混入课程 prompt 版本记录。
 
 ### 6.4 大纲生成门禁
 
@@ -277,7 +277,7 @@ Content-Type: application/json
 | 存储 | 旧草稿无 plan 可读；新字段写入/读取；messages 截断到 10 轮 |
 | Web | 自动规划创建；确认计划同步计数；大纲门禁；对话按钮与 diff 展示 |
 | 互斥 | 同一草稿并发 chat 返回 409；与批量/单课任务互不干扰 |
-| 回归 | 现有 742 个测试；两个包 `tb validate` 0/0 |
+| 回归 | 现有 978 个测试；两个包 `tb validate` 0/0 |
 
 验收：
 
