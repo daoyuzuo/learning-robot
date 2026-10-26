@@ -184,26 +184,35 @@
     return postJson("/studio/" + draftId + "/plan", body, "保存计划失败");
   }
 
-  function planField(name) {
-    return planForm ? planForm.querySelector("[name=" + name + "]") : null;
-  }
-
   function paintSuggestion(data, message) {
+    // The proposal is shown next to the form, never written into it: the form
+    // stays the source of truth for 保存/确认, and only 应用建议 persists it.
     pendingSuggestion = {
       plan: data.plan || {},
       guidance: data.guidance || [],
       rationale: data.rationale || "",
     };
-    Object.entries(pendingSuggestion.plan).forEach(([name, value]) => {
-      const field = planField(name);
-      if (field && value !== undefined) field.value = value;
-    });
     const diff = root.querySelector("[data-plan-diff]");
     if (diff) {
       diff.replaceChildren();
+      const plan = pendingSuggestion.plan;
+      const summary = document.createElement("p");
+      summary.textContent = "建议：" + (plan.module_count ?? "—") + " 模块 × " +
+        (plan.lessons_per_module ?? "—") + " 课 · 单课 " +
+        (plan.lesson_minutes ?? "—") + " 分钟";
+      diff.appendChild(summary);
+      if (pendingSuggestion.rationale) {
+        const note = document.createElement("p");
+        note.className = "tb-meta";
+        note.textContent = pendingSuggestion.rationale;
+        diff.appendChild(note);
+      }
       const changes = data.changes || [];
       if (!changes.length) {
-        diff.textContent = "模型没有给出具体改动";
+        const empty = document.createElement("p");
+        empty.className = "tb-meta";
+        empty.textContent = "模型没有给出具体改动";
+        diff.appendChild(empty);
       } else {
         const list = document.createElement("ul");
         changes.forEach((change) => {

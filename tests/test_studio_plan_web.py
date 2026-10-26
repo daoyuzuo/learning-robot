@@ -482,3 +482,35 @@ def test_plan_chat_second_request_is_409(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert llm.inner_status == 409
+
+
+def test_plan_chat_rejects_non_string_message(tmp_path: Path) -> None:
+    app = plan_client(tmp_path)
+
+    response = app.post("/studio/demo/plan/chat", json={"message": {"text": "x"}})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "plan_invalid"
+
+
+def test_plan_chat_counts_the_llm_call(tmp_path: Path) -> None:
+    app = plan_client(tmp_path)
+    store = app.app.state.studio_store
+    before = store.load("demo")["usage"]["llm_calls"]
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 200
+    assert response.json()["usage"] == {"llm_calls": 1}
+    assert store.load("demo")["usage"]["llm_calls"] == before + 1
+
+
+def test_plan_chat_does_not_count_rejected_output(tmp_path: Path) -> None:
+    app = plan_client(tmp_path, PlanLlm("not json"))
+    store = app.app.state.studio_store
+    before = store.load("demo")["usage"]["llm_calls"]
+
+    response = app.post("/studio/demo/plan/chat", json={"message": "调整"})
+
+    assert response.status_code == 422
+    assert store.load("demo")["usage"]["llm_calls"] == before

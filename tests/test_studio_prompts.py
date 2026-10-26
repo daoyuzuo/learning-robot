@@ -5,6 +5,7 @@ from testbridge.studio.prompts import (
     render_concepts_text,
     render_lesson_prompt,
     render_outline_prompt,
+    render_plan_prompt,
 )
 
 
@@ -104,3 +105,42 @@ def test_guidance_is_truncated_and_limited() -> None:
 def test_prompt_without_guidance_has_no_block() -> None:
     assert "<guidance>" not in render_outline_prompt("t", "L2", 1, 1)
     assert "<guidance>" not in render_lesson_prompt("x", "概念", "资料")
+
+
+def test_plan_prompt_includes_recent_history() -> None:
+    prompt = render_plan_prompt(
+        {"computed": {"module_count": 1, "lessons_per_module": 3,
+                      "lesson_minutes": 30}},
+        "少讲论文，多讲测试实操",
+        messages=[
+            {"role": "user", "content": "多讲实操", "at": "2026-10-27"},
+            {"role": "assistant", "content": "已把实操加进方向", "at": "2026-10-27"},
+        ],
+    )
+
+    assert "<history>" in prompt
+    assert "user: 多讲实操" in prompt
+    assert "assistant: 已把实操加进方向" in prompt
+    assert prompt.index("<history>") < prompt.index("<message>")
+
+
+def test_plan_prompt_caps_history_to_six_short_lines() -> None:
+    messages = [
+        {"role": "user", "content": f"m{index}-" + "长" * 300}
+        for index in range(10)
+    ]
+
+    prompt = render_plan_prompt({}, "调整", messages=messages)
+
+    block = prompt.split("<history>")[1].split("</history>")[0]
+    assert block.count("user:") == 6
+    assert "m9-" in block
+    assert "m3-" not in block
+    # Each content is capped at 200 chars: "m9-" plus 197 长.
+    assert "长" * 197 in block
+    assert "长" * 198 not in block
+
+
+def test_plan_prompt_without_history_has_no_block() -> None:
+    assert "<history>" not in render_plan_prompt({}, "调整")
+    assert "<history>" not in render_plan_prompt({}, "调整", messages=[])

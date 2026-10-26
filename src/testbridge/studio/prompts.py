@@ -73,7 +73,28 @@ PLAN_SYSTEM = (
 )
 
 
-def render_plan_prompt(plan: dict, message: str) -> str:
+MAX_HISTORY_MESSAGES = 6
+MAX_HISTORY_CHARS = 200
+
+
+def _history_block(messages: list[dict] | None) -> str:
+    """Render the tail of the plan conversation as untrusted plain text."""
+    lines = []
+    for message in (messages or [])[-MAX_HISTORY_MESSAGES:]:
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role") or "").strip()
+        content = str(message.get("content") or "").strip()[:MAX_HISTORY_CHARS]
+        if role and content:
+            lines.append(f"{role}: {content}")
+    if not lines:
+        return ""
+    return "<history>\n" + "\n".join(lines) + "\n</history>\n"
+
+
+def render_plan_prompt(
+    plan: dict, message: str, messages: list[dict] | None = None
+) -> str:
     computed = (plan or {}).get("computed") or {}
     inputs = (plan or {}).get("inputs") or {}
     guidance = (plan or {}).get("guidance") or []
@@ -86,6 +107,7 @@ def render_plan_prompt(plan: dict, message: str) -> str:
         f"目的：{inputs.get('purpose')}\n"
         f"必须覆盖：{'、'.join(inputs.get('must_cover') or [])}\n"
         f"写作方向：{'、'.join(guidance)}\n</plan>\n"
+        f"{_history_block(messages)}"
         f"<message>{message[:500]}</message>\n"
         "请只输出计划调整 JSON。"
     )

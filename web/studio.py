@@ -786,7 +786,13 @@ def mount_studio(
                 status_code=409,
                 detail={"code": "plan_missing", "message": "没有计划可调整"},
             )
-        message = str(payload.get("message") or "").strip()
+        raw_message = payload.get("message")
+        if not isinstance(raw_message, str):
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "plan_invalid", "message": "消息必须是文本"},
+            )
+        message = raw_message.strip()
         if not message or len(message) > MAX_PLAN_MESSAGE:
             raise HTTPException(
                 status_code=400,
@@ -806,7 +812,10 @@ def mount_studio(
                 },
             )
         try:
-            raw = llm.complete(PLAN_SYSTEM, render_plan_prompt(plan, message))
+            raw = llm.complete(
+                PLAN_SYSTEM,
+                render_plan_prompt(plan, message, plan.get("messages")),
+            )
             try:
                 suggestion = parse_plan_suggestion(raw, plan)
             except PlanError as exc:
