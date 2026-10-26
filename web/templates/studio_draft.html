@@ -17,7 +17,7 @@
   <section class="tb-step tb-card" data-step="research">
     <h2>2 调研</h2>
     <p><button type="button" class="tb-btn tb-btn-primary" data-action="batch-research" {% if not enabled %}disabled{% endif %}>全部调研</button>
-       <span class="tb-batch" data-batch-status="research" data-status="{% if batch.get('mode') == 'research' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "research" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
+       <span class="tb-batch tb-badge" data-batch-status="research" data-status="{% if batch.get('mode') == 'research' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "research" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
        {% if batch.get("mode") == "research" and batch.get("total") %}<progress class="tb-progress-bar" max="{{ batch.get('total', 0) }}" value="{{ batch.get('done', 0) }}" aria-label="调研进度"></progress>{% endif %}</p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>
@@ -35,7 +35,7 @@
   <section class="tb-step tb-card" data-step="lessons">
     <h2>3 写课</h2>
     <p><button type="button" class="tb-btn tb-btn-primary" data-action="batch-lessons" {% if not enabled %}disabled{% endif %}>全部写课</button>
-       <span class="tb-batch" data-batch-status="lessons" data-status="{% if batch.get('mode') == 'lessons' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "lessons" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
+       <span class="tb-batch tb-badge" data-batch-status="lessons" data-status="{% if batch.get('mode') == 'lessons' %}{{ batch.get('status', 'pending') }}{% endif %}">{% if batch.get("mode") == "lessons" %}{{ batch.get("mode") }} · {{ batch.get("status", "pending") }} · 完成 {{ batch.get("done", 0) }}/{{ batch.get("total", 0) }}{% if batch.get("error") %} · {{ batch.get("error") }}{% endif %}{% endif %}</span>
        {% if batch.get("mode") == "lessons" and batch.get("total") %}<progress class="tb-progress-bar" max="{{ batch.get('total', 0) }}" value="{{ batch.get('done', 0) }}" aria-label="写课进度"></progress>{% endif %}</p>
     {% for module in modules %}
     <h3>{{ module.module_id }} · {{ module.title }}</h3>

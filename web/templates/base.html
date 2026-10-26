@@ -8,7 +8,7 @@
 </head>
 <body data-lesson-id="{% block lesson_id %}{% endblock %}">
   {% set path = request.url.path %}
-  {% set on_evolution = path.startswith("/studio/evolution") or "/history/" in path %}
+  {% set on_evolution = path == "/studio/evolution" or "/history/" in path %}
   <a class="tb-skip-link" href="#tb-main">跳到主要内容</a>
   <header class="tb-top">
     <a href="/" class="tb-brand">TestBridge</a>

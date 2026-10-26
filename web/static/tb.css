@@ -316,6 +316,10 @@ th {
   flex: none;
 }
 
+/* Empty placeholders (e.g. the evolution progress span before a run) must not
+   render a stray pill or dot. */
+.tb-badge:empty { display: none; }
+
 .tb-badge[data-status="pending"],
 .tb-badge[data-status="draft"],
 .tb-badge[data-status="withdrawn"] {
