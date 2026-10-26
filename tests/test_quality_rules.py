@@ -21,6 +21,8 @@ def default_resource() -> dict:
         "title": "官方文档",
         "url": "https://docs.example/x",
         "type": "official-doc",
+        "kind": "official_docs",
+        "role": "required",
         "trust": "A",
         "license": "Apache-2.0",
         "last_verified": "2026-10-25",
@@ -399,7 +401,7 @@ def test_clean_pack_scores_100_with_research(tmp_path: Path) -> None:
 
     assert report.ok is True
     assert report.score == 100
-    assert report.possible == 100
+    assert report.possible == 105
     assert report.provenance_evaluated is True
 
 
@@ -423,7 +425,7 @@ def test_research_without_budget_omits_query_metric(tmp_path: Path) -> None:
 
     report = evaluate_pack(pack, research_dir=research)
 
-    assert report.possible == 95
+    assert report.possible == 100
     assert report.score == 100
     assert all(metric.key != "research.queries" for metric in report.metrics)
 
@@ -517,3 +519,113 @@ def test_c_only_hit_is_untrusted_source(tmp_path: Path) -> None:
         metric.key == "provenance.traceable" and metric.earned == 0
         for metric in result.metrics
     )
+
+
+def test_supplementary_c_is_allowed_and_not_scored(tmp_path: Path) -> None:
+    resources = [
+        default_resource(),
+        {**default_resource(), "id": "DOC-2", "trust": "C",
+         "role": "supplementary", "url": "https://blog.example/x"},
+    ]
+    pack = build_pack(tmp_path / "pack", resources=resources,
+                      lesson_resources=["DOC-1", "DOC-2"])
+    research = write_research(tmp_path / "pack", hits=[
+        {"url": "https://docs.example/x", "trust": "A"},
+        {"url": "https://blog.example/x", "trust": "C"},
+    ])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert not any(
+        issue.code == "quality.resource_trust" for issue in result.errors
+    )
+    trust = next(
+        metric for metric in result.metrics if metric.key == "provenance.trust"
+    )
+    assert trust.detail == "1/1"
+
+
+def test_unreachable_required_is_an_error(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack", hits=[{
+        "url": "https://docs.example/x", "trust": "A",
+        "check": {"url": "https://docs.example/x", "status": 200,
+                  "final_url": "https://docs.example/x",
+                  "content_length": 5000, "paywalled": True, "error": ""},
+    }])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.resource_unreachable" for issue in result.errors
+    )
+
+
+def test_unchecked_required_is_a_warning(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+    research = write_research(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.resource_unchecked" for issue in result.warnings
+    )
+
+
+def test_supplementary_soft_cap_warning(tmp_path: Path) -> None:
+    extra = [
+        {**default_resource(), "id": f"DOC-{index}", "trust": "C",
+         "role": "supplementary", "url": f"https://blog.example/{index}"}
+        for index in range(2, 6)
+    ]
+    resources = [default_resource(), *extra]
+    pack = build_pack(
+        tmp_path / "pack", resources=resources,
+        lesson_resources=[item["id"] for item in resources],
+    )
+    research = write_research(tmp_path / "pack", hits=[
+        {"url": "https://docs.example/x", "trust": "A"},
+        *[{"url": item["url"], "trust": "C"} for item in extra],
+    ])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.supplementary_too_many"
+        for issue in result.warnings
+    )
+
+
+def test_only_papers_warning_and_source_mix(tmp_path: Path) -> None:
+    resources = [{**default_resource(), "kind": "paper"}]
+    pack = build_pack(tmp_path / "pack", resources=resources)
+    research = write_research(tmp_path / "pack", hits=[{
+        "url": "https://docs.example/x", "trust": "A",
+        "check": {"url": "https://docs.example/x", "status": 200,
+                  "final_url": "https://docs.example/x",
+                  "content_length": 5000, "paywalled": False, "error": ""},
+    }])
+
+    result = evaluate_provenance(load_pack(pack), research, budget=2)
+
+    assert any(
+        issue.code == "quality.lesson_only_papers" for issue in result.warnings
+    )
+    mix = next(
+        metric for metric in result.metrics if metric.key == "provenance.source_mix"
+    )
+    assert mix.earned == 0
+    reachable = next(
+        metric for metric in result.metrics if metric.key == "provenance.reachable"
+    )
+    assert reachable.earned == 5
+
+
+def test_published_pack_has_no_new_metrics(tmp_path: Path) -> None:
+    pack = build_pack(tmp_path / "pack")
+
+    result = evaluate_provenance(load_pack(pack))
+
+    keys = {metric.key for metric in result.metrics}
+    assert "provenance.source_mix" not in keys
+    assert "provenance.reachable" not in keys

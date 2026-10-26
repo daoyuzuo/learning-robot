@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -12,6 +13,11 @@ from testbridge.content.repository import ContentPack
 from testbridge.quality.report import QualityIssue, QualityMetric, proportional
 
 AB_TRUST = {"A", "B"}
+ALLOWED_SUPPLEMENTARY_TRUST = {"A", "B", "C"}
+MAX_SUPPLEMENTARY_PER_LESSON = 3
+STALE_DAYS = 180
+OFFICIAL_KINDS = {"official_docs", "standard", "repository"}
+PRACTICE_KINDS = {"engineering_blog", "tutorial", "repository"}
 
 
 @dataclass(frozen=True)
@@ -98,6 +104,13 @@ def load_dossiers(
     return dossiers, malformed, issues
 
 
+def _days_old(value: str) -> int | None:
+    try:
+        return (date.today() - date.fromisoformat(value)).days
+    except ValueError:
+        return None
+
+
 def evaluate_provenance(
     pack: ContentPack,
     research_dir: Path | None = None,
@@ -107,31 +120,44 @@ def evaluate_provenance(
 ) -> ProvenanceResult:
     result = ProvenanceResult()
     resources = list(pack.resources.values())
+    required = [item for item in resources if item.role == "required"]
 
-    trust_ok = sum(1 for resource in resources if resource.trust in AB_TRUST)
+    trust_ok = sum(1 for item in required if item.trust in AB_TRUST)
     metadata_ok = sum(
         1
-        for resource in resources
-        if resource.license and resource.last_verified and resource.why
+        for item in resources
+        if item.license and item.last_verified and item.why
     )
     for resource in resources:
-        if resource.trust not in AB_TRUST:
+        if resource.trust == "D":
+            result.errors.append(_error(
+                "quality.resource_trust",
+                f"资源 {resource.id} 的 trust 是 D，不可用",
+                resource_id=resource.id,
+            ))
+        elif resource.role == "required" and resource.trust not in AB_TRUST:
             result.errors.append(_error(
                 "quality.resource_trust",
                 f"资源 {resource.id} 的 trust 是 {resource.trust}，只允许 A/B",
                 resource_id=resource.id,
             ))
-        if not (resource.license and resource.last_verified and resource.why):
+        if not (resource.license and resource.why) or not resource.last_verified:
             result.warnings.append(_warning(
                 "quality.resource_metadata",
                 f"资源 {resource.id} 缺少 license / last_verified / why",
                 resource_id=resource.id,
             ))
+        elif (_days_old(resource.last_verified) or 0) > STALE_DAYS:
+            result.warnings.append(_warning(
+                "quality.resource_stale",
+                f"资源 {resource.id} 的验证日期超过 {STALE_DAYS} 天",
+                resource_id=resource.id,
+            ))
     if include_metrics:
         result.metrics.append(QualityMetric(
             "provenance.trust", "资源可信",
-            proportional(trust_ok, len(resources), 10), 10,
-            f"{trust_ok}/{len(resources)}",
+            proportional(trust_ok, len(required), 10), 10,
+            f"{trust_ok}/{len(required)}",
         ))
         result.metrics.append(QualityMetric(
             "provenance.metadata", "资源元数据完整",
@@ -158,9 +184,53 @@ def evaluate_provenance(
     }
     all_urls.discard("")
     ab_urls.discard("")
+
+    checks_by_url: dict[str, dict] = {}
+    for dossier in dossiers.values():
+        for hit in dossier.hits:
+            check = hit.get("check")
+            if isinstance(check, dict):
+                checks_by_url[normalize_url(str(hit.get("url") or ""))] = check
+    checked_required = 0
+    reachable_ok = 0
+    for resource in required:
+        check = checks_by_url.get(normalize_url(resource.url))
+        if check is None:
+            result.warnings.append(_warning(
+                "quality.resource_unchecked",
+                f"资源 {resource.id} 没有可达性检查记录",
+                resource_id=resource.id,
+            ))
+            continue
+        checked_required += 1
+        status = check.get("status")
+        if (
+            check.get("paywalled")
+            or check.get("error")
+            or not isinstance(status, int)
+            or status >= 400
+        ):
+            result.errors.append(_error(
+                "quality.resource_unreachable",
+                f"资源 {resource.id} 不可达或处于付费墙内",
+                resource_id=resource.id,
+            ))
+        else:
+            reachable_ok += 1
+
     traceable = 0
     for resource in resources:
         normalized = normalize_url(resource.url)
+        if resource.role == "supplementary":
+            if normalized and normalized in all_urls:
+                traceable += 1
+            else:
+                result.errors.append(_error(
+                    "quality.resource_unsourced",
+                    f"资源 {resource.id} 的 URL 不在任何调研档案中",
+                    resource_id=resource.id,
+                ))
+            continue
         if normalized and normalized in ab_urls:
             traceable += 1
         elif normalized and normalized in all_urls:
@@ -220,6 +290,44 @@ def evaluate_provenance(
             else:
                 query_ok += 1
 
+    mix_ok = 0
+    for lesson in lessons:
+        manifest = lesson.manifest
+        lesson_resources = [
+            pack.resources[item] for item in manifest.resources
+            if item in pack.resources
+        ]
+        lesson_required = [
+            item for item in lesson_resources if item.role == "required"
+        ]
+        if not lesson_required:
+            result.warnings.append(_warning(
+                "quality.lesson_no_ab_required",
+                f"{manifest.id} 没有 A/B required 资源",
+                lesson_id=manifest.id,
+            ))
+        elif all(item.kind == "paper" for item in lesson_required):
+            result.warnings.append(_warning(
+                "quality.lesson_only_papers",
+                f"{manifest.id} 的 required 资源全是论文",
+                lesson_id=manifest.id,
+            ))
+        if any(
+            item.kind in OFFICIAL_KINDS | PRACTICE_KINDS
+            for item in lesson_required
+        ):
+            mix_ok += 1
+        supplementary = [
+            item for item in lesson_resources if item.role == "supplementary"
+        ]
+        if len(supplementary) > MAX_SUPPLEMENTARY_PER_LESSON:
+            result.warnings.append(_warning(
+                "quality.supplementary_too_many",
+                f"{manifest.id} 有 {len(supplementary)} 条补充阅读，"
+                f"建议不超过 {MAX_SUPPLEMENTARY_PER_LESSON}",
+                lesson_id=manifest.id,
+            ))
+
     result.metrics.append(QualityMetric(
         "research.dossiers", "调研可用",
         proportional(dossier_ok, len(lessons), 5), 5,
@@ -230,5 +338,16 @@ def evaluate_provenance(
             "research.queries", "调研充分",
             proportional(query_ok, len(lessons), 5), 5,
             f"{query_ok}/{len(lessons)}",
+        ))
+    result.metrics.append(QualityMetric(
+        "provenance.source_mix", "来源配比",
+        proportional(mix_ok, len(lessons), 5), 5,
+        f"{mix_ok}/{len(lessons)}",
+    ))
+    if checked_required:
+        result.metrics.append(QualityMetric(
+            "provenance.reachable", "required 可达",
+            proportional(reachable_ok, checked_required, 5), 5,
+            f"{reachable_ok}/{checked_required}",
         ))
     return result
