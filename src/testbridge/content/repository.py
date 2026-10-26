@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
+
 from testbridge.contract.loader import ContentError, load_lesson_file, load_model
 from testbridge.contract.models import (
     Concept,
@@ -20,6 +22,39 @@ from testbridge.contract.models import (
     WidgetsFile,
 )
 from testbridge.contract.validator import ValidationReport, validate_pack
+
+
+KIND_BY_TYPE = {
+    "paper": "paper",
+    "standard": "standard",
+    "standard_draft": "standard",
+    "docs": "official_docs",
+    "documentation": "official_docs",
+    "official-doc": "official_docs",
+    "official_docs": "official_docs",
+    "repository": "repository",
+    "article": "engineering_blog",
+    "blog": "engineering_blog",
+    "tutorial": "tutorial",
+}
+
+
+def _explicit_kind_ids(path: Path) -> set[str]:
+    """Resource ids whose YAML explicitly sets ``kind``."""
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    ids: set[str] = set()
+    for item in data.get("resources") or []:
+        if not isinstance(item, dict) or "kind" not in item:
+            continue
+        resource_id = item.get("id")
+        if isinstance(resource_id, str):
+            ids.add(resource_id)
+    return ids
 
 
 class ContentValidationError(Exception):
@@ -116,12 +151,24 @@ def load_pack(pack_dir: Path) -> ContentPack:
             manifest, body = load_lesson_file(path)
             lessons[lesson_id] = Lesson(manifest=manifest, body_html=body, path=path)
 
+    resources = {item.id: item for item in resources_file.resources}
+    if resources_path.is_file():
+        explicit = _explicit_kind_ids(resources_path)
+        for resource_id, resource in list(resources.items()):
+            if resource_id in explicit:
+                continue
+            mapped = KIND_BY_TYPE.get(resource.type.strip().lower())
+            if mapped and mapped != resource.kind:
+                resources[resource_id] = resource.model_copy(
+                    update={"kind": mapped}
+                )
+
     return ContentPack(
         root=pack_dir,
         meta=meta,
         concepts={item.id: item for item in concepts_file.concepts},
         exercises={item.id: item for item in exercises_file.exercises},
-        resources={item.id: item for item in resources_file.resources},
+        resources=resources,
         widgets={item.id: item for item in widgets_file.widgets},
         modules=modules,
         lessons=lessons,

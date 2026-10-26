@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -344,10 +345,13 @@ def test_no_ab_source_is_warning(tmp_path: Path) -> None:
 
 
 def test_resource_trust_error(tmp_path: Path) -> None:
-    resource = {**default_resource(), "trust": "C"}
-    pack = build_pack(tmp_path / "pack", resources=[resource])
+    pack = load_pack(build_pack(tmp_path / "pack"))
+    resources = {
+        **pack.resources,
+        "DOC-1": pack.resources["DOC-1"].model_copy(update={"trust": "C"}),
+    }
 
-    result = evaluate_provenance(load_pack(pack))
+    result = evaluate_provenance(replace(pack, resources=resources))
 
     assert any(
         issue.code == "quality.resource_trust" and issue.resource_id == "DOC-1"
