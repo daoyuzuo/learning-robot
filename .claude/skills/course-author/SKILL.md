@@ -6,7 +6,8 @@ description: Use when creating or revising a TestBridge course pack from a topic
 # TestBridge 课程作者
 
 框架不生成课程。你在 `content-packs/` 里直接写 `tb/1` 内容包；框架只负责契约校验、
-渲染和学习运行时。先读 `references/content-contract.md` 与 `references/authoring-guide.md`。
+渲染和学习运行时。先读 `references/content-contract.md`、`references/authoring-guide.md`、
+`references/mission-brief.md` 与 `references/lesson-brief.md`。
 
 ## 什么时候用
 
@@ -23,17 +24,21 @@ description: Use when creating or revising a TestBridge course pack from a topic
 3. **查官方/权威资料**：用你自己的 WebSearch/WebFetch 查标准、官方文档、官方仓库。
    只把真实存在的 URL 写进 `resources.yaml`；记录 `license`、`last_verified`、`why`。
    不要用模型记忆编造标准号或链接。
-4. **设计结构**：模块数、每模块课数、单课分钟、深度由你按内容判断，不设上限。
+4. **先写作者 brief**：在 `docs/course-briefs/<id>/` 写 `MISSION.md`、`RESOURCES.md`
+   和每课 `lessons/<lesson-id>.md`。MISSION 未写清 Why / Success / Out of scope 前，
+   不要开始写正文；没有 primary source、worked example、objective_map 的课不要交付。
+5. **设计结构**：模块数、每模块课数、单课分钟、深度由你按内容判断，不设上限。
    先给用户一个简短结构提案；确认后写文件。大纲条目/顺序/边界是作者约束，不要静默删除。
-5. **写内容**：新包用 `tb scaffold <id> --dir content-packs --title "..."` 生成合法骨架，
+6. **写内容**：新包用 `tb scaffold <id> --dir content-packs --title "..."` 生成合法骨架，
    再替换占位概念/课/练习/资源；也可以直接按契约写。
-6. **校验循环**：
+7. **校验循环**：
    - `tb validate content-packs/<id>` —— 硬契约；必须 0 error。
    - `tb depth content-packs/<id>` —— 深度门禁；必须 0 error。
-   - `tb quality content-packs/<id>` —— 可选建议；按需改进，不绕过 validate/depth。
+   - `tb lint content-packs/<id>` —— 内容门禁；必须 0 error。
+   - `tb quality content-packs/<id>` —— 可选建议；按需改进，不绕过 validate/depth/lint。
    - `tb build content-packs/<id> --out dist` —— 渲染检查。
    - 交付时给出 `tb serve content-packs/<id> --port 8000 --open`。
-7. **不要做**：不要修改 `src/testbridge/` 的引擎/契约代码来迁就内容；不要写 `draft`/Studio
+8. **不要做**：不要修改 `src/testbridge/` 的引擎/契约代码来迁就内容；不要写 `draft`/Studio
    字段；不要把答案写进课程 HTML；不要虚构资源 URL；不要把未验证的第三方内容当官方来源。
 
 ## 必须遵守的硬契约
@@ -63,6 +68,19 @@ description: Use when creating or revising a TestBridge course pack from a topic
 “字数”是正文去标签、去空白后的字符数，不含 manifest。`tb depth` 失败时不要交付；
 先补工程场景、方法步骤、数字实例、判定证据、误区或检查表，不要灌水。
 
+## 质量契约
+
+`tb lint` 必须 0 error。最低要求：
+
+- 每课有 primary source：manifest 中第一条 required A/B 资源，且有 `why`。
+- 每课有带数字/单位的 worked example。
+- 每课 manifest 有 `objective_map`，把 `O1..On` 映射到本课练习。
+- 选择题选项长度不能过度失衡；正确答案位置不能过度集中。
+- 正文不能有 `待填`/`TODO`/`example.com`/`lorem`，不能泄漏答案或解析。
+
+参考 teach skill 的做法：先写 `MISSION.md`，再写 `RESOURCES.md`（Knowledge / Wisdom /
+Gaps），最后写每课 Lesson brief；一课只追一个 tangible win。
+
 ## 弱约束（由你判断，不是框架强制）
 
 - 先建立课程地图，再写单课；每课围绕一个可检验的学习成果。
@@ -73,4 +91,5 @@ description: Use when creating or revising a TestBridge course pack from a topic
 
 ## 交付格式
 
-简短说明：课程包路径、模块/课结构、官方来源与缺口、`tb validate` 结果、下一步命令。
+简短说明：课程包路径、模块/课结构、官方来源与缺口、`tb validate` / `tb depth` /
+`tb lint` 结果、下一步命令。

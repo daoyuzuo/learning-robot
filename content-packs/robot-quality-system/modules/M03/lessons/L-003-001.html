@@ -4,13 +4,37 @@
   "id": "L-003-001",
   "title": "通用测试标准地图：29119 与 ISTQB",
   "module": "M03",
-  "concepts": ["standards-map"],
+  "concepts": [
+    "standards-map"
+  ],
   "target_level": "L3",
   "minutes": 45,
-  "objectives": ["能说明 29119 与 ISTQB 的用途边界", "能把标准映射到测试过程、文档与技术活动", "能在项目中做标准裁剪并记录理由"],
+  "objectives": [
+    "能说明 29119 与 ISTQB 的用途边界",
+    "能把标准映射到测试过程、文档与技术活动",
+    "能在项目中做标准裁剪并记录理由"
+  ],
   "prerequisites": [],
-  "exercises": ["EX-015-01", "EX-015-02"],
-  "resources": ["R-29119-2", "R-29119-4", "R-ISTQB"]
+  "exercises": [
+    "EX-015-01",
+    "EX-015-02"
+  ],
+  "resources": [
+    "R-29119-2",
+    "R-29119-4",
+    "R-ISTQB"
+  ],
+  "objective_map": {
+    "O1": [
+      "EX-015-01"
+    ],
+    "O2": [
+      "EX-015-02"
+    ],
+    "O3": [
+      "EX-015-02"
+    ]
+  }
 }
 </script>
 <article class="tb-lesson">
@@ -86,6 +110,7 @@
       <li><strong>领域标准：</strong>安全功能按 ISO 10218、ISO 13849 验证；认证按 CE/CQC 要求准备证据。</li>
       <li><strong>裁剪：</strong>不单独产出 29119-3 的完整测试设计说明书，内容合并进用例库；理由是小团队迭代交付，评审记录保留。</li>
     </ul>
+    <p>用数字看一下这套映射的规模：项目有 120 条需求，按 29119-3 映射到 240 条用例；一轮核心回归按每条 45 s 计算，约需 3 小时。这个估算会直接进入回归计划和发布窗口。</p>
   </section>
   <section>
     <h2>七、常见误区</h2>

@@ -4,13 +4,43 @@
   "id": "L-003-002",
   "title": "汽车与工业软件标准族",
   "module": "M03",
-  "concepts": ["automotive-standards"],
+  "concepts": [
+    "automotive-standards"
+  ],
   "target_level": "L3",
   "minutes": 55,
-  "objectives": ["能区分 ASPICE、26262、21448、21434、14229 与 11898 的用途", "能为车载功能组合适用标准与证据", "能识别标准之间的边界与重叠"],
-  "prerequisites": ["standards-map"],
-  "exercises": ["EX-016-01", "EX-016-02"],
-  "resources": ["R-ISO-26262", "R-ISO-21448", "R-ISO-SAEE-21434", "R-ISO-14229-3", "R-ISO-11898-2", "R-VDA-ASPICE", "R-IEC-62443-3-2"]
+  "objectives": [
+    "能区分 ASPICE、26262、21448、21434、14229 与 11898 的用途",
+    "能为车载功能组合适用标准与证据",
+    "能识别标准之间的边界与重叠"
+  ],
+  "prerequisites": [
+    "standards-map"
+  ],
+  "exercises": [
+    "EX-016-01",
+    "EX-016-02"
+  ],
+  "resources": [
+    "R-ISO-26262",
+    "R-ISO-21448",
+    "R-ISO-SAEE-21434",
+    "R-ISO-14229-3",
+    "R-ISO-11898-2",
+    "R-VDA-ASPICE",
+    "R-IEC-62443-3-2"
+  ],
+  "objective_map": {
+    "O1": [
+      "EX-016-01"
+    ],
+    "O2": [
+      "EX-016-02"
+    ],
+    "O3": [
+      "EX-016-02"
+    ]
+  }
 }
 </script>
 <article class="tb-lesson">
@@ -86,6 +116,7 @@
         <tr><td>供应商过程可追溯</td><td>ASPICE</td><td>需求-设计-测试追溯、变更记录</td></tr>
       </tbody>
     </table>
+    <p>用一个具体规模校验组合是否可行：OTA 升级包约 800 MB，升级窗口 15 分钟；升级失败后必须在 30 s 内完成回滚；总线负载峰值不超过 70%。这三个数字分别约束 21448 的网络场景、26262 的回滚安全和 11898 的总线测试。</p>
     <p>如果只做 21434，不覆盖 26262，可能漏掉升级失败导致的车辆失控；如果只做 26262，不覆盖 21434，可能漏掉恶意升级。标准组合要围绕风险，而不是围绕证书。</p>
   </section>
   <section>

@@ -4,13 +4,41 @@
   "id": "L-003-004",
   "title": "功能安全：PL、SIL 与 ASIL 的区别",
   "module": "M03",
-  "concepts": ["functional-safety-pl-sil-asil"],
+  "concepts": [
+    "functional-safety-pl-sil-asil"
+  ],
   "target_level": "L3",
   "minutes": 55,
-  "objectives": ["能解释 PL、SIL、ASIL 的来源与适用领域", "能为安全功能选择等级并给出验证证据", "能避免不同体系之间的错误换算"],
-  "prerequisites": ["robot-safety-standards"],
-  "exercises": ["EX-018-01", "EX-018-02"],
-  "resources": ["R-ISO-13849-1", "R-ISO-13849-2", "R-IEC-62061", "R-IEC-61508-2", "R-ISO-26262"]
+  "objectives": [
+    "能解释 PL、SIL、ASIL 的来源与适用领域",
+    "能为安全功能选择等级并给出验证证据",
+    "能避免不同体系之间的错误换算"
+  ],
+  "prerequisites": [
+    "robot-safety-standards"
+  ],
+  "exercises": [
+    "EX-018-01",
+    "EX-018-02"
+  ],
+  "resources": [
+    "R-ISO-13849-1",
+    "R-ISO-13849-2",
+    "R-IEC-62061",
+    "R-IEC-61508-2",
+    "R-ISO-26262"
+  ],
+  "objective_map": {
+    "O1": [
+      "EX-018-01"
+    ],
+    "O2": [
+      "EX-018-02"
+    ],
+    "O3": [
+      "EX-018-02"
+    ]
+  }
 }
 </script>
 <article class="tb-lesson">
@@ -91,6 +119,7 @@
       <li><strong>证据：</strong>风险评估、安全功能清单、架构图、计算书、试验报告、剩余风险记录。</li>
     </ol>
     <p>如果客户同时要求 IEC 62061，可以并行做 SIL 评估，但要在文档中说明两套体系的对应关系和各自证据，不能把 PL d 直接写成 SIL 2 而不加解释。</p>
+    <p>用数字校验这个例子：急停功能目标 PL d，要求 MTTFd ≥ 30 年、诊断覆盖率 ≥ 90%；验证时至少执行 30 次急停试验，停车距离 ≤ 0.5 m。如果任一项达不到，就不能声称 PL d。</p>
   </section>
   <section>
     <h2>七、常见误区</h2>

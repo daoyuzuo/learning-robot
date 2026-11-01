@@ -78,7 +78,7 @@ P2 学习闭环与 P4.1–P4.3 运行时功能保留：Tutor 联网追问、面�
 - 先看现有目录和测试，再改；不要凭记忆重建。
 - **课程创作：** 读 `.claude/skills/course-author/SKILL.md`，用 `tb scaffold` 起步，
   直接写 `content-packs/`；不要在框架内新增生成器/LLM 流水线。改完跑 `tb validate`、
-  `tb depth`、`tb build`。
+  `tb depth`、`tb lint`、`tb build`。
 - **流程按改动类型分层：**
   - 改引擎、改契约、跨模块接口、新增题型/渲染器 → brainstorming + spec + writing-plans。
   - 只新增或修改内容包（`content-packs/` 下纯数据）→ 直接写，`tb validate` 与测试即验收；spec 可选，不写实施计划。
@@ -98,6 +98,7 @@ P2 学习闭环与 P4.1–P4.3 运行时功能保留：Tutor 联网追问、面�
 
 - `pytest` 全绿，P1 的 118 个测试不回归
 - `tb depth content-packs/<id>` 通过：每课达到级别对应的字数、结构、图示和练习阈值
+- `tb lint content-packs/<id>` 通过：主来源、数字实例、objective_map、题目公平性达标
 - `tb rebuild-state` 可重复执行，增量与重建结果一致
 - `/today` 给出带理由和预计时长的计划
 - `/concepts` 显示掌握度、等级、目标、到期数

@@ -148,6 +148,34 @@ def _run_quality(
     return 0 if report.ok else 1
 
 
+def _run_lint(pack_dir: Path, as_json: bool) -> int:
+    from testbridge.quality.lint import evaluate_lint
+
+    try:
+        pack = load_pack(pack_dir)
+    except ContentValidationError as exc:
+        for issue in exc.report.errors:
+            print(f"ERROR {issue.code}: {issue.message}")
+        print("run tb validate first")
+        return 2
+
+    report = evaluate_lint(pack)
+    if as_json:
+        print(json.dumps(report.as_dict(), ensure_ascii=False, indent=2))
+    else:
+        for issue in report.errors:
+            target = issue.lesson_id or issue.exercise_id or ""
+            print(f"ERROR {issue.code}: {issue.message} {target}".rstrip())
+        for issue in report.warnings:
+            target = issue.lesson_id or issue.exercise_id or ""
+            print(f"WARN {issue.code}: {issue.message} {target}".rstrip())
+        print(
+            f"lint: {len(report.errors)} error(s), "
+            f"{len(report.warnings)} warning(s)"
+        )
+    return 0 if report.ok else 1
+
+
 def _run_depth(pack_dir: Path, as_json: bool) -> int:
     from testbridge.quality.depth import evaluate_depth
 
@@ -369,6 +397,10 @@ def main(argv: list[str] | None = None) -> int:
     depth.add_argument("pack")
     depth.add_argument("--json", action="store_true")
 
+    lint = sub.add_parser("lint", help="check content quality rules")
+    lint.add_argument("pack")
+    lint.add_argument("--json", action="store_true")
+
     build = sub.add_parser("build", help="build standalone lessons")
     build.add_argument("pack")
     build.add_argument("--out", default="dist")
@@ -469,6 +501,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"WARN {issue.code}: {issue.message}")
         print(f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)")
         return 0 if report.ok else 1
+
+    if args.command == "lint":
+        return _run_lint(Path(args.pack), args.json)
 
     if args.command == "depth":
         return _run_depth(Path(args.pack), args.json)

@@ -297,3 +297,14 @@ class LessonManifest(StrictModel):
     prerequisites: list[Id] = Field(default_factory=list)
     exercises: list[Id] = Field(default_factory=list)
     resources: list[Id] = Field(default_factory=list)
+    objective_map: dict[str, list[Id]] = Field(default_factory=dict)
+
+    @field_validator("objective_map")
+    @classmethod
+    def objective_keys(cls, value: dict[str, list[Id]]) -> dict[str, list[Id]]:
+        for key, refs in value.items():
+            if not re.fullmatch(r"O[1-9]\d*", key):
+                raise ValueError("objective_map keys must be O1, O2, ...")
+            if not refs:
+                raise ValueError("objective_map values must be non-empty")
+        return value

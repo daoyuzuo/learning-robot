@@ -762,6 +762,22 @@ quality: 100/100                # exit 0
 
 ---
 
+## 2026-11-01 课程质量门禁（teach skill 参考）— 已完成
+
+- 新增 `LessonManifest.objective_map`（可选）：把 `O1..On` 显式映射到本课练习。
+- 新增 `tb lint <pack>`：检查 primary source、数字实例、objective_map、
+  选择题选项长度/答案位置、占位符与答案泄漏；失败退出 1。
+- 作者 skill 增加 Mission / Resources / Lesson brief 模板；交付前必须
+  `tb validate` + `tb depth` + `tb lint`。
+- `tb quality` 分数、渲染与学习运行时不变。
+- 参考 Matt Pocock `teach` skill 的 mission-first、primary source、retrieval、
+  quiz fairness 方法。
+- 设计见 [课程质量门禁](superpowers/specs/2026-11-01-course-quality-gates-design.md)。
+- 验证：`tb lint content-packs/robot-quality-system` 0 error / 0 warning；
+  `pytest` 全绿。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。

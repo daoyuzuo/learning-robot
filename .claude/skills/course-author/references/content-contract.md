@@ -128,10 +128,11 @@ order: 1
   "concepts": ["core"],
   "target_level": "L2",
   "minutes": 30,
-  "objectives": ["学完能做什么"],
+  "objectives": ["学完能做什么", "能应用什么"],
   "prerequisites": [],
   "exercises": ["EX-1", "EX-2"],
-  "resources": ["DOC-1"]
+  "resources": ["DOC-1"],
+  "objective_map": {"O1": ["EX-1"], "O2": ["EX-2"]}
 }
 </script>
 <article class="tb-lesson">
@@ -145,6 +146,8 @@ order: 1
 - 正文只用允许标签：`article/section/div/h1-h4/p/ul/ol/li/strong/em/code/pre/a/
   table/thead/tbody/tr/th/td/aside/figure/figcaption`（以及 `img` 指向包内 `assets/`）。
 - 禁止 `script`/`style`/`iframe`/事件属性；正文会被 sanitizer 处理。
+- `objective_map` 可选：按 `objectives` 顺序把 `O1..On` 映射到本课练习；
+  `tb lint` 对 L3/L4 课要求提供，且引用的练习必须在 `exercises` 中。
 - 每个 manifest 里的 exercise 必须在正文有且只有一个空的
   `<div data-tb-exercise="..."></div>` 挂载点；不能挂载未列出的练习。
 - widget 只能使用 `widgets.yaml` 中注册的 `parameter-svg`，正文放

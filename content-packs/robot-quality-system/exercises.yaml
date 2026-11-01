@@ -69,7 +69,7 @@ exercises:
       - {id: a, text: 上线后监控告警}
       - {id: b, text: 需求评审与静态检查}
       - {id: c, text: 现场故障复盘}
-      - {id: d, text: 灰度发布}
+      - {id: d, text: 线上灰度发布}
     answer: b
     explanation: 左移是把发现缺陷的活动提前到需求和编码阶段；监控、灰度和复盘更偏右移或事后活动。
     difficulty: 2
@@ -122,10 +122,10 @@ exercises:
     level: L2
     prompt: 输入范围为 1 到 100 的整数，边界值测试最少应包含哪些取值？
     options:
-      - {id: a, text: 1 和 100}
+      - {id: a, text: 1 和 100 两个值}
       - {id: b, text: 0、1、100、101}
-      - {id: c, text: "50"}
-      - {id: d, text: 1、50、100}
+      - {id: c, text: "50 一个中间值"}
+      - {id: d, text: 1、50、100、101 四个值}
     answer: b
     explanation: 边界值通常取边界内外两侧，即 0、1 和 100、101。
     hints:
@@ -171,7 +171,7 @@ exercises:
       - {id: c, text: 规划}
       - {id: d, text: 控制}
       - {id: e, text: 执行}
-      - {id: f, text: 日志文件命名}
+      - {id: f, text: 日志命名}
     answer: [a, b, c, d, e]
     explanation: 任务链从感知到执行；日志命名是工程规范，不是任务链节点。
     difficulty: 2
@@ -228,7 +228,7 @@ exercises:
       - {id: b, text: 实现与集成}
       - {id: c, text: 传感器与标定}
       - {id: d, text: 时序与通信}
-      - {id: e, text: 安全}
+      - {id: e, text: 安全与合规}
       - {id: f, text: 开发者心情}
     answer: [a, b, c, d, e]
     explanation: 前五类是可直接定位和验证的缺陷来源；开发者心情不是缺陷分类。
@@ -255,9 +255,9 @@ exercises:
     prompt: 5Why 与 FTA 的主要区别是？
     options:
       - {id: a, text: 5Why 是定量方法，FTA 是定性方法}
-      - {id: b, text: FTA 从顶事件向下演绎，5Why 沿因果链逐层追问}
-      - {id: c, text: 5Why 只能用于硬件}
-      - {id: d, text: FTA 不需要证据}
+      - {id: b, text: FTA 从顶事件向下演绎，5Why 逐层追问}
+      - {id: c, text: 5Why 只适用于硬件问题}
+      - {id: d, text: FTA 完全不需要证据}
     answer: b
     explanation: FTA 从顶事件向下建树，适合分析组合失效；5Why 是线性追问，胜在快速。
     difficulty: 2
@@ -314,7 +314,7 @@ exercises:
       - {id: b, text: 场景库覆盖}
       - {id: c, text: 故障模式覆盖}
       - {id: d, text: 接口覆盖}
-      - {id: e, text: sim-to-real 覆盖}
+      - {id: e, text: 仿真到实机覆盖}
       - {id: f, text: 代码注释覆盖}
     answer: [a, b, c, d, e]
     explanation: 机器人需要场景、故障和仿真到实机迁移的覆盖；注释覆盖没有质量意义。
@@ -370,7 +370,7 @@ exercises:
     options:
       - {id: a, text: 成功率的均值}
       - {id: b, text: 置信水平与允许误差}
-      - {id: c, text: 代码行数}
+      - {id: c, text: 代码总行数}
       - {id: d, text: 测试团队规模}
     answer: b
     explanation: 样本量由目标置信水平、允许误差和预期比例共同决定，不是团队规模。
@@ -400,8 +400,8 @@ exercises:
       - {id: b, text: 并发资源竞争}
       - {id: c, text: 环境与场地差异}
       - {id: d, text: 随机数与未固定种子}
-      - {id: e, text: 网络抖动}
-      - {id: f, text: 代码注释}
+      - {id: e, text: 网络抖动与丢包}
+      - {id: f, text: 代码注释风格}
     answer: [a, b, c, d, e]
     explanation: 时间、并发、环境、随机性和网络都会造成不稳定；注释不会。
     difficulty: 2
@@ -525,10 +525,10 @@ exercises:
     level: L2
     prompt: 关于 ASIL 与 PL/SIL 的关系，正确的是？
     options:
-      - {id: a, text: 三者完全等价，可以互相替换}
-      - {id: b, text: ASIL 是 ISO 26262 的汽车风险等级，PL/SIL 是机械与功能安全等级}
-      - {id: c, text: ASIL 只用于机器人}
-      - {id: d, text: PL 只用于汽车}
+      - {id: a, text: 三者完全等价，可以互相替换使用}
+      - {id: b, text: ASIL 属 ISO 26262，PL/SIL 属机械}
+      - {id: c, text: ASIL 只用于机器人安全评估}
+      - {id: d, text: PL 只用于汽车功能安全评估}
     answer: b
     explanation: ASIL、PL、SIL 来自不同标准体系，等级名称相似但判定方法和适用领域不同。
     difficulty: 2
@@ -555,8 +555,8 @@ exercises:
     options:
       - {id: a, text: 安全距离与防护}
       - {id: b, text: 位姿精度、重复性和路径精度}
-      - {id: c, text: 网络安全}
-      - {id: d, text: 电池续航}
+      - {id: c, text: 网络安全与加密}
+      - {id: d, text: 电池续航与充电}
     answer: b
     explanation: ISO 9283 规定位姿、路径、稳定时间等性能指标的试验方法。
     difficulty: 2
@@ -581,11 +581,11 @@ exercises:
     level: L2
     prompt: 机器人产品进入不同市场时，可能涉及哪些认证或标志？
     options:
-      - {id: a, text: CE}
+      - {id: a, text: CE 欧盟准入标志}
       - {id: b, text: UL 3300}
       - {id: c, text: CQC 服务机器人认证}
       - {id: d, text: CR 中国机器人认证}
-      - {id: e, text: ISO/IEC/IEEE 29119}
+      - {id: e, text: 测试标准 29119}
     answer: [a, b, c, d]
     explanation: CE、UL、CQC、CR 是市场准入或认证标志；29119 是测试标准，不是认证。
     difficulty: 2
