@@ -42,7 +42,26 @@
 }
 </script>
 <article class="tb-lesson">
-  <h1>功能安全：PL、SIL 与 ASIL 的区别</h1>
+  <header>
+    <p class="tb-eyebrow">003</p>
+    <h1>功能安全：PL、SIL 与 ASIL 的区别</h1>
+    <p><strong>学完你能：</strong>为急停功能选 PL 或 SIL，并写出等级推导和验证证据。</p>
+  </header>
+
+  <section class="tb-retrieval">
+    <h2>开课前 3 分钟：先回忆</h2>
+    <ol>
+      <li>ISO 10218-1 和 -2 分别覆盖什么？</li>
+      <li>PL 和 SIL 来自哪个体系？</li>
+    </ol>
+    <details>
+      <summary>参考答案</summary>
+      <p>10218-1 覆盖工业机器人本体，10218-2 覆盖应用与机器人单元；PL 来自 ISO 13849，SIL 来自 IEC 62061/61508。</p>
+    </details>
+  </section>
+  <aside>
+    <p><strong>本课主读：</strong>R-ISO-13849-1《ISO 13849-1:2023 机械安全 — 控制系统安全相关部件 — 第 1 部分：设计通则》。重点看类别、MTTFd、DC 和 CCF。</p>
+  </aside>
   <section>
     <p>一个机器人项目评审会上，客户问：“这个急停功能是 PL d 还是 SIL 2？”供应商的机械工程师说 PL d，电子工程师说 SIL 2，汽车背景的顾问说应该按 ASIL C。三个人说的都不是一回事，但会议室里没人能说清楚区别。最后文档里同时出现了三个等级，审核时被要求解释，项目延期两周。</p>
     <p>PL、SIL、ASIL 都在描述“安全功能需要多可靠”，但它们来自不同标准体系，不能直接换算。本课讲清楚三套体系的来源、等级含义、定级方法和验证证据，以及怎么选。</p>
