@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from testbridge.cli import main
-from testbridge.studio.verify import ResourceCheck
+from testbridge.quality.verify import ResourceCheck
 
 FIXTURE = Path(__file__).parents[1] / "tests" / "fixtures" / "minimal-pack"
 

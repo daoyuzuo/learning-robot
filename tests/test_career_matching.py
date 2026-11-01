@@ -6,7 +6,7 @@ from testbridge.learning.store import Goal
 from testbridge.mastery.estimator import MasteryView
 
 ROOT = Path(__file__).parents[1]
-PACK = load_pack(ROOT / "content-packs" / "sample-sensors")
+PACK = load_pack(ROOT / "tests" / "fixtures" / "packs" / "sample-sensors")
 
 
 def view(concept_id: str, estimate: float, level: str) -> MasteryView:

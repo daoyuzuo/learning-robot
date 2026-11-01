@@ -6,7 +6,7 @@ from testbridge.content.repository import load_pack
 from testbridge.contract.validator import validate_pack
 from testbridge.lesson.renderer import render_lesson
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 IMG_SRC_RE = re.compile(r'<img\b[^>]*\bsrc="([^"]+)"')
 
 

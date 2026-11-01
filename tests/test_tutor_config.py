@@ -38,5 +38,12 @@ def test_custom_timeout_and_invalid_fallback() -> None:
     assert load_config({**FULL, "TESTBRIDGE_LLM_TIMEOUT": "abc"}).timeout == 30.0
 
 
+def test_search_can_be_disabled_by_env() -> None:
+    config = load_config({**FULL, "TESTBRIDGE_TUTOR_SEARCH": "0"})
+    assert config is not None
+    assert config.search_enabled is False
+    assert load_config(FULL).search_enabled is True
+
+
 def test_api_key_is_not_in_repr() -> None:
     assert "sk-test" not in repr(load_config(FULL))

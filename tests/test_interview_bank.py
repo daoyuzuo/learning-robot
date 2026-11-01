@@ -123,9 +123,9 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_sample_bank_matches_pack() -> None:
-    pack = load_pack(ROOT / "content-packs" / "sample-sensors")
+    pack = load_pack(ROOT / "tests" / "fixtures" / "packs" / "sample-sensors")
     path = resolve_bank_path(
-        pack.root, pack.meta.id, ROOT / "interview-banks"
+        pack.root, pack.meta.id, ROOT / "tests" / "fixtures" / "interview-banks"
     )
     assert path is not None
     bank = load_bank(path, pack_id=pack.meta.id, concept_ids=set(pack.concepts))
@@ -134,9 +134,9 @@ def test_sample_bank_matches_pack() -> None:
 
 
 def test_ros2_bank_matches_pack() -> None:
-    pack = load_pack(ROOT / "content-packs" / "ros2-qos")
+    pack = load_pack(ROOT / "tests" / "fixtures" / "packs" / "ros2-qos")
     path = resolve_bank_path(
-        pack.root, pack.meta.id, ROOT / "interview-banks"
+        pack.root, pack.meta.id, ROOT / "tests" / "fixtures" / "interview-banks"
     )
     assert path is not None
     bank = load_bank(path, pack_id=pack.meta.id, concept_ids=set(pack.concepts))

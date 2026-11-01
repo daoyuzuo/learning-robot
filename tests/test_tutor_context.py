@@ -3,7 +3,7 @@ from pathlib import Path
 from testbridge.content.repository import load_pack
 from testbridge.tutor.context import build_context
 
-PACK = load_pack(Path(__file__).parents[1] / "content-packs" / "ros2-qos")
+PACK = load_pack(Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos")
 
 
 def test_context_includes_lesson_text_and_concepts() -> None:

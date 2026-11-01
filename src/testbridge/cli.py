@@ -8,7 +8,9 @@ import json
 import math
 import os
 import sys
+import threading
 import time
+import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,7 +27,7 @@ from testbridge.evidence.store import EvidenceStore
 from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import Goal, LearningStore
-from testbridge.studio.verify import check_url, reason
+from testbridge.quality.verify import check_url, reason
 from testbridge.tutor.client import (
     LlmClient,
     OpenAICompatibleClient,
@@ -52,10 +54,26 @@ def _load_app(pack_dir: Path, db_path: Path) -> FastAPI:
         sys.path.insert(0, str(root))
     from web.app import create_app
 
-    return create_app(
-        pack_dir, db_path,
-        studio_llm=None, studio_search=None, studio_inline=False,
-    )
+    return create_app(pack_dir, db_path)
+
+
+def _browser_url(host: str, port: int) -> str:
+    host = str(host or "127.0.0.1").strip()
+    if host in {"0.0.0.0", "::", "[::]"}:
+        host = "127.0.0.1"
+    return f"http://{host}:{int(port)}"
+
+
+def _open_browser_later(url: str, delay: float = 1.5) -> None:
+    def open_url() -> None:
+        try:
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001, S110 - browser opening is best effort
+            pass
+
+    timer = threading.Timer(delay, open_url)
+    timer.daemon = True
+    timer.start()
 
 
 def build_tutor_client(config: TutorConfig) -> LlmClient:
@@ -127,6 +145,35 @@ def _run_quality(
             "research: "
             + ("evaluated" if report.research_evaluated else "not evaluated")
         )
+    return 0 if report.ok else 1
+
+
+def _run_depth(pack_dir: Path, as_json: bool) -> int:
+    from testbridge.quality.depth import evaluate_depth
+
+    try:
+        pack = load_pack(pack_dir)
+    except ContentValidationError as exc:
+        for issue in exc.report.errors:
+            print(f"ERROR {issue.code}: {issue.message}")
+        print("run tb validate first")
+        return 2
+
+    report = evaluate_depth(pack)
+    if as_json:
+        print(json.dumps(report.as_dict(), ensure_ascii=False, indent=2))
+    else:
+        for lesson in report.lessons:
+            status = "OK" if lesson.ok else "FAIL"
+            print(
+                f"{status:<4} {lesson.lesson_id} {lesson.level} "
+                f"chars={lesson.chars} h2={lesson.sections} "
+                f"tables={lesson.tables} figures={lesson.figures} "
+                f"exercises={lesson.exercises}"
+            )
+            for issue in lesson.issues:
+                print(f"     {issue.code}: {issue.message}")
+        print(f"{len(report.lessons)} lesson(s), {len(report.errors)} error(s)")
     return 0 if report.ok else 1
 
 
@@ -318,16 +365,33 @@ def main(argv: list[str] | None = None) -> int:
     quality.add_argument("--budget", type=int, default=None)
     quality.add_argument("--json", action="store_true")
 
+    depth = sub.add_parser("depth", help="check lesson depth")
+    depth.add_argument("pack")
+    depth.add_argument("--json", action="store_true")
+
     build = sub.add_parser("build", help="build standalone lessons")
     build.add_argument("pack")
     build.add_argument("--out", default="dist")
     build.add_argument("--lesson", default=None)
+
+    scaffold = sub.add_parser(
+        "scaffold", help="create a valid tb/1 pack skeleton"
+    )
+    scaffold.add_argument("pack_id")
+    scaffold.add_argument("--title", default="待填课程")
+    scaffold.add_argument("--description", default="")
+    scaffold.add_argument("--level", default="L2")
+    scaffold.add_argument("--dir", default="content-packs")
 
     serve = sub.add_parser("serve", help="run the web app")
     serve.add_argument("pack")
     serve.add_argument("--db", default="data/testbridge.db")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument(
+        "--open", action="store_true",
+        help="启动后在默认浏览器打开页面",
+    )
 
     listing = sub.add_parser("list", help="list packs under a root")
     listing.add_argument("root", default="content-packs", nargs="?")
@@ -341,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     import_cmd.add_argument("path")
 
     rebuild = sub.add_parser("rebuild-state")
-    rebuild.add_argument("--pack", default="content-packs/sample-sensors")
+    rebuild.add_argument("--pack", required=True)
     rebuild.add_argument("--db", default="data/testbridge.db")
     rebuild.add_argument("--learner-id", default="local")
 
@@ -359,12 +423,12 @@ def main(argv: list[str] | None = None) -> int:
     goal_set.add_argument("--override", action="append", default=None)
 
     readiness = sub.add_parser("readiness")
-    readiness.add_argument("--pack", default="content-packs/sample-sensors")
+    readiness.add_argument("--pack", required=True)
     readiness.add_argument("--db", default="data/testbridge.db")
     readiness.add_argument("--learner-id", default="local")
 
     today = sub.add_parser("today")
-    today.add_argument("--pack", default="content-packs/sample-sensors")
+    today.add_argument("--pack", required=True)
     today.add_argument("--db", default="data/testbridge.db")
     today.add_argument("--learner-id", default="local")
 
@@ -391,9 +455,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         return _cmd_doctor(args)
 
-    if args.command == "env":
-        if args.env_command == "init":
-            return _cmd_env_init(args)
+    if args.command == "env" and args.env_command == "init":
+        return _cmd_env_init(args)
 
     if args.command == "verify-resources":
         return _cmd_verify_resources(args)
@@ -407,6 +470,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)")
         return 0 if report.ok else 1
 
+    if args.command == "depth":
+        return _run_depth(Path(args.pack), args.json)
+
     if args.command == "quality":
         return _run_quality(
             Path(args.pack), args.research_dir, args.budget, args.json
@@ -418,10 +484,26 @@ def main(argv: list[str] | None = None) -> int:
             print(path)
         return 0
 
+    if args.command == "scaffold":
+        from testbridge.scaffold import ScaffoldError, scaffold_pack
+
+        try:
+            target = scaffold_pack(
+                Path(args.dir), args.pack_id, args.title,
+                description=args.description, level=args.level,
+            )
+        except ScaffoldError as exc:
+            print(f"ERROR {exc.code}: {exc.message}", file=sys.stderr)
+            return 2
+        print(f"created {target}")
+        return 0
+
     if args.command == "serve":
         import uvicorn
 
         app = _load_app(Path(args.pack), Path(args.db))
+        if args.open:
+            _open_browser_later(_browser_url(args.host, args.port))
         uvicorn.run(app, host=args.host, port=args.port)
         return 0
 

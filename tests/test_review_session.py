@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from testbridge.learning.store import ReviewState
 from web.app import create_app
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos"
 
 
 def make_app(tmp_path: Path) -> TestClient:

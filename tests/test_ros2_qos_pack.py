@@ -17,7 +17,7 @@ from testbridge.contract.validator import validate_pack
 from testbridge.lesson.renderer import render_lesson
 from web.app import create_app
 
-PACK_DIR = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
+PACK_DIR = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos"
 
 CONCEPTS = {
     "ros2-communication-model",

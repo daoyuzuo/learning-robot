@@ -244,10 +244,20 @@
     const button = tutor.querySelector(".tb-tutor-submit");
     const log = tutor.querySelector(".tb-tutor-log");
     const error = tutor.querySelector(".tb-tutor-error");
+    const webToggle = tutor.querySelector(".tb-tutor-web-toggle");
+    const webState = tutor.querySelector("[data-web-state]");
+    if (webToggle && webState) {
+      const paintWebState = () => {
+        webState.textContent = webToggle.checked ? "已开启" : "已关闭";
+      };
+      webToggle.addEventListener("change", paintWebState);
+      paintWebState();
+    }
 
     const basisLabels = {
       lesson: "本课内容",
       resource: "包内资源",
+      web: "网络来源",
       general: "通用知识",
     };
 
@@ -268,7 +278,20 @@
       if (citations && citations.length) {
         const meta = document.createElement("p");
         meta.className = "tb-tutor-citations";
-        meta.textContent = "依据：" + citations.join("、");
+        meta.appendChild(document.createTextNode("依据："));
+        citations.forEach((citation, index) => {
+          if (index) meta.appendChild(document.createTextNode("、"));
+          if (/^https?:\/\//.test(citation)) {
+            const link = document.createElement("a");
+            link.href = citation;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = citation;
+            meta.appendChild(link);
+          } else {
+            meta.appendChild(document.createTextNode(citation));
+          }
+        });
         item.appendChild(meta);
       }
       log.appendChild(item);
@@ -287,6 +310,7 @@
             lesson_id: document.body.dataset.lessonId || "",
             anchor: anchor ? anchor.value : "",
             question,
+            web: webToggle ? webToggle.checked : true,
           }),
         });
         const payload = await response.json();
@@ -295,6 +319,35 @@
         }
         appendMessage("user", question, null, []);
         appendMessage("assistant", payload.answer, payload.basis, payload.citations);
+        if (payload.web_sources && payload.web_sources.length) {
+          const sources = document.createElement("ul");
+          sources.className = "tb-tutor-web-sources";
+          payload.web_sources.forEach((source) => {
+            const item = document.createElement("li");
+            const link = document.createElement("a");
+            link.href = source.url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = source.title || source.url;
+            item.appendChild(link);
+            const trust = document.createElement("span");
+            trust.className = "tb-trust";
+            trust.textContent = source.trust;
+            item.appendChild(trust);
+            const kind = document.createElement("span");
+            kind.className = "tb-tutor-basis";
+            kind.textContent = source.kind;
+            item.appendChild(kind);
+            sources.appendChild(item);
+          });
+          log.appendChild(sources);
+        }
+        if (webToggle && webToggle.checked && payload.web_used === false) {
+          const notice = document.createElement("p");
+          notice.className = "tb-tutor-citations";
+          notice.textContent = "本次未获取到网络结果。";
+          log.appendChild(notice);
+        }
         if (!payload.saved) {
           const warn = document.createElement("p");
           warn.className = "tb-tutor-citations";

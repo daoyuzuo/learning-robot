@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from web.app import create_app
 
 ROOT = Path(__file__).parents[1]
-SAMPLE = ROOT / "content-packs" / "sample-sensors"
+SAMPLE = ROOT / "tests" / "fixtures" / "packs" / "sample-sensors"
 
 
 def make_app(tmp_path: Path, llm=None, config=None) -> TestClient:

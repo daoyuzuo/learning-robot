@@ -16,8 +16,8 @@ from testbridge.tutor.config import TutorConfig
 from web.app import create_app
 
 ROOT = Path(__file__).parents[1]
-SAMPLE = ROOT / "content-packs" / "sample-sensors"
-BANKS = ROOT / "interview-banks"
+SAMPLE = ROOT / "tests" / "fixtures" / "packs" / "sample-sensors"
+BANKS = ROOT / "tests" / "fixtures" / "interview-banks"
 
 
 def make_app(tmp_path: Path, llm=None, config=None) -> TestClient:
@@ -474,7 +474,7 @@ def test_cross_pack_session_is_not_listed_and_does_not_500(
         interview_llm=FakeClient(), interview_config=CONFIG,
     ))
     session_id = start_session(first)
-    ros2 = ROOT / "content-packs" / "ros2-qos"
+    ros2 = ROOT / "tests" / "fixtures" / "packs" / "ros2-qos"
     second = TestClient(create_app(
         ros2, db, interview_banks=BANKS,
         interview_llm=FakeClient(), interview_config=CONFIG,

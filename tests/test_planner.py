@@ -9,7 +9,7 @@ from testbridge.mastery.estimator import MasteryView
 from testbridge.mastery.rule import level_for
 from testbridge.recommend.planner import Planner
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 PACK = load_pack(SAMPLE)
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
 

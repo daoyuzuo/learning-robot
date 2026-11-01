@@ -4,7 +4,7 @@ from testbridge.content.repository import load_pack
 from testbridge.evidence.store import new_event
 from testbridge.tutor.review import build_review_context, parse_review
 
-PACK = load_pack(Path(__file__).parents[1] / "content-packs" / "ros2-qos")
+PACK = load_pack(Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos")
 
 
 def submission(exercise_id: str = "EX-QOS-002", response="a") -> object:

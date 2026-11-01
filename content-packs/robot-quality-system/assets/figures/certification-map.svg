@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" width="860" height="300" role="img" aria-label="机器人市场准入与认证地图">
+  <title>市场准入与认证地图</title>
+  <desc>CE、UL 3300、CQC 与 CR 认证对应的市场与性质。</desc>
+  <rect x="20" y="20" width="820" height="260" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="40" y="52" font-size="18" font-weight="700" fill="#0f172a">市场准入与认证</text>
+  <g font-size="13" fill="#0f172a">
+    <rect x="50" y="90" width="180" height="150" rx="10" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="140" y="120" text-anchor="middle" font-size="16" font-weight="700">CE</text>
+    <text x="140" y="146" text-anchor="middle">欧盟</text>
+    <text x="140" y="172" text-anchor="middle">机械法规 / 协调标准</text>
+    <text x="140" y="198" text-anchor="middle">技术文件 + 符合性声明</text>
+    <text x="140" y="224" text-anchor="middle">强制准入标志</text>
+    <rect x="250" y="90" width="180" height="150" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="340" y="120" text-anchor="middle" font-size="16" font-weight="700">UL 3300</text>
+    <text x="340" y="146" text-anchor="middle">北美</text>
+    <text x="340" y="172" text-anchor="middle">商用 / 服务机器人</text>
+    <text x="340" y="198" text-anchor="middle">安全评估</text>
+    <text x="340" y="224" text-anchor="middle">自愿性认证</text>
+    <rect x="450" y="90" width="180" height="150" rx="10" fill="#fef3c7" stroke="#d97706"/>
+    <text x="540" y="120" text-anchor="middle" font-size="16" font-weight="700">CQC</text>
+    <text x="540" y="146" text-anchor="middle">中国</text>
+    <text x="540" y="172" text-anchor="middle">性能 / 安全 / EMC</text>
+    <text x="540" y="198" text-anchor="middle">技术规范 + 型式试验</text>
+    <text x="540" y="224" text-anchor="middle">自愿性认证</text>
+    <rect x="650" y="90" width="160" height="150" rx="10" fill="#fae8ff" stroke="#a21caf"/>
+    <text x="730" y="120" text-anchor="middle" font-size="16" font-weight="700">CR</text>
+    <text x="730" y="146" text-anchor="middle">中国</text>
+    <text x="730" y="172" text-anchor="middle">机器人产品认证</text>
+    <text x="730" y="198" text-anchor="middle">S / E / S+E</text>
+    <text x="730" y="224" text-anchor="middle">自愿性认证</text>
+  </g>
+  <text x="40" y="268" font-size="12" fill="#475569">先确认目标市场和产品类别，再决定认证组合；认证不能替代内部测试与证据链。</text>
+</svg>

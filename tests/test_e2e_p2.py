@@ -19,7 +19,7 @@ from testbridge.learning.service import LearningService
 from testbridge.learning.store import Goal, LearningStore
 from web.app import create_app
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 NOW = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
 
 

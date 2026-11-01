@@ -6,8 +6,8 @@ from testbridge.cli import main
 from testbridge.content.repository import load_pack
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
-QOS = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
+QOS = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos"
 
 
 def test_quality_minimal_fixture_fails(capsys) -> None:

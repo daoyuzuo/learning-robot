@@ -274,6 +274,16 @@ th {
   color: var(--tb-accent);
 }
 
+.tb-btn-danger {
+  color: var(--tb-danger);
+  border-color: color-mix(in srgb, var(--tb-danger) 45%, var(--tb-line));
+}
+
+.tb-btn-danger:hover {
+  background: color-mix(in srgb, var(--tb-danger) 10%, var(--tb-surface));
+  border-color: var(--tb-danger);
+}
+
 .tb-btn:disabled,
 .tb-actions button:disabled,
 .tb-target-form button:disabled,

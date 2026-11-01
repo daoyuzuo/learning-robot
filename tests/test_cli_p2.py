@@ -4,7 +4,7 @@ import pytest
 
 from testbridge.cli import main
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 
 
 def test_rebuild_state_cli(tmp_path: Path, capsys) -> None:

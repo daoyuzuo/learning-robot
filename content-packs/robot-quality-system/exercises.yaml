@@ -1,787 +1,645 @@
 schema: tb/1
 exercises:
-- id: ex-1
-  type: single_choice
-  concepts:
-  - test-strategy-risk
-  level: L2
-  prompt: 在基于风险的测试中，最常用的风险值计算方式是下列哪一项？
-  options:
-  - id: a
-    text: 风险值 = 测试用例数量 × 覆盖率
-  - id: b
-    text: 风险值 = 可能性 × 影响
-  - id: c
-    text: 风险值 = 缺陷数 ÷ 代码行数
-  - id: d
-    text: 风险值 = 测试时长 × 自动化比例
-  answer: b
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 风险分级流程中，风险值通常由可能性（probability）与影响（impact）相乘得到，即 R = P × I，再据此把风险划分为严重、高、中、低等等级，并映射到不同测试强度。其余选项描述的是覆盖率、缺陷密度和自动化投入，都不是风险值的定义。
-- id: ex-2
-  type: multi_choice
-  concepts:
-  - test-strategy-risk
-  level: L3
-  prompt: 某团队要为一台人形机器人制定基于风险的测试策略，但时间与台架资源有限。下列哪些做法符合风险驱动策略的原则？（多选）
-  options:
-  - id: a
-    text: 按风险等级分配测试工作量，把大部分资源压到严重与高风险项上
-  - id: b
-    text: 因为急停回路的风险乘积值不高，把它排到低优先级，等有余量再测
-  - id: c
-    text: 对安全红线项（如碰撞力、急停响应）不参与乘积排序，直接全量验证
-  - id: d
-    text: 时间紧张时优先削减低风险项的测试深度，而不是削减高风险项的测试范围
-  - id: e
-    text: 只要覆盖率指标达标，就可以认为风险已被充分管理
-  answer:
-  - a
-  - c
-  - d
-  rubric: []
-  hints: []
-  difficulty: 4
-  explanation: a 体现了按等级分配资源的核心思想；c 体现了安全红线项需与乘积排序叠加，不能仅凭数值排序；d 体现了约束下的取舍原则——压缩低风险深度而非高风险范围。b
-    错在把安全红线项交给乘积排序，急停失效虽数值不高但属单点即危险；e 错在以覆盖率替代风险判断，覆盖率达标不等于风险已被管理。
-- id: ex-3
-  type: short_answer
-  concepts:
-  - test-strategy-risk
-  level: L3
-  prompt: 某移动服务机器人项目列出了四项风险：①急停回路失效（可能性 2，影响 5）；②人机共域碰撞力超限（可能性 3，影响 5）；③导航路径规划错误（可能性
-    4，影响 3）；④界面文案错别字（可能性 4，影响 1）。请计算各项风险值，给出测试优先级排序，并说明为什么不能只按风险值排序。
-  options: []
-  answer:
-    accepted:
-    - ①=10，②=15，③=12，④=4；优先级大致为②>③>①>④，但①作为安全红线项必须全量验证，实际应与②同级甚至更高
-    - 风险值分别为10、15、12、4，排序②③①④，但急停属安全红线不能仅按数值排
-    min_hits: 1
-  rubric:
-  - dimension: 风险值计算
-    weight: 0.3
-    criteria: 四项风险值均正确：10、15、12、4
-  - dimension: 优先级排序
-    weight: 0.3
-    criteria: 给出基于风险值的排序（②>③>①>④）
-  - dimension: 红线项识别
-    weight: 0.4
-    criteria: 指出急停回路属安全红线项，不能仅凭乘积排序，需全量验证或提升优先级
-  hints: []
-  difficulty: 4
-  explanation: 按 R = P × I：①=2×5=10，②=3×5=15，③=4×3=12，④=4×1=4。纯数值排序为②>③>①>④。但急停回路失效属于“单点故障即可能导致危险”的安全红线项，其风险值虽只有
-    10，却必须无条件全量验证，不能因为乘积不高就排到后面。这说明风险分级需要与标准强制项、安全红线叠加使用，而不是单一数值排序。
-- id: ex-4
-  type: self_assess
-  concepts:
-  - test-strategy-risk
-  level: L3
-  prompt: 请为你熟悉的一台机器人（或课程中的移动服务机器人）写出一份简版风险测试策略，至少包含：3 条风险项及其可能性/影响打分与风险值、风险等级划分、每个等级对应的测试强度、以及在时间受限时你会如何取舍。写完后对照下面的量规自评。
-  options: []
-  rubric:
-  - dimension: 风险识别与量化
-    weight: 0.3
-    criteria: 至少列出 3 条具体风险项，给出可能性与影响打分并计算风险值，打分有依据
-  - dimension: 等级划分与测试强度映射
-    weight: 0.3
-    criteria: 给出清晰的风险等级分段，并为每个等级规定可执行的测试类型/深度
-  - dimension: 约束下的取舍
-    weight: 0.2
-    criteria: 说明时间或资源受限时削减什么、保留什么，并指出安全红线项不可压缩
-  - dimension: 残留风险与复评
-    weight: 0.2
-    criteria: 提到残留风险的显式接受与复评触发条件（如模型、固件、运行设计域变化）
-  hints: []
-  difficulty: 5
-  explanation: 本题检验你能否把风险分级流程完整落到一个具体对象上。合格答案应体现：风险值由可能性×影响得出；等级划分后映射到不同测试强度；资源受限时压缩低风险项而非高风险项；安全红线项单独处理；残留风险需显式接受并在变更时复评。若你的答案只列了风险项而没有映射到测试强度，或没有讨论取舍，说明还停留在
-    L2 水平。
-- id: ex-taskchain-model
-  type: single_choice
-  concepts:
-  - test-design-taskchain
-  level: L2
-  prompt: 把机器人任务分解为任务链时，下列哪一项最不属于任务链建模必须显式记录的内容？
-  options:
-  - id: a
-    text: 子任务节点之间的前置—后继依赖关系
-  - id: b
-    text: 每个节点结束时必须为真的状态断言（状态契约）
-  - id: c
-    text: 每个节点所用控制器的源代码行数与圈复杂度
-  - id: d
-    text: 失效后影响面较大的关键节点
-  answer: c
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 任务链建模关注节点、依赖、状态契约与关键节点，属于行为与状态层面的抽象。控制器的代码规模与圈复杂度是白盒结构度量，既不描述任务链结构，也不能直接支撑链级测试设计，因此最不属于任务链建模的必要内容。
-- id: ex-failure-propagation
-  type: multi_choice
-  concepts:
-  - test-design-taskchain
-  level: L3
-  prompt: 某任务链为：导航到柜前 → 打开柜门 → 识别目标块 → 抓取 → 搬运 → 放置 → 校验。若要设计“失效传播与恢复”类测试，下列哪些做法是合理的？（多选）
-  options:
-  - id: a
-    text: 在“识别目标块”之后重新藏起目标块，检验系统能否重新检测缺失并重复探索流程
-  - id: b
-    text: 在“搬运”阶段拆散已完成的部分结构，检验系统能否重估进度并重规划
-  - id: c
-    text: 只跑一次完整端到端流程，若成功即认为失效传播路径已被覆盖
-  - id: d
-    text: 给位姿估计注入 5%–10% 的相对噪声，检验感知误差是否向下游传播
-  - id: e
-    text: 在工作区加入干扰物，检验目标选择与任务相关推理是否稳健
-  answer:
-  - a
-  - b
-  - d
-  - e
-  rubric: []
-  hints: []
-  difficulty: 4
-  explanation: 失效传播测试的核心是在链的中段注入扰动，观察系统能否识别异常状态、重规划并恢复。a、b、d、e 分别对应状态突变、进度破坏、感知噪声与干扰物四类注入，都是合理设计。c
-    错误：端到端成功一次既不能证明失效路径被覆盖，也无法定位问题，端到端测试不能替代注入式测试。
-- id: ex-risk-priority
-  type: short_answer
-  concepts:
-  - test-strategy-risk
-  level: L3
-  prompt: 某任务链节点“打开柜门”的发生可能性评为 4（1–5 分），影响评为 5（1–5 分）；节点“放置”的可能性为 2、影响为 4。请计算两者的风险值，说明各自的风险等级归属思路，并指出在测试资源有限时应优先保障哪个节点的测试强度、为什么。
-  options: []
-  answer:
-    accepted:
-    - 打开柜门风险值20，放置风险值8，优先保障打开柜门
-    - 20 与 8，优先测试打开柜门
-    - 打开柜门 R=20 高于放置 R=8，应优先
-    min_hits: 1
-  rubric:
-  - dimension: 风险值计算
-    weight: 0.35
-    criteria: 正确按 R=P×I 算出打开柜门为 20、放置为 8，并说明风险值用于排序与分级
-  - dimension: 等级与策略对应
-    weight: 0.35
-    criteria: 指出高风险节点应采用多技术交叉与异常/恢复路径覆盖，中风险节点可覆盖主路径与主要备选分支
-  - dimension: 优先级论证
-    weight: 0.3
-    criteria: 说明优先保障打开柜门的理由（风险值更高、且位于链上游、失效会向下游传播），并提到 P 与 I 应分开审视而非只看单一数字
-  hints: []
-  difficulty: 4
-  explanation: 按 R=P×I，打开柜门为 4×5=20，放置为 2×4=8。20 明显高于 8，且打开柜门位于任务链上游、下游节点多，失效会沿依赖边传播，因此应优先保障其测试强度：采用节点级
-    + 链级 + 扰动注入的多技术交叉，并覆盖异常与恢复路径。同时要注意“低概率高后果”的风险不能被乘积掩盖，P 与 I 应作为两个维度分别审视。
-- id: ex-design-table
-  type: self_assess
-  concepts:
-  - test-design-taskchain
-  - test-strategy-risk
-  level: L3
-  prompt: 请为一条你熟悉的机器人任务链（例如“取物并放入容器”）完成一份测试设计表：至少列出 4 个节点或依赖边，为每项写出状态契约、关键性判断（是否位于上游/扇出大小）、P
-    与 I 评分及风险等级，并为高等级项设计至少一条节点级用例和一条注入式用例。完成后按下列维度自评。
-  options: []
-  rubric:
-  - dimension: 任务链结构完整性
-    weight: 0.3
-    criteria: 节点划分清晰、依赖顺序正确，每个节点都给出可判定的状态契约（而非“工作正常”这类模糊描述）
-  - dimension: 关键节点识别
-    weight: 0.25
-    criteria: 依据下游可达节点数或扇出而非主观复杂度识别关键节点，并说明失效会如何沿依赖边传播
-  - dimension: 风险分级合理性
-    weight: 0.25
-    criteria: P 与 I 分别评分并给出 R=P×I，等级划分有判据，且测试深度与等级对应（高等级多技术交叉、低等级冒烟）
-  - dimension: 用例可执行性
-    weight: 0.2
-    criteria: 节点级用例与注入式用例均可执行、可判定，注入方式具体（如位姿噪声比例、干扰物类型、状态突变时机）
-  hints: []
-  difficulty: 5
-  explanation: 一份合格的测试设计表应把任务链建模与风险分级真正接起来：结构侧保证节点、依赖与状态契约可判定，风险侧保证测试深度与风险等级匹配。常见失分点是状态契约写得不可判定、关键节点按“看起来复杂”而非按下游影响面判断，以及只设计正常路径而缺少注入式用例。
-- id: ex-oracle-type
-  type: single_choice
-  concepts:
-  - oracle-metrics
-  level: L2
-  prompt: 某 VLA 机器人需要完成“把红色方块放进盒子”的任务。团队无法为每条指令写出精确期望输出，于是改为定义“对图像做轻微亮度变化后，机器人的动作轨迹应保持基本一致”这类规则来判定。这种做法最准确地属于哪一类测试预言？
-  options:
-  - id: A
-    text: 精确期望值预言：用仿真真值给出每一步的期望关节角
-  - id: B
-    text: 蜕变关系预言：描述输入变化与输出变化之间应满足的关系
-  - id: C
-    text: 状态码预言：检查接口返回是否 5xx
-  - id: D
-    text: 差分预言：对比两个模型版本的输出是否完全相等
-  answer: B
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 蜕变测试的核心思想是构造蜕变关系，描述测试输入的变化与输出变化的关系与规律，从而在缺乏精确期望输出的情况下判定。题干中“输入亮度变化
-    → 轨迹应基本一致”正是典型的蜕变关系。A 需要精确标签，C 是 Web 接口场景，D 是差分测试且要求完全相等过于严格。
-- id: ex-metric-design
-  type: multi_choice
-  concepts:
-  - oracle-metrics
-  level: L3
-  prompt: 你要为一个“机械臂抓取并放置工件”的测试设计量化指标体系。下列哪些做法符合本课强调的指标设计原则？（多选）
-  options:
-  - id: A
-    text: 用“位置误差 ≤ ε 且姿态角误差 ≤ δ”代替“位姿完全相等”来判定放置到位
-  - id: B
-    text: 把关节速度/扭矩超限、非预期碰撞作为硬性安全约束单独判定
-  - id: C
-    text: 只保留一个综合总分，不再区分完成度、过程质量、安全与效率
-  - id: D
-    text: 指标选取兼顾全面性、易测性与科学性，并说明每个指标的数据来源
-  - id: E
-    text: 为了显得严格，把所有阈值都设为 0，要求零误差
-  answer:
-  - A
-  - B
-  - D
-  rubric: []
-  hints: []
-  difficulty: 3
-  explanation: A 体现“用容差代替相等”，与用 IoU 阈值替代严格相等是同一思路；B 体现安全约束应作为确定性硬规则；D 对应工业机器人评价标准提出的全面性、易测性、科学性原则。C
-    把多维质量压缩成单一分数会丢失诊断信息；E 的零误差阈值在存在测量噪声与预测漂移时必然导致大量误报，不可取。
-- id: ex-taskchain-oracle
-  type: short_answer
-  concepts:
-  - test-design-taskchain
-  - oracle-metrics
-  level: L3
-  prompt: 请为一个“移动底盘 + 机械臂”协作搬运任务建模任务链，并说明预言与指标如何挂载。要求：(1) 至少拆出 3 个子任务并给出可检查的子目标谓词；(2)
-    说明局部预言与全局预言各自负责什么；(3) 为至少 2 个子任务各给出 1 个量化指标及其阈值设定依据。
-  options: []
-  answer:
-    accepted:
-    - 子任务拆分：导航到工件旁、抓取工件、搬运到目标区、放置到位
-    - 子目标谓词：at(robot, near(workpiece))、is_grasped(workpiece)、In(workpiece, target_zone)
-    - 局部预言检查本环节动作后果是否与子任务目标一致
-    - 全局预言检查环节间时序与协作逻辑，如底盘就位后机械臂才抬升
-    - 指标示例：抓取成功率阈值依据历史基线；放置位置误差阈值依据任务公差
-    - 安全约束作为硬规则单独判定，如碰撞与关节超限
-    min_hits: 3
-  rubric:
-  - dimension: 任务链拆分与谓词
-    weight: 0.35
-    criteria: 拆出至少 3 个有先后依赖的子任务，每个子任务给出可检查、可判定的子目标谓词，而非笼统描述
-  - dimension: 预言分层
-    weight: 0.35
-    criteria: 清楚区分局部预言（单环节动作后果）与全局预言（时序/协作/整体目标），并说明二者如何融合成最终判决
-  - dimension: 指标与阈值依据
-    weight: 0.3
-    criteria: 至少 2 个子任务各给出量化指标，且说明阈值来源（标准、历史基线、任务公差或数据分布），并提及安全约束的硬性判定
-  hints: []
-  difficulty: 4
-  explanation: 任务链建模的关键是把“整体任务”拆成带谓词的子任务，让预言有可挂载的位置。局部预言关注单智能体动作的直接后果，全局预言关注并发、时序依赖与整体目标达成。指标必须可测量并说明阈值来源，安全类约束应作为确定性硬规则，不参与“平均分”。
-- id: ex-threshold-review
-  type: self_assess
-  concepts:
-  - oracle-metrics
-  - test-design-taskchain
-  level: L3
-  prompt: 请审视你自己（或你熟悉的一个机器人项目）的一组测试指标，逐条回答：该指标的阈值来自哪里？阈值放宽/收紧一档时通过率是否剧烈变化？误报与漏报的代价是否对称？该指标挂在任务链的哪个环节？写完后对照下方量规自评。
-  options: []
-  rubric:
-  - dimension: 阈值来源可追溯
-    weight: 0.3
-    criteria: 每个指标都能说明阈值来自标准、合同、历史基线、物理约束或数据分布，而不是凭感觉设定
-  - dimension: 敏感性分析
-    weight: 0.25
-    criteria: 至少对一个指标做了阈值敏感性讨论，识别出阈值是否落在分布陡峭处、判定是否稳定
-  - dimension: 误报漏报权衡
-    weight: 0.25
-    criteria: 区分误报与漏报的代价，并对安全相关指标采取保守取向
-  - dimension: 任务链挂载
-    weight: 0.2
-    criteria: 能指出每个指标对应任务链的哪个子任务/环节，避免指标与环节脱节
-  hints: []
-  difficulty: 3
-  explanation: 阈值合理性不是数学问题而是工程判断问题：来源决定可信度，敏感性决定稳定性，代价对称性决定保守程度，任务链挂载决定指标是否真的在测你想测的东西。四项都答得上，说明指标设计可辩护。
-- id: L-001-004-ex-1
-  type: single_choice
-  concepts:
-  - defect-rootcause
-  level: L2
-  prompt: 某移动机器人出现“直线行驶时持续向右偏”的现象。团队按发生位置把该缺陷归到“控制层”，随后直接修改了控制器增益，但问题依旧。按照本课的分类思路，下列哪种做法最恰当？
-  options:
-  - id: a
-    text: 继续在控制层调参，直到跑偏消失为止
-  - id: b
-    text: 把缺陷重新按根因维度分类（如标定配置错误、地面打滑等环境因素、驱动器件漂移），并设计实验逐项排除
-  - id: c
-    text: 把该缺陷标记为“技术局限”，不再处理
-  - id: d
-    text: 直接更换控制器硬件
-  answer: b
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 按位置分类只能圈定排查范围，不能指向根因。跑偏的根因可能是配置（里程计标定参数）、环境（地面打滑）或器件（电流采样漂移），必须按根因维度重新分类并用实验逐项排除。盲目调参属于“找到一个说得过去的解释”，不是根因分析。
-- id: L-001-004-ex-2
-  type: multi_choice
-  concepts:
-  - defect-rootcause
-  level: L3
-  prompt: 你要在实验室复现一个“现场偶发、每天出现一两次”的机器人导航异常。为了让复现可控，下列哪些条件属于必须固定或记录的内容？
-  options:
-  - id: a
-    text: 软件版本、参数配置与标定文件
-  - id: b
-    text: 地面材质、光照、温度等环境条件
-  - id: c
-    text: 任务指令序列与感知输入的录制数据
-  - id: d
-    text: 启动顺序、通信周期与并发任务的相对时序
-  - id: e
-    text: 只记录最终失败的那一帧截图即可
-  answer:
-  - a
-  - b
-  - c
-  - d
-  rubric: []
-  hints: []
-  difficulty: 3
-  explanation: 复现需要固定环境条件、系统状态、输入序列与时序条件四类要素。仅保留失败瞬间的截图无法重建因果链，也无法验证根因是否找对。日志回放与仿真回放正是为了把这四类条件固化下来。
-- id: L-001-004-ex-3
-  type: short_answer
-  concepts:
-  - oracle-metrics
-  level: L3
-  prompt: 某团队测试机械臂抓取放置任务，发现注入“目标点超出工作空间”这一故障后，所有强度下的任务成功率都是 0%，无法区分轻度与重度故障的影响。请说明问题出在哪里，并给出改进方案（至少包含一个替代指标与一个可用的测试预言形式）。
-  options: []
-  answer:
-    accepted:
-    - 成功率饱和
-    - 二值预言饱和
-    - 改用连续指标
-    - 末端定位误差
-    - 放置误差
-    - 欧氏距离
-    - 不变量
-    - 蜕变
-    - 差分
-    - 规格预言
-    - 连续度量
-    min_hits: 2
-  rubric:
-  - dimension: 问题诊断
-    weight: 0.4
-    criteria: 指出二值成功率在该故障下饱和（全为 0），失去区分度，无法量化退化程度
-  - dimension: 替代指标
-    weight: 0.35
-    criteria: 提出连续指标，如末端/放置位置与目标点的欧氏距离、轨迹偏差、重复定位离散度等
-  - dimension: 测试预言
-    weight: 0.25
-    criteria: 给出合适的预言形式，如规格预言（与目标位姿比对容差）、不变量/蜕变预言或差分预言，并说明其判定逻辑
-  hints: []
-  difficulty: 4
-  explanation: 当二值结果在某个故障强度区间饱和时，它就不再携带信息。应改用连续度量（如最终放置误差的欧氏距离）来刻画不同强度下的退化曲线；同时把判定机制从“成功/失败”升级为规格预言（误差是否在容差内）或不变量/蜕变预言（如目标整体平移后轨迹形状应基本不变），从而获得细粒度的判定能力。
-- id: L-001-004-ex-4
-  type: self_assess
-  concepts:
-  - defect-rootcause
-  - oracle-metrics
-  level: L3
-  prompt: 请针对一个你熟悉的机器人缺陷（真实或假设），完成一份根因分析小结，包含：(1) 缺陷现象与按根因维度的分类；(2) 复现所需的四类条件；(3)
-    使用的根因分析方法（5 Why / 鱼骨图 / 帕累托 / FMEA / 因果干预中的至少两种）及推理链；(4) 用于判定缺陷存在与否的测试预言与至少一个量化指标；(5)
-    遏制、纠正、预防三层措施，并说明如何用同一套预言与指标验证措施有效。写完后对照下方评分标准自评。
-  options: []
-  rubric:
-  - dimension: 分类与复现
-    weight: 0.25
-    criteria: 现象描述具体；按根因维度（设计/制造/环境/操作/配置/技术局限）分类合理；复现条件覆盖环境、系统状态、输入序列、时序四类
-  - dimension: 根因推理
-    weight: 0.3
-    criteria: 使用至少两种方法且用法正确（如鱼骨图用于穷举、5 Why 用于纵深、帕累托用于筛选主因、干预实验用于确认因果）；每一层追问有证据支撑；明确区分根因与症状
-  - dimension: 预言与指标
-    weight: 0.25
-    criteria: 测试预言形式与预期缺陷类型匹配（崩溃类 vs 结果错误类）；量化指标可测量、有阈值或基线；说明为何该指标能反映该根因
-  - dimension: 措施与验证
-    weight: 0.2
-    criteria: 三层措施区分清晰，预防措施针对真因且落到流程或设计；给出用相同预言与指标在相同复现条件下重跑并做回归的验证方案
-  hints: []
-  difficulty: 4
-  explanation: 本题检验从“说清缺陷”到“查到底”再到“改到位”的完整闭环。高质量答案的特征是：分类服务于排查方向、复现条件可固化、根因有证据链且经过干预验证、预言与指标能区分不同根因、预防措施改变了流程而非只修个案。
-- id: ex-coverage-gate-design
-  type: single_choice
-  concepts:
-  - coverage-release-gate
-  level: L2
-  prompt: 某机器人团队要给一个已有三年历史的导航模块（当前行覆盖率 55%）引入覆盖率门禁。下列哪种设计最可能在半年后仍然有效？
-  options:
-  - id: A
-    text: 统一要求所有模块行覆盖率不低于 85%，不达标即阻断发布
-  - id: B
-    text: 对遗留模块先设“不得下降”（允许下降 0.0%）并保留 55% 的绝对下限，同时为新模块设 85% 绝对阈值，按模块逐步抬高
-  - id: C
-    text: 只统计全组织平均覆盖率，平均值达标即放行
-  - id: D
-    text: 覆盖率报告缺失时默认视为通过，避免流水线误报
-  answer: B
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 遗留系统直接上 80%+ 的绝对线，通常导致团队关闭门禁并遗忘。可行做法是基线与变化量双控：遗留模块先守“不得下降”，新模块守绝对阈值，再按模块逐步抬高。选项
-    C 的平均值会被易覆盖模块稀释，掩盖关键路径空白；选项 D 把“没有数据”误当成“数据很好”，是门禁最常见的漏洞。
-- id: ex-gate-rules-multi
-  type: multi_choice
-  concepts:
-  - coverage-release-gate
-  level: L3
-  prompt: 你正在为一个机器人控制软件的版本准入准则编写门禁规则。下列哪些应当作为“阻断发布”的条件？（多选）
-  options:
-  - id: A
-    text: 本次提交的总体覆盖率仍高于阈值，但相对上一基线下降幅度超过容忍度
-  - id: B
-    text: 覆盖率报告未上传，流水线中该检查项无数据
-  - id: C
-    text: 某个临时降低标准的例外已过到期日，但配置中仍保留
-  - id: D
-    text: 新增了一个安全相关测试用例，覆盖率上升
-  - id: E
-    text: 关键回归用例出现失败
-  answer:
-  - A
-  - B
-  - C
-  - E
-  rubric: []
-  hints: []
-  difficulty: 4
-  explanation: A 是变化量失控，说明质量在静默退化；B 属于“无数据不得视为通过”，必须阻断而不是自动跳过；C 的过期例外等同于门禁失效；E 是关键回归失败，属于最基本的阻断条件。D
-    是覆盖率改善，属于允许通过的情形，不需要阻断。设计门禁时要同时覆盖绝对阈值、变化量、数据缺失与例外时效四类情形。
-- id: ex-admission-decision
-  type: short_answer
-  concepts:
-  - coverage-release-gate
-  level: L3
-  prompt: 某机器人版本准备从预发进入生产。证据如下：核心运动控制模块行覆盖率 88%（阈值 85%，上一基线 90%，允许下降 0.5%）；场景覆盖率报告显示“湿滑地面
-    + 斜坡”场景未覆盖，而该场景在上个版本曾导致一次打滑事故；安全相关回归用例全部通过；有一个降低标准的例外，责任人与原因已填，到期日为上周。请给出准入结论，并说明你的判断依据与需要补充的动作。
-  options: []
-  answer:
-    accepted:
-    - 不准予放行
-    - 不准入
-    - 阻断发布
-    - 拒绝放行
-    - 不放行
-    - NO-GO
-    - no-go
-    min_hits: 1
-  rubric:
-  - dimension: 结论明确
-    weight: 0.2
-    criteria: 明确给出阻断/不准予放行的结论，而非模糊表述
-  - dimension: 变化量识别
-    weight: 0.25
-    criteria: 指出覆盖率从 90% 降到 88%，下降 2 个百分点，超过 0.5% 的容忍度，构成变化量失控
-  - dimension: 高风险未覆盖场景
-    weight: 0.3
-    criteria: 指出“湿滑地面+斜坡”属于曾引发事故的高风险场景，未覆盖不能放行，需补测或做风险接受记录
-  - dimension: 例外时效
-    weight: 0.25
-    criteria: 指出例外已过期，等同于门禁失效，必须先关闭或重新审批
-  hints: []
-  difficulty: 5
-  explanation: 这是一个典型的“总分看起来还行、证据链却不闭合”的案例。虽然 88% 高于 85% 的绝对阈值，但相对基线下降 2 个百分点，远超 0.5%
-    的容忍度；同时未覆盖场景恰好落在曾发生事故的高风险区，属于不可接受的风险暴露；过期例外使门禁事实上失效。正确做法是阻断放行，补齐高风险场景测试、关闭或重新审批例外，并在下一基线重新评估。注意：安全回归全通过只能说明已测部分没问题，不能覆盖未测场景。
-- id: ex-design-1
-  type: multi_choice
-  concepts:
-  - experiment-statistics
-  level: L2
-  prompt: 你要比较两个抓取策略的成功率。下列哪些做法符合良好的实验设计原则？（多选）
-  options:
-  - id: a
-    text: 为每个策略设定相同的 rollout 次数，并在实验前锁定样本量
-  - id: b
-    text: 随机化两个策略的试验顺序，避免电量与温度漂移与策略混淆
-  - id: c
-    text: 在相同初始物体位姿上分别运行两个策略，形成配对比较
-  - id: d
-    text: 先跑 20 次，看到新策略更好就停止实验并宣布改进
-  - id: e
-    text: 只测试表现最好的那个场景，以减少试验成本
-  answer:
-  - a
-  - b
-  - c
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: A、B、C 分别对应预注册样本量、随机化与配对/区组设计，都能降低偏倚与方差。D 属于可选停止导致的偏倚，E 会破坏覆盖代表性，二者都会让结论不可信。
-- id: ex-ci-2
-  type: single_choice
-  concepts:
-  - experiment-statistics
-  level: L3
-  prompt: 某策略在 40 次 rollout 中成功 36 次（点估计 90%）。同事说“另一个策略 92%，所以新策略更好”。下列判断最恰当的是？
-  options:
-  - id: a
-    text: 92% 大于 90%，差异真实存在，可以直接采纳
-  - id: b
-    text: 40 次试验的 95% 置信区间很宽，两个策略的区间很可能重叠，2 个百分点差异不足以支撑结论
-  - id: c
-    text: 只要 p 值小于 0.05 就说明效应在工程上重要
-  - id: d
-    text: 应该用正态近似算区间，因为样本量已经足够大
-  answer: b
-  rubric: []
-  hints: []
-  difficulty: 3
-  explanation: 小样本下成功率区间很宽，2 个百分点的差距远小于估计不确定性，不能据此判定优劣；需要更多试验或配对设计。p 值小也不等于效应重要；正态近似在小样本、接近边界时不可靠。
-- id: ex-gate-3
-  type: short_answer
-  concepts:
-  - coverage-release-gate
-  - experiment-statistics
-  level: L3
-  prompt: 请为一个机器人抓取功能的版本发布写一条准入规则，要求同时体现覆盖率要求与统计判据，并说明未达样本量时如何处理。
-  options: []
-  answer:
-    accepted:
-    - 置信下界
-    - 置信区间下界
-    - lower bound
-    - 覆盖率
-    - 样本量
-    - 未决
-    - 不放行
-    - 风险分级
-    min_hits: 3
-  rubric:
-  - dimension: 覆盖率要求
-    weight: 0.35
-    criteria: 明确高风险路径的覆盖要求（如关键场景全覆盖或按风险分级设定覆盖深度）
-  - dimension: 统计判据
-    weight: 0.4
-    criteria: 使用置信下界或区间而非仅点估计作为门槛，并规定显著性水平或最小可检测差异
-  - dimension: 未达样本量的处理
-    weight: 0.25
-    criteria: 说明样本量不足时结论记为未决、不得放行，并记录偏离计划的改动
-  hints: []
-  difficulty: 4
-  explanation: 好的准入规则把覆盖广度与统计可信度结合：高风险模块要求更高覆盖深度，指标以置信下界达标为准，样本量不足时不得以点估计放行。
-- id: ex-reflect-4
-  type: self_assess
-  concepts:
-  - experiment-statistics
-  - coverage-release-gate
-  level: L3
-  prompt: 回顾你最近一次机器人测试：请写出实验的因子与水平、每个条件的重复次数、使用的区间或检验方法，以及你据以下结论的准入判据。然后自评哪些环节还缺少统计支撑。
-  options: []
-  rubric:
-  - dimension: 设计要素完整
-    weight: 0.35
-    criteria: 清楚写出因子、水平、重复次数与随机化/配对安排
-  - dimension: 推断方法恰当
-    weight: 0.35
-    criteria: 说明了区间或检验方法，并解释显著性与效应量的区别
-  - dimension: 准入判据可执行
-    weight: 0.3
-    criteria: 给出可审计的发布判据，包含覆盖率与统计门槛，并指出改进点
-  hints: []
-  difficulty: 3
-  explanation: 自评重点在于把隐性的“凭感觉下结论”显性化为可复现的设计与判据；若缺少样本量规划或区间报告，就是需要补强的环节。
-- id: ex-map-clause
-  type: single_choice
-  concepts:
-  - standards-compliance
-  level: L2
-  prompt: 某协作机器人应用需要证明“功率与力限制”满足要求。按照合规矩阵的写法，下列哪一组映射最完整、最可核查？
-  options:
-  - id: a
-    text: 标准与版本 + 条款号 + 主题 + 实现位置 + 验证方式 + 证据工件 + 责任人
-  - id: b
-    text: 只写标准名称与“已满足”结论
-  - id: c
-    text: 只写测试用例编号，不写条款
-  - id: d
-    text: 只写实现代码路径，不写验证方式
-  answer: a
-  rubric: []
-  hints: []
-  difficulty: 2
-  explanation: 合规矩阵的价值在于把条款、实现与证据三者连成可核查的链条。只写结论或只写一端（条款或实现）都无法回答“这条要求凭什么算满足、由谁负责”。标准版本必须记录，因为证据若回答的是被取代的旧版本，在审核方眼中等同于没有证据。
-- id: ex-gap-identify
-  type: multi_choice
-  concepts:
-  - standards-compliance
-  level: L3
-  prompt: 以下哪些属于典型的“合规证据缺口”（工作可能已完成，但无法证明）？选出所有符合的项。
-  options:
-  - id: a
-    text: 合规矩阵某行写了验证方式为“测试”，但对应的测试报告从未产出
-  - id: b
-    text: 一份测试报告被同时引用到两个标准的重叠要求上，但只实际覆盖了其中一条
-  - id: c
-    text: 证据回答的是标准旧版本，而审核方按当前接受的版本审查
-  - id: d
-    text: 测试全部通过，且原始数据、分析脚本、判定规则与结论齐备并绑定到设计基线
-  answer:
-  - a
-  - b
-  - c
-  rubric: []
-  hints: []
-  difficulty: 3
-  explanation: A 是“纸面有方法、背后无工件”；B 是共享证据被重复记账，实际漏掉一条要求；C 是版本歧义，旧版本证据在新版本口径下读作无证据。D
-    恰恰是证据完备的状态：数据、分析、判定规则与结论齐全，并绑定到它所认证的配置基线。
-- id: ex-stats-limit
-  type: short_answer
-  concepts:
-  - experiment-statistics
-  level: L3
-  prompt: 团队要证明某协作机器人在人体接触场景下的碰撞力低于规定限值。请写出你的实验设计与统计判定方案要点，并说明为什么“多测几次取平均”不能解决系统测量不确定度带来的问题。
-  options: []
-  answer:
-    accepted:
-    - 预先定义限值、置信水平、样本量与失败判据
-    - 区分随机不确定度与系统不确定度
-    - 系统不确定度需靠校准制度约束，平均不能消除
-    - 记录原始数据、分析脚本、判定规则与结论并绑定基线
-    - 覆盖最不利工况与人体部位分组
-    min_hits: 3
-  rubric:
-  - dimension: 判定规则前置
-    weight: 0.3
-    criteria: 在采集数据前明确限值、置信水平、样本量与失败判据，避免事后挑选
-  - dimension: 不确定度分析
-    weight: 0.4
-    criteria: 区分随机与系统不确定度，指出可分辨的最小偏差由不共有的系统不确定度决定，平均无法消除，需靠校准约束
-  - dimension: 证据完整性
-    weight: 0.3
-    criteria: 说明原始数据、分析脚本、判定规则与结论需一并归档并绑定到设计基线
-  hints: []
-  difficulty: 4
-  explanation: 合规结论多为统计结论，必须先定判定规则再采数据。比较观测值与密封参考值时，可分辨的最小偏差由两者不共有的那部分系统测量不确定度决定，增加平均次数只能压低随机分量，无法消除系统分量，只能通过校准制度约束。证据工件需包含原始数据、分析脚本、判定规则与结论，并绑定到它所认证的配置。
-- id: ex-evidence-plan
-  type: self_assess
-  concepts:
-  - standards-compliance
-  - experiment-statistics
-  level: L3
-  prompt: 针对你所在项目的一条安全要求（例如速度与分离监控），写出一份证据补齐计划：说明当前证据状态、缺口类型、补齐路径（补做测试/改用分析或检查/引用供应商证据）、优先级理由，以及补齐后如何用统计判定支撑结论。请对照评分标准自评。
-  options: []
-  rubric:
-  - dimension: 缺口定位
-    weight: 0.3
-    criteria: 准确指出缺口属于链条断裂、版本歧义、责任分散还是重建文化，并定位到具体条款与工件
-  - dimension: 路径选择
-    weight: 0.3
-    criteria: 补齐路径与认证基础接受的方法一致，说明为何不选其他路径，并记录决策
-  - dimension: 优先级
-    weight: 0.2
-    criteria: 按阻塞下游工作量排序，先补阻塞多项后续活动的缺口
-  - dimension: 统计支撑
-    weight: 0.2
-    criteria: 补齐后的验证包含前置判定规则、不确定度处理与完整证据工件
-  hints: []
-  difficulty: 4
-  explanation: 证据补齐不是简单“再测一遍”。先判定缺口类型，再选择认证基础接受的方法，按阻塞下游工作量排序，最后确保补齐后的验证在统计上站得住：判定规则前置、不确定度可解释、证据工件完整并绑定基线。
-- id: L-002-004-ex-1
-  type: single_choice
-  concepts:
-  - coverage-release-gate
-  level: L3
-  prompt: 某 AMR 软件版本发布评审数据如下：总体行覆盖率 82%，工具类模块分支覆盖率 95%，但导航避障核心模块分支覆盖率仅 61%，且该模块有一个已知严重缺陷尚未关闭。按照本课的版本准入模型，最合理的结论是：
-  options:
-  - id: A
-    text: 总体覆盖率 82% 已超过 80% 门槛，可以 GO
-  - id: B
-    text: 总体覆盖率达标但核心模块覆盖不足且存在未关闭严重缺陷，应 NO-GO 或有条件 GO 并明确关闭条件
-  - id: C
-    text: 只要工具类模块覆盖率高，核心模块可以豁免
-  - id: D
-    text: 覆盖率与准入无关，应只看缺陷数量
-  answer: B
-  rubric: []
-  hints: []
-  difficulty: 3
-  explanation: 覆盖率是准入的必要条件而非充分条件。总体覆盖率会被大而简单的模块稀释，必须按模块、按风险看覆盖深度；安全相关或高风险模块的关键分支未覆盖、已知严重缺陷未关闭属于硬门槛（一票否决），不能因总体数字漂亮而豁免。因此应
-    NO-GO，或采用“有条件 GO”并明确遗留风险的接受人、关闭时间与复评机制。
-- id: L-002-004-ex-2
-  type: multi_choice
-  concepts:
-  - standards-compliance
-  level: L3
-  prompt: 你负责为一款协作机器人软件准备合规证据包，客户要求参考机器人行业质量成熟度评价与 CR 认证要求进行供应商准入审核。下列哪些做法符合“要求—证据—结论”的合规评估原则？（多选）
-  options:
-  - id: A
-    text: 建立适用标准清单，逐条映射到具体测试报告、认证证书与内审记录，并标注版本与日期
-  - id: B
-    text: 只要产品通过了安全与电磁兼容测试，就认为满足全部合规要求
-  - id: C
-    text: 对缺失证据的条款按内审三段式（判据—事实—结论）记录为不符合项，并制定整改计划
-  - id: D
-    text: 把合规视为一次性项目，取证后不再随版本更新复评
-  - id: E
-    text: 关注认证与准入规则的动态变化，软硬件重大改版后重新评估是否需要补充证据
-  answer:
-  - A
-  - C
-  - E
-  rubric: []
-  hints: []
-  difficulty: 4
-  explanation: 合规评估的核心是证据链：每条要求都要有可追溯、版本最新的证据（A 正确）；证据缺失即不符合，应按判据—事实—结论规范记录并整改（C 正确）；认证与准入规则会变化，重大改版后需重新评估（E
-    正确）。B 把基础安全与 EMC 等同于全部合规，忽略了功能安全、可靠性、信息安全与质量体系成熟度等多维要求；D 把合规当成一次性项目，违背持续合规原则。
-- id: L-002-004-ex-3
-  type: short_answer
-  concepts:
-  - experiment-statistics
-  level: L3
-  prompt: 团队对新版本导航软件做了可靠性对比试验：旧版本 5 台样机累计 2000 小时出现 4 次故障，新版本 5 台样机累计 2000 小时出现 2
-    次故障。研发据此宣称“新版本 MTBF 提升一倍，达到准入线”。请指出该结论至少两个统计上的问题，并说明你会如何补充分析以支撑准入决策。
-  options: []
-  answer:
-    accepted:
-    - 样本量小，未做假设检验或置信区间，点估计不足以支撑结论
-    - 未报告置信区间，不确定性大
-    - 未说明检验方法与显著性水平
-    - 故障计数数据应使用比例检验或泊松/指数模型等方法
-    - 未考虑试验条件一致性与删失数据
-    - 未报告效应量与置信下限是否达到准入线
-    - 存在选择性报告或多重比较风险
-    min_hits: 2
-  rubric:
-  - dimension: 识别统计缺陷
-    weight: 0.5
-    criteria: 至少指出两个实质性问题，如样本量小、缺少假设检验/置信区间、未说明检验方法、未考虑删失或试验条件一致性等
-  - dimension: 补充分析方案
-    weight: 0.3
-    criteria: 提出可执行的补充分析，如对故障率做比例检验或可靠性模型分析、报告置信区间与置信下限、明确显著性水平与样本量依据
-  - dimension: 与准入决策挂钩
-    weight: 0.2
-    criteria: 说明统计结论应如何用于判断是否达到准入线，例如以置信下限对比门槛，而非仅用点估计
-  hints: []
-  difficulty: 4
-  explanation: 2000 小时出现 4 次与 2 次故障，样本量与事件数都很小，点估计的波动极大。正确做法是明确假设（如新旧故障率是否相同）、选择合适的检验方法（比例检验或可靠性统计模型）、报告效应量与置信区间，并以置信下限与准入线比较。只有这样才能把“看起来变好”转化为可辩护的准入证据。
-- id: L-002-004-ex-4
-  type: self_assess
-  concepts:
-  - coverage-release-gate
-  - standards-compliance
-  - experiment-statistics
-  level: L3
-  prompt: 综合演练：请为一个即将交付客户的机器人软件版本撰写一页准入评审结论，需同时覆盖（1）分模块覆盖率与风险分级的判断；（2）适用标准与合规证据的符合性结论；（3）关键指标的统计证据与不确定性；（4）最终
-    GO / 有条件 GO / NO-GO 决策及遗留风险的处理安排。写完后对照下方量规自评。
-  options: []
-  rubric:
-  - dimension: 覆盖率与风险分级
-    weight: 0.25
-    criteria: 按模块与风险等级呈现覆盖率，识别硬门槛项（关键分支未覆盖、严重缺陷未关闭），不只引用总体数字
-  - dimension: 合规证据链
-    weight: 0.25
-    criteria: 列出适用标准与认证要求，逐条映射证据并标注版本日期，对缺失项按判据—事实—结论记录不符合
-  - dimension: 统计证据
-    weight: 0.25
-    criteria: 对关键指标给出检验方法、效应量与置信区间，说明结论的不确定性及其对准入门槛的含义
-  - dimension: 决策与改进
-    weight: 0.25
-    criteria: 给出明确的 GO/有条件 GO/NO-GO 结论，列明遗留风险、接受人、关闭时间与复评机制，改进建议可执行
-  hints: []
-  difficulty: 5
-  explanation: 本题检验三类证据的整合能力。高质量答案会把覆盖率作为测试充分性证据、把标准映射作为合规证据、把统计推断作为指标达标的证据，并在决策中显式记录被接受的风险。任何一块缺失或只给结论不给依据，都应在自评中扣分。
+  - id: EX-001-01
+    type: single_choice
+    concepts: [test-strategy-inputs]
+    level: L2
+    prompt: 下列哪一项最直接决定机器人项目的测试深度与范围？
+    options:
+      - {id: a, text: 需求文档的页数}
+      - {id: b, text: 风险等级与失效后果}
+      - {id: c, text: 测试团队的人数}
+      - {id: d, text: 代码仓库的提交次数}
+    answer: b
+    explanation: 测试深度应由风险驱动；文档页数、人数和提交次数只是约束或信号，不直接定义范围。
+    hints:
+      - {level: 1, text: 先问“漏测时后果最严重的是什么”。}
+    difficulty: 2
+
+  - id: EX-001-02
+    type: short_answer
+    concepts: [test-strategy-inputs]
+    level: L3
+    prompt: 某仓储 AGV 即将改版导航模块。请列出至少 4 类测试策略输入，并说明每一类如何改变测试范围。
+    answer:
+      accepted: ["需求", "风险", "架构", "变更", "现场", "历史缺陷"]
+      min_hits: 3
+    rubric:
+      - {dimension: 输入完整性, weight: 0.4, criteria: 覆盖需求、风险、架构、变更或现场中的至少 4 类}
+      - {dimension: 影响分析, weight: 0.4, criteria: 每类输入都说明了如何改变测试范围}
+      - {dimension: 边界, weight: 0.2, criteria: 明确列出本次不测什么及理由}
+    difficulty: 3
+
+  - id: EX-002-01
+    type: multi_choice
+    concepts: [risk-grading]
+    level: L2
+    prompt: 下列哪些属于机器人测试风险分级的常见维度？
+    options:
+      - {id: a, text: 安全后果}
+      - {id: b, text: 功能失效概率}
+      - {id: c, text: 用户体验影响}
+      - {id: d, text: 成本与交付影响}
+      - {id: e, text: 合规与责任}
+      - {id: f, text: 代码缩进风格}
+    answer: [a, b, c, d, e]
+    explanation: 安全、功能、体验、成本和合规是风险分级的主维度；代码风格不构成失效风险。
+    difficulty: 2
+
+  - id: EX-002-02
+    type: short_answer
+    concepts: [risk-grading]
+    level: L3
+    prompt: 协作机械臂要在同一工位与人共同作业。请做一次风险分级，并给出测试优先级排序的理由。
+    answer:
+      accepted: ["安全", "严重度", "暴露", "可控", "功能", "优先级"]
+      min_hits: 3
+    rubric:
+      - {dimension: 维度, weight: 0.4, criteria: 至少使用安全后果、暴露频率、可控性或功能影响中的 3 项}
+      - {dimension: 分级, weight: 0.3, criteria: 给出可区分的高中低等级标准}
+      - {dimension: 排序, weight: 0.3, criteria: 把分级转化为测试顺序并说明理由}
+    difficulty: 3
+
+  - id: EX-003-01
+    type: single_choice
+    concepts: [test-levels-shift]
+    level: L2
+    prompt: 下列哪项最典型地属于测试左移活动？
+    options:
+      - {id: a, text: 上线后监控告警}
+      - {id: b, text: 需求评审与静态检查}
+      - {id: c, text: 现场故障复盘}
+      - {id: d, text: 灰度发布}
+    answer: b
+    explanation: 左移是把发现缺陷的活动提前到需求和编码阶段；监控、灰度和复盘更偏右移或事后活动。
+    difficulty: 2
+
+  - id: EX-003-02
+    type: short_answer
+    concepts: [test-levels-shift]
+    level: L3
+    prompt: 为一条机器人导航软件设计单元、集成、系统、验收四层测试，并写出每层的进入判据与通过判据。
+    answer:
+      accepted: ["单元", "集成", "系统", "验收", "判据", "接口"]
+      min_hits: 4
+    rubric:
+      - {dimension: 分层, weight: 0.3, criteria: 四层齐全且职责不重叠}
+      - {dimension: 判据, weight: 0.4, criteria: 每层都有可执行的进入与通过判据}
+      - {dimension: 左右移, weight: 0.3, criteria: 说明哪些活动提前、哪些监测延后}
+    difficulty: 3
+
+  - id: EX-004-01
+    type: single_choice
+    concepts: [entry-exit-criteria]
+    level: L2
+    prompt: 判断版本能否准出时，最不应该单独作为依据的是？
+    options:
+      - {id: a, text: blocker 缺陷是否清零}
+      - {id: b, text: 关键需求覆盖是否达标}
+      - {id: c, text: 已知问题是否有规避方案}
+      - {id: d, text: 代码总行数是否增加}
+    answer: d
+    explanation: 准出看风险、覆盖、已知问题和回滚能力；代码行数本身不说明质量。
+    difficulty: 2
+
+  - id: EX-004-02
+    type: short_answer
+    concepts: [entry-exit-criteria]
+    level: L3
+    prompt: 写一份机器人版本准出清单，至少包含 blocker、critical、已知问题、回滚方案和风险接受人。
+    answer:
+      accepted: ["blocker", "critical", "已知问题", "回滚", "风险接受", "准出"]
+      min_hits: 4
+    rubric:
+      - {dimension: 阻断项, weight: 0.3, criteria: 明确 blocker 与 critical 的判定和清零要求}
+      - {dimension: 已知问题, weight: 0.3, criteria: 给出记录、规避和风险接受方式}
+      - {dimension: 回滚, weight: 0.4, criteria: 回滚触发条件、步骤和验证都可执行}
+    difficulty: 3
+
+  - id: EX-005-01
+    type: single_choice
+    concepts: [test-design-techniques]
+    level: L2
+    prompt: 输入范围为 1 到 100 的整数，边界值测试最少应包含哪些取值？
+    options:
+      - {id: a, text: 1 和 100}
+      - {id: b, text: 0、1、100、101}
+      - {id: c, text: "50"}
+      - {id: d, text: 1、50、100}
+    answer: b
+    explanation: 边界值通常取边界内外两侧，即 0、1 和 100、101。
+    hints:
+      - {level: 1, text: 边界缺陷常出现在“刚好越界”的位置。}
+    difficulty: 2
+
+  - id: EX-005-02
+    type: short_answer
+    concepts: [test-design-techniques]
+    level: L3
+    prompt: 为“自动泊车入位”功能，分别用等价类、边界值、状态迁移和场景法各设计一条用例，并说明它覆盖的风险。
+    answer:
+      accepted: ["等价类", "边界", "状态", "场景", "失败", "覆盖"]
+      min_hits: 3
+    rubric:
+      - {dimension: 方法, weight: 0.4, criteria: 四种方法各给出一条可执行用例}
+      - {dimension: 覆盖差异, weight: 0.3, criteria: 说明不同方法覆盖的风险差异}
+      - {dimension: 预期结果, weight: 0.3, criteria: 每条用例都有可判定的预期结果}
+    difficulty: 3
+
+  - id: EX-005-03
+    type: multi_choice
+    concepts: [test-design-techniques]
+    level: L3
+    prompt: 下列哪些场景最适合用组合或配对测试来压缩用例？
+    options:
+      - {id: a, text: 多传感器配置组合}
+      - {id: b, text: 单一布尔开关}
+      - {id: c, text: 多参数通信超时组合}
+      - {id: d, text: 固定路径的单次回归}
+    answer: [a, c]
+    explanation: 参数多、交互可能产生组合爆炸时适合配对测试；单开关和固定路径不需要。
+    difficulty: 3
+
+  - id: EX-006-01
+    type: multi_choice
+    concepts: [task-chain-fault-injection]
+    level: L2
+    prompt: 机器人任务链测试通常应覆盖哪些环节？
+    options:
+      - {id: a, text: 感知}
+      - {id: b, text: 决策}
+      - {id: c, text: 规划}
+      - {id: d, text: 控制}
+      - {id: e, text: 执行}
+      - {id: f, text: 日志文件命名}
+    answer: [a, b, c, d, e]
+    explanation: 任务链从感知到执行；日志命名是工程规范，不是任务链节点。
+    difficulty: 2
+
+  - id: EX-006-02
+    type: short_answer
+    concepts: [task-chain-fault-injection]
+    level: L3
+    prompt: 针对“动态障碍物突然横穿”设计一组故障注入测试，说明注入点、观测指标、降级预期和恢复判据。
+    answer:
+      accepted: ["动态障碍", "注入", "传感器", "降级", "判定", "恢复"]
+      min_hits: 4
+    rubric:
+      - {dimension: 注入设计, weight: 0.3, criteria: 明确障碍物出现位置、速度和注入时机}
+      - {dimension: 观测指标, weight: 0.3, criteria: 给出可量化的安全与响应指标}
+      - {dimension: 降级与恢复, weight: 0.4, criteria: 描述预期降级行为和恢复判据}
+    difficulty: 3
+
+  - id: EX-007-01
+    type: single_choice
+    concepts: [test-oracle-metrics]
+    level: L2
+    prompt: 没有精确参考模型时，最适合判断“同一输入变换后应产生相应变化”的预言是？
+    options:
+      - {id: a, text: 规格比对}
+      - {id: b, text: 蜕变关系}
+      - {id: c, text: 人工目测}
+      - {id: d, text: 随机通过}
+    answer: b
+    explanation: 蜕变测试不要求完整参考模型，只要求输入变换与输出变化之间的关系成立。
+    difficulty: 2
+
+  - id: EX-007-02
+    type: short_answer
+    concepts: [test-oracle-metrics]
+    level: L3
+    prompt: 为 SLAM 建图定义一个可量化指标，给出阈值、统计口径（单次或 N 次）和失败判定。
+    answer:
+      accepted: ["指标", "阈值", "P95", "重复", "统计", "误差", "失败"]
+      min_hits: 4
+    rubric:
+      - {dimension: 指标, weight: 0.3, criteria: 指标定义可测量且与任务目标相关}
+      - {dimension: 统计口径, weight: 0.4, criteria: 说明重复次数、P95/P99 或 worst-case 的选择}
+      - {dimension: 失败判定, weight: 0.3, criteria: 阈值与失败条件明确且可复现}
+    difficulty: 3
+
+  - id: EX-008-01
+    type: multi_choice
+    concepts: [defect-taxonomy]
+    level: L2
+    prompt: 机器人缺陷分类通常包含哪些类别？
+    options:
+      - {id: a, text: 需求与设计}
+      - {id: b, text: 实现与集成}
+      - {id: c, text: 传感器与标定}
+      - {id: d, text: 时序与通信}
+      - {id: e, text: 安全}
+      - {id: f, text: 开发者心情}
+    answer: [a, b, c, d, e]
+    explanation: 前五类是可直接定位和验证的缺陷来源；开发者心情不是缺陷分类。
+    difficulty: 2
+
+  - id: EX-008-02
+    type: short_answer
+    concepts: [defect-taxonomy]
+    level: L3
+    prompt: 一条“偶发避障失败”缺陷，请写出复现步骤与证据链要素，使他人能独立复现。
+    answer:
+      accepted: ["复现", "日志", "时间戳", "环境", "版本", "数据", "传感器"]
+      min_hits: 4
+    rubric:
+      - {dimension: 复现, weight: 0.3, criteria: 步骤、输入和环境足以独立复现}
+      - {dimension: 证据, weight: 0.4, criteria: 日志、时间戳、版本、传感器数据和配置齐全}
+      - {dimension: 分类, weight: 0.3, criteria: 给出初步缺陷类别和影响范围}
+    difficulty: 3
+
+  - id: EX-009-01
+    type: single_choice
+    concepts: [root-cause-analysis]
+    level: L2
+    prompt: 5Why 与 FTA 的主要区别是？
+    options:
+      - {id: a, text: 5Why 是定量方法，FTA 是定性方法}
+      - {id: b, text: FTA 从顶事件向下演绎，5Why 沿因果链逐层追问}
+      - {id: c, text: 5Why 只能用于硬件}
+      - {id: d, text: FTA 不需要证据}
+    answer: b
+    explanation: FTA 从顶事件向下建树，适合分析组合失效；5Why 是线性追问，胜在快速。
+    difficulty: 2
+
+  - id: EX-009-02
+    type: short_answer
+    concepts: [root-cause-analysis]
+    level: L3
+    prompt: “急停触发后机器人仍移动约 10 cm”反复出现。请给出至少 3 条根因假设及各自的验证方法。
+    answer:
+      accepted: ["急停", "制动", "延迟", "假设", "验证", "日志", "时序"]
+      min_hits: 4
+    rubric:
+      - {dimension: 假设, weight: 0.4, criteria: 至少 3 条假设覆盖控制、制动、通信或配置}
+      - {dimension: 验证, weight: 0.4, criteria: 每条假设都有可执行的验证方法或证据}
+      - {dimension: 措施, weight: 0.2, criteria: 给出纠正与预防措施的方向}
+    difficulty: 3
+
+  - id: EX-010-01
+    type: single_choice
+    concepts: [escape-analysis]
+    level: L2
+    prompt: 逃逸分析要回答的核心问题是？
+    options:
+      - {id: a, text: 缺陷是谁写的}
+      - {id: b, text: 为什么测试没有更早发现}
+      - {id: c, text: 一共写了多少用例}
+      - {id: d, text: 谁批准了发布}
+    answer: b
+    explanation: 逃逸分析关注测试与门禁的缺口，而不是追责。
+    difficulty: 2
+
+  - id: EX-010-02
+    type: short_answer
+    concepts: [escape-analysis]
+    level: L3
+    prompt: 某缺陷在客户现场才暴露。请设计一个从逃逸原因到用例、门禁和回归的改进闭环。
+    answer:
+      accepted: ["逃逸", "根因", "用例", "门禁", "回归", "复盘"]
+      min_hits: 4
+    rubric:
+      - {dimension: 原因, weight: 0.3, criteria: 区分需求缺口、用例缺口、环境差异或门禁失效}
+      - {dimension: 改进, weight: 0.4, criteria: 改进同时覆盖用例、环境和门禁}
+      - {dimension: 验证, weight: 0.3, criteria: 说明如何验证改进有效}
+    difficulty: 3
+
+  - id: EX-011-01
+    type: multi_choice
+    concepts: [coverage-model]
+    level: L2
+    prompt: 机器人项目的覆盖率体系通常应包含哪些类型？
+    options:
+      - {id: a, text: 需求覆盖}
+      - {id: b, text: 场景库覆盖}
+      - {id: c, text: 故障模式覆盖}
+      - {id: d, text: 接口覆盖}
+      - {id: e, text: sim-to-real 覆盖}
+      - {id: f, text: 代码注释覆盖}
+    answer: [a, b, c, d, e]
+    explanation: 机器人需要场景、故障和仿真到实机迁移的覆盖；注释覆盖没有质量意义。
+    difficulty: 2
+
+  - id: EX-011-02
+    type: short_answer
+    concepts: [coverage-model]
+    level: L3
+    prompt: 为园区配送机器人设计覆盖率目标，至少覆盖需求、场景、接口和故障模式，并说明度量方式。
+    answer:
+      accepted: ["需求", "场景", "风险", "接口", "故障", "覆盖率", "度量"]
+      min_hits: 4
+    rubric:
+      - {dimension: 维度, weight: 0.4, criteria: 覆盖需求、场景、接口和故障模式中的至少 4 类}
+      - {dimension: 目标, weight: 0.3, criteria: 每类都有可量化的目标值}
+      - {dimension: 度量, weight: 0.3, criteria: 说明数据来源和统计周期}
+    difficulty: 3
+
+  - id: EX-012-01
+    type: single_choice
+    concepts: [release-gate-regression]
+    level: L2
+    prompt: 回归测试中的 blocker 缺陷通常指？
+    options:
+      - {id: a, text: 可以延期修复的缺陷}
+      - {id: b, text: 阻塞发布、必须清零的缺陷}
+      - {id: c, text: 只影响文档的缺陷}
+      - {id: d, text: 只影响性能的缺陷}
+    answer: b
+    explanation: blocker 阻塞发布；critical 也严重，但是否阻断取决于准出规则。
+    difficulty: 2
+
+  - id: EX-012-02
+    type: short_answer
+    concepts: [release-gate-regression]
+    level: L3
+    prompt: 导航模块改动后，请写一份回归范围选择与回滚方案，包含影响分析、冒烟集和回滚触发条件。
+    answer:
+      accepted: ["回归", "影响分析", "blocker", "回滚", "冒烟", "触发"]
+      min_hits: 4
+    rubric:
+      - {dimension: 范围选择, weight: 0.4, criteria: 基于影响分析和风险选择回归范围}
+      - {dimension: 冒烟集, weight: 0.3, criteria: 给出可在发布前快速执行的核心用例}
+      - {dimension: 回滚, weight: 0.3, criteria: 触发条件、步骤和验证都可执行}
+    difficulty: 3
+
+  - id: EX-013-01
+    type: single_choice
+    concepts: [experiment-design]
+    level: L2
+    prompt: 估计机器人任务成功率所需样本量，主要取决于？
+    options:
+      - {id: a, text: 成功率的均值}
+      - {id: b, text: 置信水平与允许误差}
+      - {id: c, text: 代码行数}
+      - {id: d, text: 测试团队规模}
+    answer: b
+    explanation: 样本量由目标置信水平、允许误差和预期比例共同决定，不是团队规模。
+    difficulty: 2
+
+  - id: EX-013-02
+    type: short_answer
+    concepts: [experiment-design]
+    level: L3
+    prompt: 为“抓取成功率不低于 98%”设计一次实验，说明重复次数、置信区间、变异来源和控制方法。
+    answer:
+      accepted: ["样本量", "置信", "重复", "变异", "环境", "负载", "控制"]
+      min_hits: 4
+    rubric:
+      - {dimension: 样本量, weight: 0.3, criteria: 给出与置信水平和允许误差匹配的样本量}
+      - {dimension: 变异来源, weight: 0.4, criteria: 识别环境、负载、温度、传感器噪声或操作者}
+      - {dimension: 控制, weight: 0.3, criteria: 说明随机化、分层或固定条件等控制手段}
+    difficulty: 3
+
+  - id: EX-014-01
+    type: multi_choice
+    concepts: [flakiness-baseline]
+    level: L2
+    prompt: 下列哪些是机器人测试 Flakiness 的常见来源？
+    options:
+      - {id: a, text: 时间与超时设置}
+      - {id: b, text: 并发资源竞争}
+      - {id: c, text: 环境与场地差异}
+      - {id: d, text: 随机数与未固定种子}
+      - {id: e, text: 网络抖动}
+      - {id: f, text: 代码注释}
+    answer: [a, b, c, d, e]
+    explanation: 时间、并发、环境、随机性和网络都会造成不稳定；注释不会。
+    difficulty: 2
+
+  - id: EX-014-02
+    type: self_assess
+    concepts: [flakiness-baseline]
+    level: L3
+    prompt: 解释为什么机器人指标更常用 P95/P99 而不是均值，并举一个你熟悉的场景说明选择依据。
+    rubric:
+      - {dimension: 统计理解, weight: 0.4, criteria: 能说明均值掩盖长尾、P95/P99 反映尾部风险}
+      - {dimension: 场景, weight: 0.4, criteria: 举出与安全或体验相关的具体机器人场景}
+      - {dimension: 取舍, weight: 0.2, criteria: 说明均值仍适合什么情况}
+    difficulty: 3
+
+  - id: EX-014-03
+    type: artifact
+    concepts: [flakiness-baseline]
+    level: L3
+    prompt: 提交一份 Flakiness 趋势分析（图表或表格 + 结论），说明基线、异常点和改进建议。
+    artifact:
+      accept: [png, svg, md, csv, txt]
+      max_size_mb: 10
+    rubric:
+      - {dimension: 数据, weight: 0.3, criteria: 有可追溯的时间序列或分组数据}
+      - {dimension: 基线, weight: 0.3, criteria: 定义基线并标出异常点}
+      - {dimension: 结论, weight: 0.4, criteria: 给出可执行的改进建议并说明依据}
+    difficulty: 3
+
+  - id: EX-015-01
+    type: single_choice
+    concepts: [standards-map]
+    level: L2
+    prompt: ISO/IEC/IEEE 29119 系列主要覆盖什么？
+    options:
+      - {id: a, text: 机器人本体安全}
+      - {id: b, text: 软件测试过程、文档与技术}
+      - {id: c, text: 汽车网络安全}
+      - {id: d, text: 功能安全 SIL 认证}
+    answer: b
+    explanation: 29119 是软件测试的国际标准系列，覆盖概念、过程、文档和技术。
+    difficulty: 2
+
+  - id: EX-015-02
+    type: short_answer
+    concepts: [standards-map]
+    level: L3
+    prompt: 把 ISO/IEC/IEEE 29119、ISTQB 和 Automotive SPICE 映射到测试生命周期的不同用途，并说明各自不能替代什么。
+    answer:
+      accepted: ["29119", "ISTQB", "ASPICE", "过程", "术语", "评估", "不能替代"]
+      min_hits: 4
+    rubric:
+      - {dimension: 映射, weight: 0.4, criteria: 三者的用途和生命周期位置清楚}
+      - {dimension: 边界, weight: 0.4, criteria: 说明各自不能替代安全标准或产品认证}
+      - {dimension: 落地, weight: 0.2, criteria: 给出一个项目中的组合使用方式}
+    difficulty: 3
+
+  - id: EX-016-01
+    type: multi_choice
+    concepts: [automotive-standards]
+    level: L2
+    prompt: 下列哪些属于汽车与工业软件相关标准族？
+    options:
+      - {id: a, text: ISO 26262 功能安全}
+      - {id: b, text: ISO/SAE 21434 网络安全}
+      - {id: c, text: ISO 14229 统一诊断服务}
+      - {id: d, text: ISO 11898 CAN}
+      - {id: e, text: Automotive SPICE 过程评估}
+      - {id: f, text: ISO 10218 工业机器人安全}
+    answer: [a, b, c, d, e]
+    explanation: ISO 10218 属于机器人安全标准，不是汽车软件标准族。
+    difficulty: 2
+
+  - id: EX-016-02
+    type: short_answer
+    concepts: [automotive-standards]
+    level: L3
+    prompt: 某车载诊断功能需要同时满足功能安全、网络安全和总线通信要求。请列出适用标准与对应证据。
+    answer:
+      accepted: ["26262", "21434", "14229", "11898", "证据", "诊断"]
+      min_hits: 4
+    rubric:
+      - {dimension: 标准选择, weight: 0.4, criteria: 至少覆盖功能安全、网络安全、诊断和总线四类}
+      - {dimension: 证据, weight: 0.4, criteria: 每类标准都对应可交付的测试或分析证据}
+      - {dimension: 边界, weight: 0.2, criteria: 说明标准版本和适用范围}
+    difficulty: 3
+
+  - id: EX-017-01
+    type: multi_choice
+    concepts: [robot-safety-standards]
+    level: L2
+    prompt: 下列哪些属于机器人安全标准？
+    options:
+      - {id: a, text: ISO 10218-1}
+      - {id: b, text: ISO 10218-2}
+      - {id: c, text: ISO/TS 15066}
+      - {id: d, text: ISO 3691-4}
+      - {id: e, text: ISO 13482}
+      - {id: f, text: ISO 9283}
+    answer: [a, b, c, d, e]
+    explanation: ISO 9283 是性能准则与试验方法，不是安全标准。
+    difficulty: 2
+
+  - id: EX-017-02
+    type: short_answer
+    concepts: [robot-safety-standards]
+    level: L3
+    prompt: 一个协作机器人工作站包含机械臂、AGV 上料和人工上下料。请选择安全标准组合并说明理由。
+    answer:
+      accepted: ["10218", "15066", "3691-4", "12100", "风险评估", "协作"]
+      min_hits: 4
+    rubric:
+      - {dimension: 标准组合, weight: 0.4, criteria: 覆盖机械臂、协作应用、移动平台和风险评估}
+      - {dimension: 适用范围, weight: 0.4, criteria: 说明每个标准的适用对象和边界}
+      - {dimension: 证据, weight: 0.2, criteria: 指出需要产出的验证证据}
+    difficulty: 3
+
+  - id: EX-018-01
+    type: single_choice
+    concepts: [functional-safety-pl-sil-asil]
+    level: L2
+    prompt: 关于 ASIL 与 PL/SIL 的关系，正确的是？
+    options:
+      - {id: a, text: 三者完全等价，可以互相替换}
+      - {id: b, text: ASIL 是 ISO 26262 的汽车风险等级，PL/SIL 是机械与功能安全等级}
+      - {id: c, text: ASIL 只用于机器人}
+      - {id: d, text: PL 只用于汽车}
+    answer: b
+    explanation: ASIL、PL、SIL 来自不同标准体系，等级名称相似但判定方法和适用领域不同。
+    difficulty: 2
+
+  - id: EX-018-02
+    type: short_answer
+    concepts: [functional-safety-pl-sil-asil]
+    level: L3
+    prompt: 某机器人安全功能需要在 ISO 13849-1 与 IEC 62061 之间选择。请给出判断依据、等级目标和验证证据。
+    answer:
+      accepted: ["PL", "SIL", "13849", "62061", "验证", "证据", "架构"]
+      min_hits: 4
+    rubric:
+      - {dimension: 选择依据, weight: 0.4, criteria: 说明技术类型、架构和客户/市场要求如何影响选择}
+      - {dimension: 等级, weight: 0.3, criteria: 给出 PL 或 SIL 目标及推导依据}
+      - {dimension: 证据, weight: 0.3, criteria: 列出验证分析和试验证据}
+    difficulty: 3
+
+  - id: EX-019-01
+    type: single_choice
+    concepts: [robot-performance-evaluation]
+    level: L2
+    prompt: ISO 9283 主要用于测试工业机器人的哪类特性？
+    options:
+      - {id: a, text: 安全距离与防护}
+      - {id: b, text: 位姿精度、重复性和路径精度}
+      - {id: c, text: 网络安全}
+      - {id: d, text: 电池续航}
+    answer: b
+    explanation: ISO 9283 规定位姿、路径、稳定时间等性能指标的试验方法。
+    difficulty: 2
+
+  - id: EX-019-02
+    type: short_answer
+    concepts: [robot-performance-evaluation]
+    level: L3
+    prompt: 为六轴工业机械臂写一份性能测试方案，包含指标、测试立方、重复次数、判定和报告要求。
+    answer:
+      accepted: ["位姿", "重复", "路径", "测试立方", "重复次数", "报告", "判定"]
+      min_hits: 4
+    rubric:
+      - {dimension: 指标, weight: 0.3, criteria: 至少覆盖位姿精度、重复性或路径精度}
+      - {dimension: 条件, weight: 0.3, criteria: 说明测试立方、负载、速度和环境条件}
+      - {dimension: 统计与报告, weight: 0.4, criteria: 给出重复次数、判定规则和报告内容}
+    difficulty: 3
+
+  - id: EX-020-01
+    type: multi_choice
+    concepts: [market-access-certification]
+    level: L2
+    prompt: 机器人产品进入不同市场时，可能涉及哪些认证或标志？
+    options:
+      - {id: a, text: CE}
+      - {id: b, text: UL 3300}
+      - {id: c, text: CQC 服务机器人认证}
+      - {id: d, text: CR 中国机器人认证}
+      - {id: e, text: ISO/IEC/IEEE 29119}
+    answer: [a, b, c, d]
+    explanation: CE、UL、CQC、CR 是市场准入或认证标志；29119 是测试标准，不是认证。
+    difficulty: 2
+
+  - id: EX-020-02
+    type: short_answer
+    concepts: [market-access-certification]
+    level: L3
+    prompt: 一款移动服务机器人要出口欧盟。请列出 CE 合规路径、所需技术文件和测试证据。
+    answer:
+      accepted: ["CE", "机械", "风险评估", "技术文件", "符合性声明", "协调标准"]
+      min_hits: 4
+    rubric:
+      - {dimension: 路径, weight: 0.3, criteria: 说明适用指令/法规和协调标准}
+      - {dimension: 文件, weight: 0.4, criteria: 技术文件、风险评估和符合性声明齐全}
+      - {dimension: 证据, weight: 0.3, criteria: 给出安全与 EMC 等测试证据}
+    difficulty: 3
+
+  - id: EX-021-01
+    type: short_answer
+    concepts: [quality-system-synthesis]
+    level: L3
+    prompt: 为一款具身智能机器人设计端到端质量方案：至少包含风险策略、指标体系、适用标准、认证路径和回归门禁。
+    answer:
+      accepted: ["风险", "指标", "标准", "认证", "回归", "证据", "门禁"]
+      min_hits: 4
+    rubric:
+      - {dimension: 完整性, weight: 0.4, criteria: 五个部分齐全且相互衔接}
+      - {dimension: 可执行, weight: 0.3, criteria: 每部分都有负责人、产物或判据}
+      - {dimension: 证据, weight: 0.3, criteria: 说明关键结论如何下钻到证据}
+    difficulty: 4
+
+  - id: EX-021-02
+    type: artifact
+    concepts: [quality-system-synthesis]
+    level: L4
+    prompt: 提交一份机器人产品质量与认证方案（文档或表格），覆盖策略、指标、标准、认证、回归和风险缺口。
+    artifact:
+      accept: [md, pdf, txt, csv, xlsx, png]
+      max_size_mb: 20
+    rubric:
+      - {dimension: 体系完整, weight: 0.3, criteria: 策略、指标、标准、认证和回归均有覆盖}
+      - {dimension: 标准适用, weight: 0.3, criteria: 标准与产品类型、目标市场匹配且有版本说明}
+      - {dimension: 证据链, weight: 0.2, criteria: 关键结论可下钻到测试、分析或认证证据}
+      - {dimension: 缺口, weight: 0.2, criteria: 列出剩余风险、证据缺口和关闭计划}
+    difficulty: 4
+
+  - id: EX-021-03
+    type: self_assess
+    concepts: [quality-system-synthesis]
+    level: L4
+    prompt: 对照本课程的质量体系，评估你当前项目最薄弱的两个环节，并写出 30 天改进计划。
+    rubric:
+      - {dimension: 现状判断, weight: 0.3, criteria: 能基于证据指出薄弱环节}
+      - {dimension: 优先级, weight: 0.3, criteria: 说明为什么先改这两个}
+      - {dimension: 计划, weight: 0.4, criteria: 改进计划有可验证的里程碑}
+    difficulty: 4

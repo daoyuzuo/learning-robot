@@ -18,7 +18,7 @@ from testbridge.tutor.review_service import (
 )
 from testbridge.tutor.review_store import ExerciseReviewStore
 
-PACK = load_pack(Path(__file__).parents[1] / "content-packs" / "ros2-qos")
+PACK = load_pack(Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos")
 CONFIG = TutorConfig(
     base_url="https://api.example.com/v1",
     api_key="sk-test",

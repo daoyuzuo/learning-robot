@@ -1,14 +1,21 @@
 schema: tb/1
 id: M02
-title: 覆盖率、准入、统计与合规
-priority: P1
+title: 缺陷、覆盖与统计
+priority: P0
 concepts:
-- coverage-release-gate
-- experiment-statistics
-- standards-compliance
+- defect-taxonomy
+- root-cause-analysis
+- escape-analysis
+- coverage-model
+- release-gate-regression
+- experiment-design
+- flakiness-baseline
 lessons:
 - L-002-001
 - L-002-002
 - L-002-003
 - L-002-004
+- L-002-005
+- L-002-006
+- L-002-007
 order: 2

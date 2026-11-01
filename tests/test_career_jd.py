@@ -18,7 +18,7 @@ from testbridge.tutor.client import TutorUpstreamError
 from testbridge.tutor.config import TutorConfig
 
 ROOT = Path(__file__).parents[1]
-PACK = load_pack(ROOT / "content-packs" / "sample-sensors")
+PACK = load_pack(ROOT / "tests" / "fixtures" / "packs" / "sample-sensors")
 CONFIG = TutorConfig(base_url="http://x", api_key="k", model="fake")
 
 GOOD = json.dumps({

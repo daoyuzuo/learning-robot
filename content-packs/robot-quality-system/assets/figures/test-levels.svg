@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 340" width="860" height="340" role="img" aria-label="测试分层与左移右移示意">
+  <title>测试分层与左移右移</title>
+  <desc>需求、设计、编码、集成、系统、验收各阶段及其对应的测试活动。</desc>
+  <rect x="20" y="20" width="820" height="300" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="40" y="52" font-size="18" font-weight="700" fill="#0f172a">测试分层与左移 / 右移</text>
+  <g font-size="13" fill="#0f172a">
+    <rect x="50" y="90" width="150" height="52" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="125" y="112" text-anchor="middle">需求评审</text>
+    <text x="125" y="130" text-anchor="middle">风险与可测性</text>
+    <rect x="230" y="90" width="150" height="52" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="305" y="112" text-anchor="middle">设计评审</text>
+    <text x="305" y="130" text-anchor="middle">接口与场景</text>
+    <rect x="410" y="90" width="150" height="52" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="485" y="112" text-anchor="middle">单元测试</text>
+    <text x="485" y="130" text-anchor="middle">算法与驱动</text>
+    <rect x="590" y="90" width="150" height="52" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="665" y="112" text-anchor="middle">集成测试</text>
+    <text x="665" y="130" text-anchor="middle">接口与时序</text>
+    <rect x="230" y="200" width="150" height="52" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="305" y="222" text-anchor="middle">系统测试</text>
+    <text x="305" y="240" text-anchor="middle">任务链与场景</text>
+    <rect x="410" y="200" width="150" height="52" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="485" y="222" text-anchor="middle">验收测试</text>
+    <text x="485" y="240" text-anchor="middle">现场与用户</text>
+    <rect x="590" y="200" width="150" height="52" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="665" y="222" text-anchor="middle">线上监测</text>
+    <text x="665" y="240" text-anchor="middle">告警与复盘</text>
+    <line x1="200" y1="116" x2="230" y2="116" stroke="#64748b" stroke-width="2"/>
+    <line x1="380" y1="116" x2="410" y2="116" stroke="#64748b" stroke-width="2"/>
+    <line x1="560" y1="116" x2="590" y2="116" stroke="#64748b" stroke-width="2"/>
+    <line x1="305" y1="142" x2="305" y2="200" stroke="#64748b" stroke-width="2"/>
+    <line x1="380" y1="226" x2="410" y2="226" stroke="#64748b" stroke-width="2"/>
+    <line x1="560" y1="226" x2="590" y2="226" stroke="#64748b" stroke-width="2"/>
+  </g>
+  <text x="50" y="300" font-size="12" fill="#475569">左移：把评审、静态检查和单元测试提前；右移：用线上监测、灰度和现场反馈补足真实场景。</text>
+</svg>

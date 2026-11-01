@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from web.app import create_app
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 
 
 def sample_response(exercise):

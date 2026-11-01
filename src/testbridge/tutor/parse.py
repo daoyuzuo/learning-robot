@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 
 MAX_ANSWER_CHARS = 8000
 MAX_FOLLOWUPS = 3
-BASES = ("lesson", "resource", "general")
+BASES = ("lesson", "resource", "web", "general")
 
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
@@ -33,7 +33,13 @@ def _strings(value: object) -> list[str]:
     return [item for item in value if isinstance(item, str) and item]
 
 
-def parse_answer(raw: str, *, headings: list[str], resource_ids: list[str]) -> TutorAnswer:
+def parse_answer(
+    raw: str,
+    *,
+    headings: list[str],
+    resource_ids: list[str],
+    web_urls: list[str] | tuple[str, ...] = (),
+) -> TutorAnswer:
     text = _FENCE_RE.sub("", raw.strip()).strip()
     try:
         data = json.loads(text)
@@ -51,7 +57,7 @@ def parse_answer(raw: str, *, headings: list[str], resource_ids: list[str]) -> T
     if basis not in BASES:
         basis = "general"
 
-    allowed = set(headings) | set(resource_ids)
+    allowed = set(headings) | set(resource_ids) | set(web_urls)
     citations = [item for item in _strings(data.get("citations")) if item in allowed]
 
     followups = _strings(data.get("followups"))[:MAX_FOLLOWUPS]

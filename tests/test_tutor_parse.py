@@ -40,6 +40,21 @@ def test_invented_citations_are_dropped() -> None:
     assert result.citations == ["DOC-QOS-SETTINGS"]
 
 
+def test_web_basis_and_url_citations_are_allowed() -> None:
+    raw = (
+        '{"answer": "x", "basis": "web", '
+        '"citations": ["https://example.com/a", "https://fake.example"]}'
+    )
+
+    result = parse_answer(
+        raw, headings=HEADINGS, resource_ids=RESOURCES,
+        web_urls=["https://example.com/a"],
+    )
+
+    assert result.basis == "web"
+    assert result.citations == ["https://example.com/a"]
+
+
 def test_code_fences_are_tolerated() -> None:
     raw = '```json\n{"answer": "x", "basis": "general"}\n```'
     assert parse_answer(raw, headings=HEADINGS, resource_ids=RESOURCES).answer == "x"

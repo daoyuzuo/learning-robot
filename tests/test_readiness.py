@@ -8,7 +8,7 @@ from testbridge.learning.weights import concept_weights
 from testbridge.mastery.estimator import MasteryView
 from testbridge.readiness import calculate_readiness
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 MINIMAL = Path(__file__).parent / "fixtures" / "minimal-pack"
 PACK = load_pack(SAMPLE)
 

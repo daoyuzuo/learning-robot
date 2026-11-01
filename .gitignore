@@ -16,3 +16,4 @@ dist/
 Thumbs.db
 
 drafts/
+data/*.bak*

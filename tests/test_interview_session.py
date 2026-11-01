@@ -14,9 +14,9 @@ from testbridge.learning.store import LearningStore
 from testbridge.tutor.config import TutorConfig
 
 ROOT = Path(__file__).parents[1]
-PACK = load_pack(ROOT / "content-packs" / "sample-sensors")
+PACK = load_pack(ROOT / "tests" / "fixtures" / "packs" / "sample-sensors")
 BANK = load_bank(
-    resolve_bank_path(PACK.root, PACK.meta.id, ROOT / "interview-banks"),
+    resolve_bank_path(PACK.root, PACK.meta.id, ROOT / "tests" / "fixtures" / "interview-banks"),
     pack_id=PACK.meta.id,
     concept_ids=set(PACK.concepts),
 )
@@ -27,7 +27,7 @@ def make_service(tmp_path: Path) -> InterviewService:
     evidence = EvidenceStore(db)
     learning = LearningService(PACK, evidence, LearningStore(db))
     bank = load_bank(
-        resolve_bank_path(PACK.root, PACK.meta.id, ROOT / "interview-banks"),
+        resolve_bank_path(PACK.root, PACK.meta.id, ROOT / "tests" / "fixtures" / "interview-banks"),
         pack_id=PACK.meta.id,
         concept_ids=set(PACK.concepts),
     )

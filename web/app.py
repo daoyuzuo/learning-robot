@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -43,7 +41,6 @@ from testbridge.tutor.service import (
     TutorService,
 )
 from testbridge.tutor.store import TutorStore
-from web.studio import mount_studio
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
@@ -62,6 +59,7 @@ class TutorRequest(BaseModel):
     lesson_id: str
     anchor: str = ""
     question: str
+    web: bool = True
 
 
 class ReviewRequest(BaseModel):
@@ -75,20 +73,15 @@ def create_app(
     tutor: TutorService | None = None,
     reviewer: ReviewService | None = None,
     artifacts_dir: Path | None = None,
-    studio_drafts: Path | None = None,
-    studio_packs: Path | None = None,
-    studio_llm=None,
-    studio_search=None,
-    studio_config: TutorConfig | None = None,
-    studio_inline: bool = True,
-    studio_url_checker=None,
     interview_banks: Path | None = None,
     interview_llm=None,
     interview_config: TutorConfig | None = None,
     target_llm=None,
     target_config: TutorConfig | None = None,
 ) -> FastAPI:
-    pack_path = pack_dir or ROOT / "content-packs" / "sample-sensors"
+    if pack_dir is None:
+        raise ValueError("请指定课程包目录，例如 tb serve content-packs/<id>")
+    pack_path = pack_dir
     database = db_path or ROOT / "data" / "testbridge.db"
     uploads = artifacts_dir or ROOT / "data" / "artifacts"
     pack = load_pack(pack_path)
@@ -96,16 +89,23 @@ def create_app(
     learning_store = LearningStore(database)
     learning = LearningService(pack, store, learning_store)
 
-    if tutor is None or reviewer is None:
-        config = load_config()
-        if config is not None:
-            client = OpenAICompatibleClient(config)
-            if tutor is None:
-                tutor = TutorService(pack, TutorStore(database), client, config)
-            if reviewer is None:
-                reviewer = ReviewService(
-                    pack, store, ExerciseReviewStore(database), client, config
-                )
+    config = load_config()
+    tutor_search = None
+    if tutor is None and config is not None and config.search_enabled:
+        from testbridge.search import DeepSeekSearch
+
+        tutor_search = DeepSeekSearch(config)
+
+    if (tutor is None or reviewer is None) and config is not None:
+        client = OpenAICompatibleClient(config)
+        if tutor is None:
+            tutor = TutorService(
+                pack, TutorStore(database), client, config, search=tutor_search
+            )
+        if reviewer is None:
+            reviewer = ReviewService(
+                pack, store, ExerciseReviewStore(database), client, config
+            )
 
     app = FastAPI(title="TestBridge")
     app.state.pack = pack
@@ -128,57 +128,6 @@ def create_app(
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    studio_cfg = studio_config if studio_config is not None else load_config()
-    if studio_cfg is not None and studio_llm is None:
-        studio_llm = OpenAICompatibleClient(studio_cfg)
-    if studio_cfg is not None and studio_search is None:
-        from testbridge.studio.search import DeepSeekSearch
-        from testbridge.studio.search_openalex import OpenAlexSearch
-        from testbridge.studio.search_router import SearchRouter
-
-        try:
-            openalex_timeout = float(
-                os.environ.get("TESTBRIDGE_OPENALEX_TIMEOUT") or 10.0
-            )
-        except ValueError:
-            openalex_timeout = 10.0
-        studio_search = SearchRouter({
-            "deepseek": DeepSeekSearch(studio_cfg),
-            "openalex": OpenAlexSearch(
-                mailto=os.environ.get("TESTBRIDGE_OPENALEX_MAILTO") or None,
-                base_url=(
-                    os.environ.get("TESTBRIDGE_OPENALEX_BASE_URL")
-                    or "https://api.openalex.org"
-                ),
-                timeout=openalex_timeout,
-            ),
-        })
-    if (
-        studio_url_checker is None
-        and studio_cfg is not None
-        and os.environ.get("TESTBRIDGE_STUDIO_VERIFY", "1") != "0"
-    ):
-        from testbridge.studio.verify import check_urls
-
-        def studio_url_checker(urls):
-            client = httpx.Client(timeout=10.0, follow_redirects=True)
-            try:
-                return check_urls(client, urls)
-            finally:
-                client.close()
-
-    mount_studio(
-        app,
-        templates,
-        drafts_root=studio_drafts or ROOT / "drafts",
-        packs_root=studio_packs or ROOT / "content-packs",
-        config=studio_cfg,
-        llm=studio_llm,
-        search=studio_search,
-        inline=studio_inline,
-        url_checker=studio_url_checker,
-    )
-
     from testbridge.interview.store import InterviewStore
     from web.interview import mount_interview
 
@@ -190,8 +139,8 @@ def create_app(
         store=InterviewStore(database),
         evidence_store=store,
         learning=learning,
-        config=interview_config if interview_config is not None else studio_cfg,
-        llm=interview_llm if interview_llm is not None else studio_llm,
+        config=interview_config if interview_config is not None else config,
+        llm=interview_llm,
     )
 
     from testbridge.career.store import TargetJdStore
@@ -203,8 +152,8 @@ def create_app(
         pack=pack,
         learning=learning,
         store=TargetJdStore(database),
-        config=target_config if target_config is not None else studio_cfg,
-        llm=target_llm if target_llm is not None else studio_llm,
+        config=target_config if target_config is not None else config,
+        llm=target_llm,
     )
 
     from testbridge.career.applications import ApplicationStore
@@ -254,6 +203,7 @@ def create_app(
                 view=view,
                 tutor=tutor,
                 tutor_missing=missing_vars() if tutor is None else [],
+                tutor_web=bool(tutor and getattr(tutor, "web_available", False)),
                 tutor_headings=headings,
                 tutor_history=tutor.history(lesson_id) if tutor else [],
             ),
@@ -454,7 +404,10 @@ def create_app(
                 },
             )
         try:
-            reply = tutor.ask(payload.lesson_id, payload.anchor, payload.question)
+            reply = tutor.ask(
+                payload.lesson_id, payload.anchor, payload.question,
+                use_web=payload.web,
+            )
         except LessonNotFoundError:
             raise HTTPException(
                 status_code=404,
@@ -481,6 +434,8 @@ def create_app(
             "citations": reply.answer.citations,
             "followups": reply.answer.followups,
             "saved": reply.saved,
+            "web_used": reply.web_used,
+            "web_sources": reply.web_sources,
         }
 
     @app.post("/api/artifact")

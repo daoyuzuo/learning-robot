@@ -14,7 +14,7 @@ from testbridge.evidence.store import EvidenceStore, new_event
 from web.app import create_app
 
 FIXTURE = Path(__file__).parent / "fixtures" / "minimal-pack"
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "sample-sensors"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors"
 
 
 def client(tmp_path: Path) -> TestClient:

@@ -1,99 +1,253 @@
 schema: tb/1
 concepts:
-- id: test-strategy-risk
-  title: 测试策略与风险分级
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites: []
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-tsr-1
-    description: 能针对机器人任务场景划分风险等级并给出对应测试策略
-    level: L3
-  - id: ec-tsr-2
-    description: 能说明策略选择与资源约束之间的权衡
-    level: L3
-- id: test-design-taskchain
-  title: 测试设计与任务链建模
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - test-strategy-risk
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-tdt-1
-    description: 能将机器人任务分解为可测试的任务链并设计用例
-    level: L3
-  - id: ec-tdt-2
-    description: 能识别任务链中的关键节点与失效传播路径
-    level: L3
-- id: oracle-metrics
-  title: 测试预言与量化指标
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - test-design-taskchain
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-om-1
-    description: 能为机器人行为定义可判定的测试预言与量化指标
-    level: L3
-  - id: ec-om-2
-    description: 能评估指标的可测量性与阈值合理性
-    level: L3
-- id: defect-rootcause
-  title: 缺陷管理与根因分析
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - oracle-metrics
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-dr-1
-    description: 能对机器人缺陷进行分类、复现与根因定位
-    level: L3
-  - id: ec-dr-2
-    description: 能提出可验证的纠正与预防措施
-    level: L3
-- id: coverage-release-gate
-  title: 覆盖率与版本准入
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - defect-rootcause
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-crg-1
-    description: 能设计覆盖率度量与版本准入准则
-    level: L3
-  - id: ec-crg-2
-    description: 能基于证据做出准入/拒绝判断并说明依据
-    level: L3
-- id: experiment-statistics
-  title: 实验设计与统计推断
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - coverage-release-gate
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-es-1
-    description: 能设计对照实验并用统计方法评估机器人测试结果
-    level: L3
-  - id: ec-es-2
-    description: 能解释置信区间与显著性对结论的影响
-    level: L3
-- id: standards-compliance
-  title: 标准与合规
-  domain: 机器人质量体系
-  target_level: L3
-  prerequisites:
-  - experiment-statistics
-  weight: 1.0
-  evidence_criteria:
-  - id: ec-sc-1
-    description: 能将相关机器人安全与质量标准映射到测试活动
-    level: L3
-  - id: ec-sc-2
-    description: 能识别合规证据缺口并规划补齐路径
-    level: L3
+  - id: test-strategy-inputs
+    title: 测试策略的输入与边界
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: []
+    related: [risk-grading]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-tsi-1, description: 能从需求、风险、架构、变更和现场场景推导测试范围, level: L3}
+      - {id: ec-tsi-2, description: 能说明明确不测的边界及其理由, level: L3}
+    resources: [R-29119-2, R-ISO-12100]
+
+  - id: risk-grading
+    title: 风险分级与风险驱动测试
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-strategy-inputs]
+    related: [robot-safety-standards]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-rg-1, description: 能按安全、功能、体验、成本和合规维度给机器人场景分级, level: L3}
+      - {id: ec-rg-2, description: 能把风险等级转化为测试深度与优先级, level: L3}
+    resources: [R-ISO-12100, R-ISO-TR-14121-2]
+
+  - id: test-levels-shift
+    title: 测试分层与测试左移右移
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-strategy-inputs]
+    related: [coverage-model]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-tls-1, description: 能划分单元、集成、系统、验收层并给出每层判据, level: L3}
+      - {id: ec-tls-2, description: 能判断哪些活动应左移、哪些监测应右移, level: L3}
+    resources: [R-29119-2]
+
+  - id: entry-exit-criteria
+    title: 版本准入准出与策略落地
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [risk-grading, test-levels-shift]
+    related: [release-gate-regression]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-eec-1, description: 能定义可执行的准入与准出清单, level: L3}
+      - {id: ec-eec-2, description: 能把 blocker、已知问题和回滚方案纳入准出判断, level: L3}
+    resources: [R-29119-2, R-ISTQB]
+
+  - id: test-design-techniques
+    title: 测试设计方法工具箱
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [risk-grading]
+    related: [task-chain-fault-injection, test-oracle-metrics]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-tdt-1, description: 能按场景选择等价类、边界值、判定表、状态迁移、场景法或组合测试, level: L3}
+      - {id: ec-tdt-2, description: 能为同一需求组合多种方法并说明覆盖差异, level: L3}
+    resources: [R-29119-4, R-ISTQB]
+
+  - id: task-chain-fault-injection
+    title: 任务链测试与故障注入
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-design-techniques]
+    related: [robot-performance-evaluation]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-tcf-1, description: 能把感知到执行的任务链拆成可测试节点, level: L3}
+      - {id: ec-tcf-2, description: 能为长尾、动态障碍、传感器失效和通信降级设计故障注入, level: L3}
+    resources: [R-29119-4, R-ISO-8373]
+
+  - id: test-oracle-metrics
+    title: 测试预言与量化指标
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-design-techniques]
+    related: [experiment-design, robot-performance-evaluation]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-tom-1, description: 能为机器人行为选择规格、参考模型、蜕变、一致性或统计预言, level: L3}
+      - {id: ec-tom-2, description: 能定义指标、阈值与单次或 N 次统计口径, level: L3}
+    resources: [R-29119-4, R-ISO-9283]
+
+  - id: defect-taxonomy
+    title: 缺陷分类与证据链
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-oracle-metrics]
+    related: [root-cause-analysis, escape-analysis]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-dt-1, description: 能按需求、设计、实现、集成、环境、传感器、标定、时序、通信、安全分类缺陷, level: L3}
+      - {id: ec-dt-2, description: 能为缺陷建立可复现的日志、版本、环境和数据证据链, level: L3}
+    resources: [R-ISTQB, R-29119-2]
+
+  - id: root-cause-analysis
+    title: 根因分析方法
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [defect-taxonomy]
+    related: [escape-analysis]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-rca-1, description: 能用 5Why、鱼骨图、8D 或 FTA 组织根因分析, level: L3}
+      - {id: ec-rca-2, description: 能提出可验证的纠正与预防措施, level: L3}
+    resources: [R-ISTQB]
+
+  - id: escape-analysis
+    title: 逃逸分析与缺陷预防
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [defect-taxonomy, root-cause-analysis]
+    related: [release-gate-regression]
+    weight: 0.9
+    evidence_criteria:
+      - {id: ec-ea-1, description: 能回答缺陷为什么没有在更早阶段被发现, level: L3}
+      - {id: ec-ea-2, description: 能把逃逸原因转成用例、门禁和回归改进, level: L3}
+    resources: [R-29119-2]
+
+  - id: coverage-model
+    title: 覆盖率体系
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-levels-shift, test-strategy-inputs]
+    related: [release-gate-regression]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-cm-1, description: 能区分需求、代码、场景、风险和接口覆盖, level: L3}
+      - {id: ec-cm-2, description: 能为机器人补充场景库、故障模式和 sim-to-real 覆盖, level: L3}
+    resources: [R-29119-2, R-ISO-12100]
+
+  - id: release-gate-regression
+    title: 回归策略与版本准入
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [coverage-model, defect-taxonomy, entry-exit-criteria]
+    related: [quality-system-synthesis]
+    weight: 1.2
+    evidence_criteria:
+      - {id: ec-rgr-1, description: 能按影响分析和风险选择回归范围, level: L3}
+      - {id: ec-rgr-2, description: 能定义 blocker、critical、已知问题和回滚方案, level: L3}
+    resources: [R-29119-2, R-ISTQB]
+
+  - id: experiment-design
+    title: 实验设计与统计推断
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-oracle-metrics]
+    related: [flakiness-baseline]
+    weight: 1.1
+    evidence_criteria:
+      - {id: ec-ed-1, description: 能确定重复次数、样本量与置信区间, level: L3}
+      - {id: ec-ed-2, description: 能识别环境、负载、温度、传感器噪声和操作者等变异来源, level: L3}
+    resources: [R-ISO-9283, R-ISO-18646-1]
+
+  - id: flakiness-baseline
+    title: Flakiness 与趋势基线
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [experiment-design]
+    related: [release-gate-regression]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-fb-1, description: 能识别 Flakiness 的时间、并发、环境和随机性来源, level: L3}
+      - {id: ec-fb-2, description: 能用箱线图、P95/P99、漂移曲线或热力图建立基线, level: L3}
+    resources: [R-ISO-18646-2]
+
+  - id: standards-map
+    title: 通用测试标准地图
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: []
+    related: [automotive-standards, robot-safety-standards]
+    weight: 0.8
+    evidence_criteria:
+      - {id: ec-sm-1, description: 能说明 ISO/IEC/IEEE 29119 与 ISTQB 术语的用途边界, level: L3}
+      - {id: ec-sm-2, description: 能把标准映射到测试过程、文档和技术活动, level: L3}
+    resources: [R-29119-2, R-29119-4, R-ISTQB, R-ISO-8373]
+
+  - id: automotive-standards
+    title: 汽车与工业软件标准族
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [standards-map]
+    related: [functional-safety-pl-sil-asil]
+    weight: 0.9
+    evidence_criteria:
+      - {id: ec-as-1, description: 能区分 ASPICE、ISO 26262、ISO 21434、ISO 14229 和 ISO 11898 的用途, level: L3}
+      - {id: ec-as-2, description: 能为车载诊断或自动驾驶功能组合适用标准, level: L3}
+    resources: [R-ISO-26262, R-ISO-SAEE-21434, R-ISO-14229-3, R-ISO-11898-2, R-VDA-ASPICE]
+
+  - id: robot-safety-standards
+    title: 机器人安全标准族
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [standards-map, risk-grading]
+    related: [functional-safety-pl-sil-asil, market-access-certification]
+    weight: 1.2
+    evidence_criteria:
+      - {id: ec-rss-1, description: 能区分 ISO 10218、ISO/TS 15066、ISO 3691-4、ISO 13482 和 ISO 12100 的适用范围, level: L3}
+      - {id: ec-rss-2, description: 能为工业、协作、移动和服务机器人选择安全标准组合, level: L3}
+    resources: [R-ISO-10218-1, R-ISO-10218-2, R-ISO-TS-15066, R-ISO-3691-4, R-ISO-13482, R-ISO-12100, R-ISO-8373]
+
+  - id: functional-safety-pl-sil-asil
+    title: 功能安全 PL、SIL 与 ASIL
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [robot-safety-standards]
+    related: [quality-system-synthesis]
+    weight: 1.2
+    evidence_criteria:
+      - {id: ec-fs-1, description: 能解释 PL、SIL 与 ASIL 的来源和适用标准, level: L3}
+      - {id: ec-fs-2, description: 能为安全功能选择等级并给出验证证据, level: L3}
+    resources: [R-ISO-13849-1, R-ISO-13849-2, R-IEC-62061, R-IEC-61508-2, R-ISO-26262]
+
+  - id: robot-performance-evaluation
+    title: 机器人性能评价
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-oracle-metrics, robot-safety-standards]
+    related: [market-access-certification]
+    weight: 1.1
+    evidence_criteria:
+      - {id: ec-rpe-1, description: 能选择位姿精度、重复性、路径精度或导航指标, level: L3}
+      - {id: ec-rpe-2, description: 能按 ISO 9283、ISO 18646 或 GB/T 38124 设计可复现试验, level: L3}
+    resources: [R-ISO-9283, R-ISO-18646-1, R-ISO-18646-2, R-ISO-18646-3, R-GB-T-38124]
+
+  - id: market-access-certification
+    title: 市场准入与认证
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [robot-safety-standards]
+    related: [quality-system-synthesis]
+    weight: 1.0
+    evidence_criteria:
+      - {id: ec-mac-1, description: 能区分 CE、UL、CQC 与 CR 认证的性质和适用市场, level: L3}
+      - {id: ec-mac-2, description: 能列出一份认证所需的技术文件与证据清单, level: L3}
+    resources: [R-CE-MACHINERY, R-CE-MARKING, R-UL-3300, R-CQC-ROBOT, R-CR-CHINA]
+
+  - id: quality-system-synthesis
+    title: 质量体系综合方案
+    domain: 机器人质量工程
+    target_level: L4
+    prerequisites: [release-gate-regression, functional-safety-pl-sil-asil, market-access-certification, robot-performance-evaluation]
+    related: [risk-grading]
+    weight: 1.5
+    evidence_criteria:
+      - {id: ec-qss-1, description: 能为一个机器人产品整合策略、指标、标准、认证与回归方案, level: L4}
+      - {id: ec-qss-2, description: 能识别方案中的证据缺口和剩余风险, level: L4}
+    resources: [R-ISO-12100, R-ISO-10218-1, R-ISO-13849-1, R-GB-T-38124, R-CE-MARKING, R-CQC-ROBOT]

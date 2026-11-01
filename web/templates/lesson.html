@@ -10,6 +10,11 @@
 <article class="tb-lesson">{{ view.body_html | safe }}</article>
 <section class="tb-tutor tb-card" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
   <h2>追问</h2>
+  {% if tutor %}
+  <p class="tb-tutor-web-status" data-web-status="{{ 'available' if tutor_web else 'unavailable' }}">
+    {% if tutor_web %}联网搜索：<strong data-web-state>已开启</strong>{% else %}联网搜索不可用：未配置搜索服务{% endif %}
+  </p>
+  {% endif %}
   {% if not tutor %}
     <p class="tb-tutor-hint tb-callout" data-tone="warn">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
   {% else %}
@@ -19,6 +24,9 @@
         {% for heading in tutor_headings %}<option value="{{ heading }}">{{ heading }}</option>{% endfor %}
       </select>
     </label>
+    {% if tutor_web %}
+    <label class="tb-tutor-web"><input type="checkbox" class="tb-tutor-web-toggle" checked> 联网搜索</label>
+    {% endif %}
     <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
     <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">提问</button>
     <p class="tb-tutor-error tb-callout" data-tone="error" hidden></p>
@@ -29,11 +37,12 @@
             <span class="tb-tutor-basis" data-basis="{{ message.basis }}">
               {%- if message.basis == "lesson" %}本课内容
               {%- elif message.basis == "resource" %}包内资源
+              {%- elif message.basis == "web" %}网络来源
               {%- else %}通用知识{% endif -%}
             </span>
           {% endif %}
           <p>{{ message.content }}</p>
-          {% if message.citations %}<p class="tb-tutor-citations">依据：{{ message.citations|join("、") }}</p>{% endif %}
+          {% if message.citations %}<p class="tb-tutor-citations">依据：{% for citation in message.citations %}{% if citation.startswith("http") %}<a href="{{ citation }}" target="_blank" rel="noopener noreferrer">{{ citation }}</a>{% else %}{{ citation }}{% endif %}{% if not loop.last %}、{% endif %}{% endfor %}</p>{% endif %}
         </div>
       {% endfor %}
     </div>

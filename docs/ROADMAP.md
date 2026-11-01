@@ -3,19 +3,14 @@
 > 这是全局路线图。任何实现开始前，先读本文件和
 > [教学引擎设计](superpowers/specs/2026-10-24-teaching-engine-design.md)。
 >
-> **当前期：P4.3（求职管理）已完成，2026-10-26**
-> 状态：分支 `p4.3-job-applications`；P4.2 已完成并合并到 master。
+> **当前期：Skill 驱动课程创作，2026-11-01**
+> 状态：框架内 Studio 生成层已删除；课程由编程 AI 读取
+> [course-author skill](../.claude/skills/course-author/SKILL.md) 直接写 `content-packs/`。
 >
-> P1、P2、P2.1、内容试点、P2.2、P2.3、P2.4、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 均已完成。
-> P3.4 把一个包扩展到 1–3 个模块、每模块 1–5 课，支持模块级大纲编辑、包内顺序批量与
-> 单课重写。P3.5 增加跨草稿选课重生成、prompt 版本与旧/新快照对比。P4.1 把成套面试模拟
-> 接入同一本能力账本：面试建议分经用户确认后写入 `kind=interview` 证据，驱动掌握度与
-> `/today` 弱项。P4.2 把 JD 映射为概念权重并给出岗位匹配报告；P4.3 把投递、状态、跟进
-> 与复盘做成本地记录。
-> 设计见 [P3.5 内容演进](superpowers/specs/2026-10-26-p3.5-content-evolution-design.md)、
-> [P4.1 面试闭环](superpowers/specs/2026-10-26-p4.1-interview-loop-design.md)、
-> [P4.2 公司/JD 匹配](superpowers/specs/2026-10-26-p4.2-company-jd-design.md) 与
-> [P4.3 求职管理](superpowers/specs/2026-10-26-p4.3-job-applications-design.md)。
+> P1、P2、P2.1、P2.2、P2.3、P2.4、P4.1、P4.2、P4.3 保留；P3.1–P3.5 的框架内生成工作台
+> 与 `/studio` 页面已退役（git 历史保留）。P4.1 面试闭环、P4.2 JD 匹配、P4.3 求职管理继续
+> 作为运行时功能。当前框架只负责 `tb/1` 契约校验、渲染与学习运行时。
+> 设计见 [Skill 驱动课程创作](superpowers/specs/2026-11-01-skill-based-authoring-design.md)。
 
 ---
 
@@ -699,6 +694,74 @@ quality: 100/100                # exit 0
 
 ---
 
+## 2026-10-27 两项能力
+
+实施顺序：先 1 后 2。
+
+1. **Tutor 联网追问（Web Grounding）— 已完成**：追问默认联网、单次可关；检索增强而非
+   工具调用；只引用本次真实返回的 URL；搜索失败 fail-open；不改证据、掌握度与调度。
+   搜索协议移到共享 `testbridge/search.py`，Studio 与 Tutor 共用。
+   设计见 [Tutor 联网追问](superpowers/specs/2026-10-27-tutor-web-grounding-design.md)。
+   验证：`pytest` 1015 passed、3 deselected；真实调用搜索 + 模型得到 `web_used=True`、
+   `basis=web`，引用为本次返回的 standards.ieee.org / jsa.or.jp / cssn.net.cn 等 URL；
+   来源按 A/B→C 排序、D 丢弃，页面显示本次来源可信度。
+2. **Studio 大纲/参考资料与逐课意图 — 已完成**：上传内容严格分为“大纲（强约束）”与
+   “参考资料（弱约束）”，分别存储、分别进入 `<syllabus>` / `<references>`；
+   课程意图问答与确认；大纲逐条覆盖校验（未覆盖阻断调研/写课）；
+   逐课意图后再批量写课；调研后给出分钟/层级/拆课建议，接受后写入意图但不自动改大纲。
+   不改 `tb/1` 与引擎。设计见
+   [Studio 建课入口](superpowers/specs/2026-10-27-studio-intake-and-briefs-design.md)。
+   验证：`pytest` 1121 passed、3 deselected；真实模型跑通“上传大纲 → 解析（2×3）→
+   确认意图 → 生成大纲”，覆盖缺失 0 项；`ruff` 改动文件通过。
+
+## 2026-10-31 课程级权威调研与自由课程量 — 已完成
+
+- **权威 Source Map**：结构提案前先检索官方/标准/官方文档；模型生成检索式，并自动追加
+  `site:iso.org` 等标准站点查询；按 A/B→C 排序，D 丢弃；无官方/标准 A/B 来源时告警，
+  填写原因后可继续。Source Map 进入结构/大纲/写课提示词与资源池。
+- **自由课程量**：取消模块数、每模块课数、总课数、单课分钟、概念总数上限；模型分两阶段
+  提案模块图与逐模块课表，你确认；时间预算只作软目标。
+- **分块大纲**：按模块生成概念与大纲后合并，避免大课程单次 JSON 截断；大纲条目/顺序/
+  边界仍是强约束，未覆盖不能进入调研/写课。
+- **兼容**：旧草稿无 Source Map/结构时继续走原有均匀计划与单次大纲路径；不改 `tb/1`、
+  引擎、SQLite。
+- 设计见 [课程级权威调研与自由课程量](superpowers/specs/2026-10-31-course-authorities-and-flexible-volume-design.md)。
+- 验证：`pytest` 1250 passed、3 deselected；真实 UDS 烟测检索到 ISO 14229-1/2/3/4/6/8
+  与 ISO 27145-3 的 A/standard 页面，并列出 DTC/会话细节缺口；模型提出 3 模块 ×
+  7 课（含 90 分钟课），分模块大纲通过覆盖校验；Source Map 进入写课提示词与资源池。
+- **删除入口**：Studio 列表页/草稿页可删除已发布包与草稿，要求输入完整 ID 确认；
+  包删除同时清理 `dist/`，学习记录不级联；运行中的草稿拒绝删除。
+
+---
+
+## 2026-11-01 架构转向：Skill 驱动课程创作 — 已完成
+
+- **删除生成层**：`src/testbridge/studio/`、`/studio` 页面、草稿、大纲/写课流水线、
+  内容演进、Studio 测试与导航全部移除；git 历史保留。
+- **课程创作外置**：编程 AI 读取 `.claude/skills/course-author/SKILL.md`，用 WebSearch/
+  WebFetch 查官方资料，直接写 `content-packs/`；框架不调用 LLM 生成课程。
+- **脚手架**：`tb scaffold <id>` 生成能通过 `tb validate` 的最小包；`tb quality` 保留为
+  可选建议，`tb build`/`tb serve` 负责渲染与运行。
+- **保留运行时**：Tutor（含联网追问）、Interview、Career/JD、Applications 保留；
+  `tb/1` 契约、判分、掌握度、调度、证据不变。
+- 设计见 [Skill 驱动课程创作](superpowers/specs/2026-11-01-skill-based-authoring-design.md)。
+- 验证：`pytest` 618 passed；`tb scaffold demo` → `tb validate` 0/0、`tb quality` 97/100；
+  `tb build` 成功；`tb serve` 首页/健康检查 200，`/studio` 404。
+
+---
+
+## 2026-11-01 课程深度门禁 — 已完成
+
+- 新增 `tb depth <pack>`：按 L1–L4 阈值检查每课正文去标签字数、`<h2>` 数、
+  表格/图示数和练习数；失败退出 1。
+- `tb validate` / `tb quality` 语义不变；深度门禁独立，避免契约与评分耦合。
+- 作者 skill 与 authoring guide 增加深度契约；交付前必须 `tb validate` + `tb depth`。
+- 设计见 [课程深度门禁](superpowers/specs/2026-11-01-depth-gate-design.md)。
+- 验证：`tb depth content-packs/robot-quality-system` 0 error；
+  `pytest` 全绿。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。
@@ -738,5 +801,9 @@ P4.1 与 P4.2 已合并到 master；P4.3 已完成（分支 `p4.3-job-applicatio
 - O3 参考资料质量：[2026-10-26-o3-resource-quality-design.md](superpowers/specs/2026-10-26-o3-resource-quality-design.md)
 - O4 自动规划与对话：[2026-10-26-o4-course-planning-dialogue-design.md](superpowers/specs/2026-10-26-o4-course-planning-dialogue-design.md)
 - O5 页面样式：[2026-10-26-o5-web-ui-polish-design.md](superpowers/specs/2026-10-26-o5-web-ui-polish-design.md)
+- Tutor 联网追问：[2026-10-27-tutor-web-grounding-design.md](superpowers/specs/2026-10-27-tutor-web-grounding-design.md)
+- Studio 大纲/参考资料与逐课意图：[2026-10-27-studio-intake-and-briefs-design.md](superpowers/specs/2026-10-27-studio-intake-and-briefs-design.md)
+- 课程级权威调研与自由课程量：[2026-10-31-course-authorities-and-flexible-volume-design.md](superpowers/specs/2026-10-31-course-authorities-and-flexible-volume-design.md)
+- Skill 驱动课程创作：[2026-11-01-skill-based-authoring-design.md](superpowers/specs/2026-11-01-skill-based-authoring-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

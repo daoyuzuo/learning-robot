@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from testbridge.concept_graph import graph_levels, prerequisite_svg
 from testbridge.content.repository import load_pack
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos"
 PACK = load_pack(SAMPLE)
 
 

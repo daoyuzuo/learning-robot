@@ -87,3 +87,31 @@ def test_load_app_from_repo_checkout(tmp_path: Path, monkeypatch) -> None:
     assert isinstance(app, FastAPI)
     assert app.title == "TestBridge"
     assert str(ROOT) in sys.path
+
+
+def test_browser_url_local_and_wildcard_hosts() -> None:
+    from testbridge.cli import _browser_url
+
+    assert _browser_url("127.0.0.1", 8000) == "http://127.0.0.1:8000"
+    assert _browser_url("0.0.0.0", 8123) == "http://127.0.0.1:8123"
+    assert _browser_url("::", 9000) == "http://127.0.0.1:9000"
+
+
+def test_serve_open_flag_schedules_browser(monkeypatch) -> None:
+    from testbridge import cli
+
+    calls: list[str] = []
+    monkeypatch.setattr(cli, "_load_app", lambda *args: object())
+    monkeypatch.setattr(
+        cli, "_open_browser_later", lambda url: calls.append(url)
+    )
+
+    class FakeUvicorn:
+        @staticmethod
+        def run(app, host, port) -> None:
+            return None
+
+    monkeypatch.setitem(sys.modules, "uvicorn", FakeUvicorn)
+
+    assert cli.main(["serve", "unused", "--open", "--port", "8123"]) == 0
+    assert calls == ["http://127.0.0.1:8123"]

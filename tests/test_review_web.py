@@ -19,7 +19,7 @@ from testbridge.tutor.service import TutorService
 from testbridge.tutor.store import TutorStore
 from web.app import create_app
 
-SAMPLE = Path(__file__).parents[1] / "content-packs" / "ros2-qos"
+SAMPLE = Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos"
 CONFIG = TutorConfig(
     base_url="https://api.example.com/v1",
     api_key="sk-test",
