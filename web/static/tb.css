@@ -229,16 +229,21 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 
 .tb-main {
-  max-width: 1120px;
+  /* Use the screen: a fixed 1120px column leaves 400px of dead space per side
+     on a 1920 display. Cap the outer box so wide screens fill up, while the
+     padding keeps a real gutter on narrower ones. */
+  box-sizing: border-box;
+  max-width: 1560px;
   margin: 0 auto;
-  padding: var(--tb-space-10) var(--tb-space-6) 88px;
+  padding: var(--tb-space-10) clamp(var(--tb-space-4), 3vw, 48px) 88px;
 }
 
 .tb-main.tb-lesson-main {
-  /* Wide enough for the reading column (46rem) plus the tutor rail (400px)
-     and its gutter. A narrower shell silently shrinks the reading column
-     below its intended measure. */
-  max-width: 1220px;
+  /* Wide enough for the reading column (46rem) plus the rail (400px), its
+     32px gutter and this page's own 24px padding on both sides. A narrower
+     shell silently shrinks the reading column below its intended measure. */
+  max-width: 1268px;
+  padding: var(--tb-space-10) var(--tb-space-6) 88px;
   font-size: 16.5px;
   line-height: 1.85;
 }
@@ -255,6 +260,10 @@ img, svg, video { max-width: 100%; height: auto; }
 .tb-lesson-column {
   max-width: 46rem;
   min-width: 0;
+  /* Centre the reading measure inside its pane: on a wide screen the column
+     would otherwise hug the left edge and look off-centre next to the rail. */
+  margin-inline: auto;
+  width: 100%;
 }
 
 /* Keep lesson typography scoped to the reading column, not the rail. */
@@ -567,6 +576,8 @@ pre code { background: none; border: 0; padding: 0; color: inherit; }
   gap: var(--tb-space-4);
   align-items: start;
   margin-top: var(--tb-space-4);
+  /* Panels read badly when stretched across a 1560px canvas. */
+  max-width: 1080px;
 }
 
 .tb-split > .tb-panel { margin: 0; }
@@ -589,7 +600,10 @@ pre code { background: none; border: 0; padding: 0; color: inherit; }
 
 .tb-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  /* Cards stay readable when there are only three modules on a wide screen:
+     extra width becomes whitespace around the grid, not 700px-tall rows. */
+  grid-template-columns: repeat(auto-fit, minmax(360px, 460px));
+  justify-content: start;
   gap: var(--tb-space-4);
 }
 

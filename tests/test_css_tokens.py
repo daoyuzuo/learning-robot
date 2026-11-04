@@ -78,11 +78,16 @@ def test_reading_measure_and_legacy_class_hooks_survive() -> None:
 
     main_rule = re.search(r"^\.tb-main \{[^}]*\}", CSS, re.MULTILINE)
     assert main_rule, "no base .tb-main rule"
+    # The horizontal padding is fluid: either a bare token or a clamp whose
+    # *first* argument is the token. Both forms have the token as the tightest
+    # value, so using it below stays the conservative reading of the invariant.
     padding = re.search(
-        r"padding:\s*var\(--tb-space-\d+\)\s*var\(--tb-space-(\d+)\)", main_rule.group(0)
+        r"padding:\s*var\(--tb-space-\d+\)\s+"
+        r"(?:var\(--tb-space-(\d+)\)|clamp\(\s*var\(--tb-space-(\d+)\))",
+        main_rule.group(0),
     )
     assert padding, "base .tb-main loses its horizontal padding"
-    side_padding = spacing[f"--tb-space-{padding.group(1)}"]
+    side_padding = spacing[f"--tb-space-{padding.group(1) or padding.group(2)}"]
 
     needed = 46 * 16 + int(rail.group(1)) + gutter + side_padding * 2
     assert int(shell.group(1)) >= needed, (
