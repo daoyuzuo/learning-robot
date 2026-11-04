@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 360" width="820" height="360" role="img" aria-label="MIL、SIL、HIL 与实机四级验证的保真度、成本与迭代速度对比">
+  <title>验证阶梯：MIL、SIL、HIL 与实机</title>
+  <desc>四级验证从下到上依次是 MIL（模型在环）、SIL（软件在环）、HIL（硬件在环）和实机。越往上保真度越高、单次成本越高、迭代越慢；越往下越容易批量回归、越容易复现。</desc>
+  <rect x="16" y="16" width="788" height="328" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">验证阶梯：越往上越真，越往下越快</text>
+
+  <g font-size="13" fill="#0f172a">
+    <rect x="252" y="72" width="380" height="46" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="442" y="94" text-anchor="middle">实机 / 现场验证</text>
+    <text x="442" y="110" text-anchor="middle" font-size="12" fill="#475569">真实物理、真实环境、真实用户</text>
+
+    <rect x="222" y="134" width="440" height="46" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="442" y="156" text-anchor="middle">HIL：硬件在环</text>
+    <text x="442" y="172" text-anchor="middle" font-size="12" fill="#475569">真实控制器 + 真实时钟 + 仿真的传感器与执行器</text>
+
+    <rect x="192" y="196" width="500" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="442" y="218" text-anchor="middle">SIL：软件在环</text>
+    <text x="442" y="234" text-anchor="middle" font-size="12" fill="#475569">真实算法代码，仿真时钟、总线与 I/O</text>
+
+    <rect x="162" y="258" width="560" height="46" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="442" y="280" text-anchor="middle">MIL：模型在环</text>
+    <text x="442" y="296" text-anchor="middle" font-size="12" fill="#475569">算法本身还是模型，跑得最快，离部署最远</text>
+  </g>
+
+  <g stroke="#64748b" stroke-width="2" fill="none">
+    <line x1="118" y1="304" x2="118" y2="88"/>
+    <polyline points="112,96 118,84 124,96" fill="#64748b" stroke="none"/>
+    <line x1="762" y1="88" x2="762" y2="304"/>
+    <polyline points="756,296 762,308 768,296" fill="#64748b" stroke="none"/>
+  </g>
+  <g font-size="12" fill="#475569">
+    <text x="100" y="196" text-anchor="middle" transform="rotate(-90 100 196)">保真度、成本</text>
+    <text x="780" y="196" text-anchor="middle" transform="rotate(90 780 196)">迭代速度、批量回归</text>
+  </g>
+
+  <text x="36" y="330" font-size="12" fill="#475569">选择层级的判据：这次要验的是算法逻辑、时序与 I/O，还是真实物理与用户行为。</text>
+</svg>

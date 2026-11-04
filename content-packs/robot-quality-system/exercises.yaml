@@ -218,6 +218,47 @@ exercises:
       - {dimension: 失败判定, weight: 0.3, criteria: 阈值与失败条件明确且可复现}
     difficulty: 3
 
+  - id: EX-011-01
+    type: single_choice
+    concepts: [sil-hil-validation]
+    level: L2
+    prompt: 下列哪项是 HIL 相对 SIL 最核心的差别？
+    options:
+      - {id: a, text: 仿真模型的精度更高}
+      - {id: b, text: 被测控制器跑在真实硬件与真实时钟上}
+      - {id: c, text: 能跑的场景数量更多}
+      - {id: d, text: 不需要再做现场标定}
+    answer: b
+    explanation: HIL 把真实控制器与 I/O 接入仿真回路，时钟和接口都是真的；模型精度不是它的定义特征，场景数量通常反而更少。
+    difficulty: 2
+
+  - id: EX-011-02
+    type: short_answer
+    concepts: [sil-hil-validation]
+    level: L3
+    prompt: 为“转弯中行人横穿”设计一次 HIL 验证，说明层级选择理由、时钟与步长、观测指标和通过判据。
+    answer:
+      accepted: ["时钟", "步长", "延迟", "判据", "复现", "余量"]
+      min_hits: 3
+    rubric:
+      - {dimension: 层级理由, weight: 0.34, criteria: 说明为什么选 HIL 而不是纯 SIL 或直接实机}
+      - {dimension: 时序, weight: 0.33, criteria: 给出步长、时钟来源与端到端延迟预算}
+      - {dimension: 判据, weight: 0.33, criteria: 指标可量化、判据含通过线与余量、失败可复现}
+    hints:
+      - {level: 1, text: 先问这次要验证的是算法逻辑，还是时序与 I/O。}
+      - {level: 2, text: 延迟要拆成感知、规划、执行三段分别量，并说明步长与判据时间尺度的关系。}
+    difficulty: 3
+
+  - id: EX-011-03
+    type: self_assess
+    concepts: [sil-hil-validation]
+    level: L3
+    prompt: 你当前项目的仿真验证，最不可信的一环是哪里？写出验证它的一次实验。
+    rubric:
+      - {dimension: 缺口定位, weight: 0.5, criteria: 能指出具体建模或时序上的不可信点，而不是泛泛说“模型不准”}
+      - {dimension: 验证方案, weight: 0.5, criteria: 给出的实验能区分“模型对了”和“模型错了”两种结果}
+    difficulty: 3
+
   - id: EX-014-01
     type: multi_choice
     concepts: [defect-taxonomy]
