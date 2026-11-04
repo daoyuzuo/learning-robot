@@ -1053,6 +1053,10 @@ pre code { background: none; border: 0; padding: 0; color: inherit; }
 
 .tb-table-wrap table { margin: 0; min-width: 640px; }
 .tb-table-wrap table.tb-table-wide { min-width: 880px; }
+/* A lesson table keeps its wrap's floor width: the prose rule below sets a
+   display/overflow pair that would otherwise let a six-column table collapse
+   to the reading measure. */
+.tb-lesson .tb-table-wrap table.tb-table-wide { min-width: 880px; }
 
 table { width: 100%; border-collapse: collapse; }
 
