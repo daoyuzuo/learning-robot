@@ -407,3 +407,27 @@ resources:
     last_verified: 2026-11-01
     coverage: [robot-safety-standards, market-access-certification]
     why: 美国市场对 ISO 10218 的采纳与补充，做北美项目时与 ISO 版本对照。
+
+  - id: R-ASAM-OPENSCENARIO
+    title: "ASAM OpenSCENARIO XML 1.3.0 规范（动态场景描述）"
+    url: https://openscenario.asam.net/ASAM_OpenSCENARIO_XML/v1.3.0/
+    type: standard
+    kind: standard
+    role: required
+    trust: A
+    license: "ASAM 开放许可，允许不受限分发"
+    last_verified: 2026-11-04
+    coverage: [sil-hil-validation]
+    why: 写场景库、与供应商或主机厂交换场景文件时，用它对齐故事的触发条件与动作语义，避免同一个场景两份描述。
+
+  - id: R-ROS2-SIMULATORS
+    title: "ROS 2 官方文档 — Simulators（Gazebo / Webots / MVSim）"
+    url: https://docs.ros.org/en/humble/Tutorials/Advanced/Simulators/Simulation-Main.html
+    type: official-doc
+    kind: official_docs
+    role: required
+    trust: A
+    license: "ROS 2 文档 CC-BY-4.0"
+    last_verified: 2026-11-04
+    coverage: [sil-hil-validation]
+    why: 搭建 ROS 2 仿真回归环境时，按官方教程选仿真器并接好时钟与传感器桥接。

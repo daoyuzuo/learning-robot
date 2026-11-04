@@ -60,7 +60,7 @@ exercises:
       - {dimension: 排序, weight: 0.3, criteria: 把分级转化为测试顺序并说明理由}
     difficulty: 3
 
-  - id: EX-003-01
+  - id: EX-006-01
     type: single_choice
     concepts: [test-levels-shift]
     level: L2
@@ -74,7 +74,7 @@ exercises:
     explanation: 左移是把发现缺陷的活动提前到需求和编码阶段；监控、灰度和复盘更偏右移或事后活动。
     difficulty: 2
 
-  - id: EX-003-02
+  - id: EX-006-02
     type: short_answer
     concepts: [test-levels-shift]
     level: L3
@@ -88,7 +88,7 @@ exercises:
       - {dimension: 左右移, weight: 0.3, criteria: 说明哪些活动提前、哪些监测延后}
     difficulty: 3
 
-  - id: EX-004-01
+  - id: EX-007-01
     type: single_choice
     concepts: [entry-exit-criteria]
     level: L2
@@ -102,7 +102,7 @@ exercises:
     explanation: 准出看风险、覆盖、已知问题和回滚能力；代码行数本身不说明质量。
     difficulty: 2
 
-  - id: EX-004-02
+  - id: EX-007-02
     type: short_answer
     concepts: [entry-exit-criteria]
     level: L3
@@ -116,7 +116,7 @@ exercises:
       - {dimension: 回滚, weight: 0.4, criteria: 回滚触发条件、步骤和验证都可执行}
     difficulty: 3
 
-  - id: EX-005-01
+  - id: EX-008-01
     type: single_choice
     concepts: [test-design-techniques]
     level: L2
@@ -132,7 +132,7 @@ exercises:
       - {level: 1, text: 边界缺陷常出现在“刚好越界”的位置。}
     difficulty: 2
 
-  - id: EX-005-02
+  - id: EX-008-02
     type: short_answer
     concepts: [test-design-techniques]
     level: L3
@@ -146,7 +146,7 @@ exercises:
       - {dimension: 预期结果, weight: 0.3, criteria: 每条用例都有可判定的预期结果}
     difficulty: 3
 
-  - id: EX-005-03
+  - id: EX-008-03
     type: multi_choice
     concepts: [test-design-techniques]
     level: L3
@@ -160,7 +160,7 @@ exercises:
     explanation: 参数多、交互可能产生组合爆炸时适合配对测试；单开关和固定路径不需要。
     difficulty: 3
 
-  - id: EX-006-01
+  - id: EX-009-01
     type: multi_choice
     concepts: [task-chain-fault-injection]
     level: L2
@@ -176,7 +176,7 @@ exercises:
     explanation: 任务链从感知到执行；日志命名是工程规范，不是任务链节点。
     difficulty: 2
 
-  - id: EX-006-02
+  - id: EX-009-02
     type: short_answer
     concepts: [task-chain-fault-injection]
     level: L3
@@ -190,7 +190,7 @@ exercises:
       - {dimension: 降级与恢复, weight: 0.4, criteria: 描述预期降级行为和恢复判据}
     difficulty: 3
 
-  - id: EX-007-01
+  - id: EX-010-01
     type: single_choice
     concepts: [test-oracle-metrics]
     level: L2
@@ -204,7 +204,7 @@ exercises:
     explanation: 蜕变测试不要求完整参考模型，只要求输入变换与输出变化之间的关系成立。
     difficulty: 2
 
-  - id: EX-007-02
+  - id: EX-010-02
     type: short_answer
     concepts: [test-oracle-metrics]
     level: L3
@@ -218,7 +218,7 @@ exercises:
       - {dimension: 失败判定, weight: 0.3, criteria: 阈值与失败条件明确且可复现}
     difficulty: 3
 
-  - id: EX-008-01
+  - id: EX-014-01
     type: multi_choice
     concepts: [defect-taxonomy]
     level: L2
@@ -234,7 +234,7 @@ exercises:
     explanation: 前五类是可直接定位和验证的缺陷来源；开发者心情不是缺陷分类。
     difficulty: 2
 
-  - id: EX-008-02
+  - id: EX-014-02
     type: short_answer
     concepts: [defect-taxonomy]
     level: L3
@@ -248,7 +248,7 @@ exercises:
       - {dimension: 分类, weight: 0.3, criteria: 给出初步缺陷类别和影响范围}
     difficulty: 3
 
-  - id: EX-009-01
+  - id: EX-015-01
     type: single_choice
     concepts: [root-cause-analysis]
     level: L2
@@ -262,7 +262,7 @@ exercises:
     explanation: FTA 从顶事件向下建树，适合分析组合失效；5Why 是线性追问，胜在快速。
     difficulty: 2
 
-  - id: EX-009-02
+  - id: EX-015-02
     type: short_answer
     concepts: [root-cause-analysis]
     level: L3
@@ -276,7 +276,7 @@ exercises:
       - {dimension: 措施, weight: 0.2, criteria: 给出纠正与预防措施的方向}
     difficulty: 3
 
-  - id: EX-010-01
+  - id: EX-016-01
     type: single_choice
     concepts: [escape-analysis]
     level: L2
@@ -290,7 +290,7 @@ exercises:
     explanation: 逃逸分析关注测试与门禁的缺口，而不是追责。
     difficulty: 2
 
-  - id: EX-010-02
+  - id: EX-016-02
     type: short_answer
     concepts: [escape-analysis]
     level: L3
@@ -304,7 +304,7 @@ exercises:
       - {dimension: 验证, weight: 0.3, criteria: 说明如何验证改进有效}
     difficulty: 3
 
-  - id: EX-011-01
+  - id: EX-017-01
     type: multi_choice
     concepts: [coverage-model]
     level: L2
@@ -320,7 +320,7 @@ exercises:
     explanation: 机器人需要场景、故障和仿真到实机迁移的覆盖；注释覆盖没有质量意义。
     difficulty: 2
 
-  - id: EX-011-02
+  - id: EX-017-02
     type: short_answer
     concepts: [coverage-model]
     level: L3
@@ -334,7 +334,7 @@ exercises:
       - {dimension: 度量, weight: 0.3, criteria: 说明数据来源和统计周期}
     difficulty: 3
 
-  - id: EX-012-01
+  - id: EX-018-01
     type: single_choice
     concepts: [release-gate-regression]
     level: L2
@@ -348,7 +348,7 @@ exercises:
     explanation: blocker 阻塞发布；critical 也严重，但是否阻断取决于准出规则。
     difficulty: 2
 
-  - id: EX-012-02
+  - id: EX-018-02
     type: short_answer
     concepts: [release-gate-regression]
     level: L3
@@ -362,7 +362,7 @@ exercises:
       - {dimension: 回滚, weight: 0.3, criteria: 触发条件、步骤和验证都可执行}
     difficulty: 3
 
-  - id: EX-013-01
+  - id: EX-012-01
     type: single_choice
     concepts: [experiment-design]
     level: L2
@@ -376,7 +376,7 @@ exercises:
     explanation: 样本量由目标置信水平、允许误差和预期比例共同决定，不是团队规模。
     difficulty: 2
 
-  - id: EX-013-02
+  - id: EX-012-02
     type: short_answer
     concepts: [experiment-design]
     level: L3
@@ -390,7 +390,7 @@ exercises:
       - {dimension: 控制, weight: 0.3, criteria: 说明随机化、分层或固定条件等控制手段}
     difficulty: 3
 
-  - id: EX-014-01
+  - id: EX-013-01
     type: multi_choice
     concepts: [flakiness-baseline]
     level: L2
@@ -406,7 +406,7 @@ exercises:
     explanation: 时间、并发、环境、随机性和网络都会造成不稳定；注释不会。
     difficulty: 2
 
-  - id: EX-014-02
+  - id: EX-013-02
     type: self_assess
     concepts: [flakiness-baseline]
     level: L3
@@ -417,7 +417,7 @@ exercises:
       - {dimension: 取舍, weight: 0.2, criteria: 说明均值仍适合什么情况}
     difficulty: 3
 
-  - id: EX-014-03
+  - id: EX-013-03
     type: artifact
     concepts: [flakiness-baseline]
     level: L3
@@ -431,7 +431,7 @@ exercises:
       - {dimension: 结论, weight: 0.4, criteria: 给出可执行的改进建议并说明依据}
     difficulty: 3
 
-  - id: EX-015-01
+  - id: EX-003-01
     type: single_choice
     concepts: [standards-map]
     level: L2
@@ -445,7 +445,7 @@ exercises:
     explanation: 29119 是软件测试的国际标准系列，覆盖概念、过程、文档和技术。
     difficulty: 2
 
-  - id: EX-015-02
+  - id: EX-003-02
     type: short_answer
     concepts: [standards-map]
     level: L3
@@ -459,7 +459,7 @@ exercises:
       - {dimension: 落地, weight: 0.2, criteria: 给出一个项目中的组合使用方式}
     difficulty: 3
 
-  - id: EX-016-01
+  - id: EX-019-01
     type: multi_choice
     concepts: [automotive-standards]
     level: L2
@@ -475,7 +475,7 @@ exercises:
     explanation: ISO 10218 属于机器人安全标准，不是汽车软件标准族。
     difficulty: 2
 
-  - id: EX-016-02
+  - id: EX-019-02
     type: short_answer
     concepts: [automotive-standards]
     level: L3
@@ -489,7 +489,7 @@ exercises:
       - {dimension: 边界, weight: 0.2, criteria: 说明标准版本和适用范围}
     difficulty: 3
 
-  - id: EX-017-01
+  - id: EX-004-01
     type: multi_choice
     concepts: [robot-safety-standards]
     level: L2
@@ -505,7 +505,7 @@ exercises:
     explanation: ISO 9283 是性能准则与试验方法，不是安全标准。
     difficulty: 2
 
-  - id: EX-017-02
+  - id: EX-004-02
     type: short_answer
     concepts: [robot-safety-standards]
     level: L3
@@ -519,7 +519,7 @@ exercises:
       - {dimension: 证据, weight: 0.2, criteria: 指出需要产出的验证证据}
     difficulty: 3
 
-  - id: EX-018-01
+  - id: EX-005-01
     type: single_choice
     concepts: [functional-safety-pl-sil-asil]
     level: L2
@@ -533,7 +533,7 @@ exercises:
     explanation: ASIL、PL、SIL 来自不同标准体系，等级名称相似但判定方法和适用领域不同。
     difficulty: 2
 
-  - id: EX-018-02
+  - id: EX-005-02
     type: short_answer
     concepts: [functional-safety-pl-sil-asil]
     level: L3
@@ -547,7 +547,7 @@ exercises:
       - {dimension: 证据, weight: 0.3, criteria: 列出验证分析和试验证据}
     difficulty: 3
 
-  - id: EX-019-01
+  - id: EX-020-01
     type: single_choice
     concepts: [robot-performance-evaluation]
     level: L2
@@ -561,7 +561,7 @@ exercises:
     explanation: ISO 9283 规定位姿、路径、稳定时间等性能指标的试验方法。
     difficulty: 2
 
-  - id: EX-019-02
+  - id: EX-020-02
     type: short_answer
     concepts: [robot-performance-evaluation]
     level: L3
@@ -575,7 +575,7 @@ exercises:
       - {dimension: 统计与报告, weight: 0.4, criteria: 给出重复次数、判定规则和报告内容}
     difficulty: 3
 
-  - id: EX-020-01
+  - id: EX-021-01
     type: multi_choice
     concepts: [market-access-certification]
     level: L2
@@ -590,7 +590,7 @@ exercises:
     explanation: CE、UL、CQC、CR 是市场准入或认证标志；29119 是测试标准，不是认证。
     difficulty: 2
 
-  - id: EX-020-02
+  - id: EX-021-02
     type: short_answer
     concepts: [market-access-certification]
     level: L3
@@ -604,7 +604,7 @@ exercises:
       - {dimension: 证据, weight: 0.3, criteria: 给出安全与 EMC 等测试证据}
     difficulty: 3
 
-  - id: EX-021-01
+  - id: EX-022-01
     type: short_answer
     concepts: [quality-system-synthesis]
     level: L3
@@ -618,7 +618,7 @@ exercises:
       - {dimension: 证据, weight: 0.3, criteria: 说明关键结论如何下钻到证据}
     difficulty: 4
 
-  - id: EX-021-02
+  - id: EX-022-02
     type: artifact
     concepts: [quality-system-synthesis]
     level: L4
@@ -633,7 +633,7 @@ exercises:
       - {dimension: 缺口, weight: 0.2, criteria: 列出剩余风险、证据缺口和关闭计划}
     difficulty: 4
 
-  - id: EX-021-03
+  - id: EX-022-03
     type: self_assess
     concepts: [quality-system-synthesis]
     level: L4

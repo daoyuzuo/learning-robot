@@ -1,0 +1,15 @@
+schema: tb/1
+id: M04
+title: 行业标准、认证与综合
+priority: P1
+concepts:
+- automotive-standards
+- robot-performance-evaluation
+- market-access-certification
+- quality-system-synthesis
+lessons:
+- L-004-001
+- L-004-002
+- L-004-003
+- L-004-004
+order: 4

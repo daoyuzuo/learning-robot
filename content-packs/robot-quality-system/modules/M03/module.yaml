@@ -1,21 +1,17 @@
 schema: tb/1
 id: M03
-title: 标准、评价与认证
-priority: P1
+title: 缺陷、覆盖与回归
+priority: P0
 concepts:
-- standards-map
-- automotive-standards
-- robot-safety-standards
-- functional-safety-pl-sil-asil
-- robot-performance-evaluation
-- market-access-certification
-- quality-system-synthesis
+- defect-taxonomy
+- root-cause-analysis
+- escape-analysis
+- coverage-model
+- release-gate-regression
 lessons:
 - L-003-001
 - L-003-002
 - L-003-003
 - L-003-004
 - L-003-005
-- L-003-006
-- L-003-007
 order: 3

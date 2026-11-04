@@ -1,21 +1,18 @@
 schema: tb/1
 id: M02
-title: 缺陷、覆盖与统计
+title: 设计与验证：方法、任务链、预言与实验
 priority: P0
 concepts:
-- defect-taxonomy
-- root-cause-analysis
-- escape-analysis
-- coverage-model
-- release-gate-regression
+- test-design-techniques
+- task-chain-fault-injection
+- test-oracle-metrics
+- sil-hil-validation
 - experiment-design
 - flakiness-baseline
 lessons:
 - L-002-001
 - L-002-002
 - L-002-003
-- L-002-004
 - L-002-005
 - L-002-006
-- L-002-007
 order: 2

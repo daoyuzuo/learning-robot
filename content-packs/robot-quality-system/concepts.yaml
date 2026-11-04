@@ -240,11 +240,23 @@ concepts:
       - {id: ec-mac-2, description: 能列出一份认证所需的技术文件与证据清单, level: L3}
     resources: [R-CE-MACHINERY, R-CE-MARKING, R-UL-3300, R-CQC-ROBOT, R-CR-CHINA]
 
+  - id: sil-hil-validation
+    title: SIL、HIL 与实时仿真验证
+    domain: 机器人质量工程
+    target_level: L3
+    prerequisites: [test-levels-shift, task-chain-fault-injection]
+    related: [experiment-design, test-oracle-metrics]
+    weight: 1.1
+    evidence_criteria:
+      - {id: ec-shv-1, description: 能为一个验证目标选择合适的 MIL/SIL/HIL/实机层级, level: L3}
+      - {id: ec-shv-2, description: 能写出可复现的实时仿真验证方案并解释保真度边界, level: L3}
+    resources: [R-29119-2, R-ASAM-OPENSCENARIO, R-ROS2-SIMULATORS]
+
   - id: quality-system-synthesis
     title: 质量体系综合方案
     domain: 机器人质量工程
     target_level: L4
-    prerequisites: [release-gate-regression, functional-safety-pl-sil-asil, market-access-certification, robot-performance-evaluation]
+    prerequisites: [release-gate-regression, functional-safety-pl-sil-asil, market-access-certification, robot-performance-evaluation, sil-hil-validation]
     related: [risk-grading]
     weight: 1.5
     evidence_criteria:

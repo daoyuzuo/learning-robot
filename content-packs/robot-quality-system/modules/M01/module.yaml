@@ -1,15 +1,15 @@
 schema: tb/1
 id: M01
-title: 测试策略、设计与预言
+title: 体系基线：策略、风险、标准与门禁
 priority: P0
 concepts:
 - test-strategy-inputs
 - risk-grading
+- standards-map
+- robot-safety-standards
+- functional-safety-pl-sil-asil
 - test-levels-shift
 - entry-exit-criteria
-- test-design-techniques
-- task-chain-fault-injection
-- test-oracle-metrics
 lessons:
 - L-001-001
 - L-001-002
