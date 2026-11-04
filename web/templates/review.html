@@ -1,20 +1,37 @@
 {% extends "base.html" %}
 {% block title %}复习 · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<p class="tb-eyebrow">复习</p>
 <h1>到期复习</h1>
-{% if not rows %}<p class="tb-callout" data-tone="info">今天没有到期卡。</p>{% else %}
-<p><a class="tb-btn tb-btn-primary" href="/review/session">开始复习</a></p>
+
+{% if not rows %}
+<div class="tb-callout" data-tone="info">
+  <div class="tb-empty tb-empty-plain">
+    {{ icon("circle-check", 30) }}
+    <p>今天没有到期卡。</p>
+    <a class="tb-btn tb-btn-primary" href="/today">回到今日计划</a>
+  </div>
+</div>
+{% else %}
+<p class="tb-lede">共 {{ rows|length }} 张到期卡，一次一张做完即可。</p>
+<p><a class="tb-btn tb-btn-primary" href="/review/session">{{ icon("play", 14) }}开始复习</a></p>
 <div class="tb-table-wrap">
 <table>
-<tr><th>练习</th><th>概念</th><th>到期</th><th>课程</th></tr>
+<thead>
+<tr><th>练习</th><th>题干</th><th>概念</th><th>到期</th><th>课程</th></tr>
+</thead>
+<tbody>
 {% for row in rows %}
 <tr>
   <td>{{ row.review.exercise_id }}</td>
-  <td>{{ row.review.concept_ids|join(", ") }}</td>
-  <td><span class="tb-badge">{{ row.review.due }}</span></td>
-  <td>{% if row.lesson_id %}<a href="/lesson/{{ row.lesson_id }}">打开</a>{% endif %}</td>
+  <td class="tb-cell-wrap">{{ exercise_prompts.get(row.review.exercise_id, "") | tb_excerpt(40) }}</td>
+  <td class="tb-cell-wrap">{% for cid in row.review.concept_ids %}{{ concept_titles.get(cid, cid) }}{% if not loop.last %}、{% endif %}{% endfor %}</td>
+  <td>{{ row.review.due | tb_date }}</td>
+  <td>{% if row.lesson_id %}<a href="/lesson/{{ row.lesson_id }}">打开</a>{% else %}—{% endif %}</td>
 </tr>
 {% endfor %}
+</tbody>
 </table>
 </div>
 {% endif %}

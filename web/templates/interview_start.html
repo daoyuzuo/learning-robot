@@ -1,20 +1,41 @@
 {% extends "base.html" %}
 {% block title %}面试 · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<p class="tb-eyebrow">面试</p>
 <h1>面试模拟</h1>
 {% if bank_error %}
-  <p class="tb-interview-error tb-callout" data-tone="error">题库不可用：{{ bank_error }}</p>
-{% else %}
-  <p class="tb-meta">按当前弱项抽题，一次 3 或 5 题；每题评分确认后才写入证据。</p>
-  <h2>当前弱项</h2>
-  <div class="tb-table-wrap">
-  <table>
-    <tr><th>概念</th><th>掌握度</th></tr>
-    {% for item in weak %}
-    <tr><td>{{ item.title }}</td><td>{{ "%.2f"|format(item.estimate) }}</td></tr>
-    {% endfor %}
-  </table>
+  <div class="tb-callout" data-tone="error">
+    <div class="tb-empty tb-empty-plain">
+      {{ icon("inbox", 30) }}
+      <p>题库不可用：{{ bank_error }}</p>
+      <p class="tb-meta">面试需要为该内容包准备题库文件。准备好后刷新此页即可使用。</p>
+      <a class="tb-btn tb-btn-primary" href="/today">回到今日计划</a>
+    </div>
   </div>
+{% else %}
+  <p class="tb-lede">按当前弱项抽题，一次 3 或 5 题；每题评分确认后才写入证据。</p>
+
+  <div class="tb-section-title"><h2>当前弱项</h2><span class="tb-meta">抽题优先命中这里</span></div>
+  {% if weak %}
+  <div class="tb-card">
+    {% for item in weak %}
+    <div class="tb-weak-row">
+      <div class="tb-row-main">
+        <span class="tb-row-title">{{ item.title }}</span>
+        <span class="tb-row-sub">掌握度 {{ "%.2f"|format(item.estimate) }}</span>
+      </div>
+      <span class="tb-meter" data-tone="{% if item.estimate < 0.25 %}low{% elif item.estimate < 0.75 %}mid{% else %}high{% endif %}"><i class="{{ pct_class(item.estimate) }}"></i></span>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="tb-empty">
+    {{ icon("inbox", 28) }}
+    <p>题库里还没有可抽的概念。</p>
+  </div>
+  {% endif %}
+
   <form method="post" action="/interview" class="tb-interview-form tb-form tb-card">
     <fieldset>
       <legend>题量</legend>
@@ -27,17 +48,20 @@
       <label><input type="checkbox" name="concepts" value="{{ concept.id }}"> {{ concept.title }}</label>
       {% endfor %}
     </fieldset>
-    <button type="submit" class="tb-btn tb-btn-primary">开始模拟</button>
+    <div class="tb-form-actions">
+      <button type="submit" class="tb-btn tb-btn-primary">{{ icon("mic", 14) }}开始模拟</button>
+    </div>
   </form>
-  <h2>最近会话</h2>
-  {% if sessions %}
+
+  <div class="tb-section-title"><h2>最近会话</h2></div>
   {% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
   <div class="tb-table-wrap">
   <table>
-    <tr><th>时间</th><th>状态</th><th>题数</th><th></th></tr>
+    <thead><tr><th>时间</th><th>状态</th><th>题数</th><th>操作</th></tr></thead>
+    <tbody>
     {% for session in sessions %}
     <tr>
-      <td>{{ session.created_at }}</td>
+      <td>{{ session.created_at | tb_datetime }}</td>
       <td data-status="{{ session.status }}"><span class="tb-badge" data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</span></td>
       <td>{{ session.question_ids|length }}</td>
       <td>
@@ -48,11 +72,16 @@
         {% endif %}
       </td>
     </tr>
+    {% else %}
+    <tr><td colspan="4">
+      <div class="tb-empty tb-empty-plain">
+        {{ icon("mic", 28) }}
+        <p>还没有面试记录。开始一次模拟试试。</p>
+      </div>
+    </td></tr>
     {% endfor %}
+    </tbody>
   </table>
   </div>
-  {% else %}
-  <p class="tb-meta">还没有面试记录。</p>
-  {% endif %}
 {% endif %}
 {% endblock %}

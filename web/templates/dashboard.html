@@ -1,23 +1,121 @@
 {% extends "base.html" %}
-{% block title %}课程 · TestBridge{% endblock %}
+{% block title %}{{ pack.meta.title }} · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
-<h1>{{ pack.meta.title }}</h1>
-<p>{{ pack.meta.description }}</p>
-<section class="tb-card">
-  <h2>Readiness {{ "%.2f"|format(readiness.total) }}</h2>
-  <p>到期复习 {{ due_count }} 张 · 今日计划 {{ plan.items|length }} 项</p>
-  {% if readiness.gate_active %}<p class="tb-callout" data-tone="warn">门控：{{ readiness.gate_reasons|join("；") }}</p>{% endif %}
+<section class="tb-hero">
+  <p class="tb-eyebrow">{{ pack.meta.id }} · {{ modules|length }} 个模块 · {{ lesson_total }} 课 · 约 {{ (total_minutes / 60) | round(0) | int }} 小时</p>
+  <h1>{{ pack.meta.title }}</h1>
+  <p class="tb-lede">{{ pack.meta.description }}</p>
 </section>
-<h3>最弱概念</h3>
-<ul>{% for item in weakest %}<li>{{ item.concept_id }} · {{ "%.2f"|format(item.estimate) }} · <span class="tb-badge">{{ item.level }}</span></li>{% endfor %}</ul>
-{% for module in modules %}
-<section class="tb-module tb-card">
-  <h2>{{ module.title }}</h2>
-  <ul>
-  {% for lesson in lessons_by_module[module.id] %}
-    <li><a href="/lesson/{{ lesson.manifest.id }}">{{ lesson.manifest.title }}</a> · {{ lesson.manifest.minutes }} 分钟</li>
+
+<div class="tb-stat-row tb-stat-row-hero">
+  <div class="tb-kpi tb-kpi-main">
+    <div class="tb-kpi-inline">
+      <svg class="tb-progress-ring" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Readiness {{ '%.2f'|format(readiness.total) }}">
+        <circle class="tb-ring-track" cx="48" cy="48" r="42" fill="none" stroke-width="8"></circle>
+        <circle class="tb-ring-value" cx="48" cy="48" r="42" fill="none" stroke-width="8"
+                stroke-dasharray="{{ (2 * 3.14159 * 42) | round(1) }}"
+                stroke-dashoffset="{{ (2 * 3.14159 * 42 * (1 - readiness.total)) | round(1) }}"></circle>
+      </svg>
+      <div>
+        <div class="tb-kpi-label">Readiness</div>
+        <div class="tb-kpi-value">{{ "%.2f"|format(readiness.total) }}<small> / 1.00</small></div>
+        <div class="tb-kpi-sub">{% if readiness.gate_active %}P0 门控生效，上限 0.70{% else %}加权掌握度{% endif %}</div>
+      </div>
+    </div>
+  </div>
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">到期复习</div>
+    <div class="tb-kpi-value">{{ due_count }}</div>
+    <div class="tb-kpi-sub">{% if due_count %}<a href="/review">去复习</a>{% else %}今天没有到期卡{% endif %}</div>
+  </div>
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">今日计划</div>
+    <div class="tb-kpi-value">{{ plan.items|length }}</div>
+    <div class="tb-kpi-sub">{{ plan.total_minutes }} / {{ plan.budget_minutes }} 分钟</div>
+  </div>
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">已达标概念</div>
+    <div class="tb-kpi-value">{{ mastered_count }}<small> / {{ concept_total }}</small></div>
+    <div class="tb-kpi-sub">达到目标等级</div>
+  </div>
+</div>
+
+{% if readiness.gate_active %}
+<div class="tb-callout" data-tone="warn">
+  <details>
+    <summary>门控生效：{{ readiness.gate_reasons|length }} 个 P0 概念未达目标等级，readiness 上限 0.70</summary>
+    <ul>
+      {% for reason in readiness.gate_reasons %}<li>{{ reason }}</li>{% endfor %}
+    </ul>
+  </details>
+</div>
+{% endif %}
+
+<div class="tb-split">
+  <section class="tb-card tb-panel">
+    <div class="tb-section-title"><h2>今日计划</h2><span class="tb-meta">{{ plan.total_minutes }} / {{ plan.budget_minutes }} 分钟</span></div>
+    {% if plan.empty %}
+      <div class="tb-empty">
+        {{ icon("circle-check", 28) }}
+        <p>今天没有必须做的事。{% if plan.suggestion %}{{ plan.suggestion }}{% endif %}</p>
+        <a class="tb-btn tb-btn-primary" href="/today">看看今日</a>
+      </div>
+    {% else %}
+      {% for item in plan.items[:2] %}
+      <div class="tb-list-row">
+        <span class="tb-row-icon">{{ icon("book-open", 16) }}</span>
+        <div class="tb-row-main">
+          <span class="tb-row-title">{{ lesson_titles.get(item.lesson_id) or item.exercise_id or item.concept_ids|join("、") }}</span>
+          <span class="tb-row-sub"><span class="tb-badge" data-status="{{ item.type }}">{{ item.type | tb_label("plan_type") }}</span> {{ item.reason }} · {{ item.estimated_minutes }} 分钟</span>
+        </div>
+        {% if item.lesson_id %}<a class="tb-btn tb-btn-primary" href="/lesson/{{ item.lesson_id }}">开始</a>{% endif %}
+      </div>
+      {% endfor %}
+    {% endif %}
+  </section>
+
+  <section class="tb-card tb-panel">
+    <div class="tb-section-title"><h2>最弱概念</h2><a class="tb-meta" href="/concepts">全部</a></div>
+    {% for item in weakest %}
+    <div class="tb-weak-row">
+      <div class="tb-row-main">
+        <span class="tb-row-title">{{ concept_titles.get(item.concept_id, item.concept_id) }}</span>
+        <span class="tb-row-sub">{{ item.level }} · 目标 {{ pack.concepts[item.concept_id].target_level }}</span>
+      </div>
+      <span class="tb-meter" data-tone="{% if item.estimate < 0.25 %}low{% elif item.estimate < 0.75 %}mid{% else %}high{% endif %}"><i class="{{ pct_class(item.estimate) }}"></i></span>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+
+<div class="tb-section-title">
+  <h2>课程</h2>
+  <span class="tb-meta">{{ modules|length }} 个模块 · {{ lesson_total }} 课 · 约 {{ (total_minutes / 60) | round(0) | int }} 小时</span>
+</div>
+
+<div class="tb-modules">
+  {% for row in module_rows %}
+  <section class="tb-card">
+    <div class="tb-module-head">
+      <h3>{{ row.module.title }}</h3>
+      <span class="tb-meta">{{ row.done }} / {{ row.concepts }}</span>
+    </div>
+    <div class="tb-meter tb-meter-block">
+      <i class="{{ pct_class((row.done / row.concepts) if row.concepts else 0) }}"></i>
+    </div>
+    <ul class="tb-lesson-list">
+      {% for lesson in row.lessons %}
+      <li>
+        <a href="/lesson/{{ lesson.manifest.id }}">
+          <span class="tb-dot"></span>
+          <span class="tb-lesson-name">{{ lesson.manifest.title }}</span>
+          <span class="tb-lesson-min">{{ lesson.manifest.minutes }}m</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
   {% endfor %}
-  </ul>
-</section>
-{% endfor %}
+</div>
 {% endblock %}

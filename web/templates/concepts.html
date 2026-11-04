@@ -1,22 +1,41 @@
 {% extends "base.html" %}
 {% block title %}概念 · TestBridge{% endblock %}
 {% block content %}
-<h1>概念掌握度</h1>
-{% if graph %}<div class="tb-graph-wrap tb-card">{{ graph | safe }}</div>{% endif %}
+<p class="tb-eyebrow">概念掌握度</p>
+<h1>概念</h1>
+<p class="tb-lede">共 {{ views|length }} 个概念。颜色与条形只作辅助，等级与数字始终以文字呈现。</p>
+
+{% if graph %}
+<div class="tb-section-title"><h2>先修关系</h2><span class="tb-meta">箭头自先修指向后继</span></div>
+<div class="tb-graph-wrap">{{ graph | safe }}</div>
+{% endif %}
+
+<div class="tb-section-title"><h2>掌握度明细</h2><span class="tb-meta">{{ due_counts.values()|sum }} 张到期卡</span></div>
 <div class="tb-table-wrap">
-<table>
+<table class="tb-table-wide">
+<thead>
 <tr><th>概念</th><th>掌握度</th><th>等级</th><th>目标</th><th>到期</th><th>先修</th><th>课程</th></tr>
+</thead>
+<tbody>
 {% for concept_id, view in views.items() %}
+{% set concept = pack.concepts[concept_id] %}
 <tr>
-  <td><a href="/progress?concept={{ concept_id }}">{{ concept_id }}</a></td>
-  <td>{{ "%.2f"|format(view.estimate) }}</td>
+  <td><a href="/progress?concept={{ concept_id }}" title="{{ concept_id }}">{{ concept_titles.get(concept_id, concept_id) }}</a></td>
+  <td>
+    <span class="tb-meter" data-tone="{% if view.estimate < 0.25 %}low{% elif view.estimate < 0.75 %}mid{% else %}high{% endif %}"><i class="{{ pct_class(view.estimate) }}"></i></span>
+    {{ "%.2f"|format(view.estimate) }}
+  </td>
   <td><span class="tb-badge">{{ view.level }}</span></td>
-  <td>{{ pack.concepts[concept_id].target_level }}</td>
-  <td>{{ due_counts.get(concept_id, 0) }}</td>
-  <td>{{ pack.concepts[concept_id].prerequisites|join(", ") }}</td>
-  <td>{% if lesson_for_concept.get(concept_id) %}<a href="/lesson/{{ lesson_for_concept[concept_id] }}">课程</a>{% endif %}</td>
+  <td>{{ concept.target_level }}</td>
+  <td>{% set count = due_counts.get(concept_id, 0) %}{% if count %}<a href="/review">{{ count }}</a>{% else %}—{% endif %}</td>
+  <td class="tb-cell-wrap">
+    {% set prereqs = prereq_titles.get(concept_id, []) %}
+    {% if prereqs %}{{ prereqs[:2]|join("、") }}{% if prereqs|length > 2 %} 等 {{ prereqs|length }} 个{% endif %}{% else %}—{% endif %}
+  </td>
+  <td>{% if lesson_for_concept.get(concept_id) %}<a href="/lesson/{{ lesson_for_concept[concept_id] }}">打开</a>{% else %}—{% endif %}</td>
 </tr>
 {% endfor %}
+</tbody>
 </table>
 </div>
 {% endblock %}

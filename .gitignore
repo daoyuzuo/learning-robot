@@ -17,3 +17,6 @@ Thumbs.db
 
 drafts/
 data/*.bak*
+
+# Local UI review artifacts (screenshots and headless browser profiles).
+ui-audit/

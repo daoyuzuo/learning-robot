@@ -20,9 +20,16 @@ STANDALONE_TEMPLATE = """<!doctype html>
 <style>__CSS__</style>
 </head>
 <body data-lesson-id="__LESSON_ID__">
-<main class="tb-main tb-lesson-main">
+<header class="tb-top">
+<a href="#tb-main" class="tb-brand">TestBridge</a>
+<span class="tb-meta">离线课程</span>
+</header>
+<main class="tb-main tb-lesson-main" id="tb-main">
+<nav class="tb-breadcrumb">__MODULE__</nav>
+<h1>__TITLE__</h1>
+<p class="tb-meta">__MINUTES__ 分钟 · 目标 __LEVEL__</p>
 __BODY__
-<button id="tb-export">导出证据 JSONL</button>
+<button id="tb-export" class="tb-btn">导出证据 JSONL</button>
 </main>
 <script>const TB_EXERCISES = __DATA__; const TB_LESSON_ID = "__LESSON_ID__";</script>
 <script>__JS__</script>
@@ -219,7 +226,7 @@ def _script_json(value: object) -> str:
 
 def _render_document(values: dict[str, str]) -> str:
     return re.sub(
-        r"__(TITLE|LESSON_ID|CSS|DATA|JS|BODY)__",
+        r"__(TITLE|LESSON_ID|MODULE|MINUTES|LEVEL|CSS|DATA|JS|BODY)__",
         lambda match: values[match.group(1)],
         STANDALONE_TEMPLATE,
     )
@@ -243,6 +250,9 @@ def build_pack(pack_dir: Path, out_dir: Path, lesson_id: str | None = None) -> l
         values = {
             "TITLE": html.escape(lesson.manifest.title),
             "LESSON_ID": lesson.manifest.id,
+            "MODULE": html.escape(view.module.title),
+            "MINUTES": str(lesson.manifest.minutes),
+            "LEVEL": html.escape(lesson.manifest.target_level),
             "CSS": css,
             "DATA": _script_json(data),
             "JS": STANDALONE_JS,

@@ -778,6 +778,50 @@ quality: 100/100                # exit 0
 
 ---
 
+## 2026-11-03 全站视觉焕新 — 已完成
+
+- **范围**：重写 `web/static/tb.css`（token / 深色模式 / 组件 / 排版），重写 14 个
+  Jinja 模板，新增 `web/labels.py`（枚举→中文与日期/截断过滤器）与
+  `src/testbridge/icons.py`（28 个 Lucide 图标，内联 SVG，`currentColor` 继承），
+  重做 `src/testbridge/concept_graph.py` 的表现层，同步 `build.py` 离线页壳。
+- **方向**：C（克制的现代产品）作为骨架 + B（编辑部式阅读）作为课程正文排版。
+- **关键决定**：CSP 禁止内联 `style`，因此所有百分比宽度改为 `.tb-w-<n>` 工具类
+  （5% 步长）；不下载字体（中文仅用系统字体栈，衬线只用于拉丁字母与数字）。
+- **素材**：图标取自 Lucide（ISC / 部分 MIT），许可证与改动说明见
+  `web/static/LICENSES.md`；不使用 CDN 与图标字体。
+- **消除的内部标识符**：`new/weak/review` → 新学/补弱/复习；`correct/partial/…` →
+  正确/部分正确/错误/已提交；ISO 时间戳 → `M月D日 HH:mm`；概念表与最弱概念改为显示
+  标题，ID 只保留在 `title` 属性与 `/progress?concept=` 链接中。
+- **修掉的既有问题**：概念表表头被挤成竖排（补 `white-space: nowrap` 与
+  `min-width`）；首页把门控原因铺成一整段（改为计数 + 折叠详情）；课程页标题重复
+  出现两次（正文 `h1` 在 `<header>` 内，改为整体隐藏）；320px 下横向滚动（固定多列
+  网格不折叠 + 课程正文表格溢出）。
+- **不做**：不引入前端框架/SPA/构建链，不接 CDN，不改路由、表单字段、`tb/1` 契约与
+  判分/掌握度/调度/证据语义。
+- **设计**：[全站视觉焕新](superpowers/specs/2026-11-03-full-ui-refresh-design.md)
+  （实施计划：[2026-11-03-full-ui-refresh.md](superpowers/plans/2026-11-03-full-ui-refresh.md)）
+
+**验证（实测，2026-11-03）：**
+
+```text
+$ .venv/Scripts/python.exe -m pytest -q
+658 passed in 86.33s
+
+$ .venv/Scripts/python.exe -m testbridge.cli validate content-packs/robot-quality-system
+0 error(s), 0 warning(s)
+
+$ .venv/Scripts/python.exe -m testbridge.cli build content-packs/robot-quality-system --out dist
+（21 课全部产出；单文件内联 CSS，无 <link>、无 <script src>、无外部 URL）
+```
+
+- 布局实测（Chrome DevTools Protocol 量 `scrollWidth`）：9 个页面在 320 / 768 /
+  1024 三档宽度下均等于视口宽度，无横向滚动；守卫测试见
+  `tests/test_layout_guards.py`。
+- 深色模式（`prefers-color-scheme: dark`）抽查首页、概念页、课程页，卡片与语义色可读。
+- 截图对照：改动前 `ui-audit/before/`，改动后 `ui-audit/final/`（`ui-audit/` 已 gitignore）。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。

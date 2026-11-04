@@ -22,6 +22,7 @@ from testbridge.exercise.grading import grade, kind_for_exercise
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import LearningStore
 from testbridge.lesson.renderer import render_exercise_form, render_lesson
+from testbridge.readiness import LEVEL_ORDER
 from testbridge.tutor.client import (
     OpenAICompatibleClient,
     TutorTimeoutError,
@@ -123,6 +124,13 @@ def create_app(
         return response
 
     templates = Jinja2Templates(directory=str(BASE / "templates"))
+
+    from testbridge.icons import icon_markup
+    from web.labels import register as register_labels
+
+    register_labels(templates)
+    templates.env.globals["icon_svg"] = icon_markup
+
     app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
     assets_dir = pack.root / "assets"
     if assets_dir.is_dir():
@@ -175,6 +183,37 @@ def create_app(
         }
         views = learning.all_mastery()
         weakest = sorted(views.values(), key=lambda item: item.estimate)[:3]
+        readiness = learning.readiness(views)
+        plan = learning.today_plan(views)
+        concept_titles = {cid: item.title for cid, item in pack.concepts.items()}
+        lesson_titles = {lid: item.manifest.title for lid, item in pack.lessons.items()}
+        mastered = sum(
+            1
+            for view in views.values()
+            if view.concept_id in pack.concepts
+            and LEVEL_ORDER[view.level]
+            >= LEVEL_ORDER[pack.concepts[view.concept_id].target_level]
+        )
+        module_rows = []
+        for module in modules:
+            concepts = [cid for cid in module.concepts if cid in pack.concepts]
+            done = sum(
+                1
+                for cid in concepts
+                if views.get(cid) is not None
+                and LEVEL_ORDER[views[cid].level] >= LEVEL_ORDER[pack.concepts[cid].target_level]
+            )
+            module_rows.append({
+                "module": module,
+                "lessons": lessons_by_module[module.id],
+                "done": done,
+                "concepts": len(concepts),
+            })
+        total_minutes = sum(
+            lesson.manifest.minutes
+            for lessons in lessons_by_module.values()
+            for lesson in lessons
+        )
         return templates.TemplateResponse(
             request=request,
             name="dashboard.html",
@@ -182,10 +221,17 @@ def create_app(
                 request,
                 modules=modules,
                 lessons_by_module=lessons_by_module,
-                readiness=learning.readiness(views),
-                plan=learning.today_plan(views),
+                module_rows=module_rows,
+                concept_titles=concept_titles,
+                lesson_titles=lesson_titles,
+                readiness=readiness,
+                plan=plan,
                 due_count=len(learning.due_reviews()),
                 weakest=weakest,
+                concept_total=len(pack.concepts),
+                mastered_count=mastered,
+                lesson_total=len(pack.lessons),
+                total_minutes=total_minutes,
             ),
         )
 
@@ -195,6 +241,15 @@ def create_app(
             raise HTTPException(status_code=404, detail="lesson not found")
         view = render_lesson(pack, lesson_id)
         headings = build_context(pack, lesson_id).headings
+        ordered = pack.lessons_in_order()
+        position = next(
+            (
+                index
+                for index, item in enumerate(ordered, start=1)
+                if item.manifest.id == lesson_id
+            ),
+            1,
+        )
         return templates.TemplateResponse(
             request=request,
             name="lesson.html",
@@ -206,6 +261,7 @@ def create_app(
                 tutor_web=bool(tutor and getattr(tutor, "web_available", False)),
                 tutor_headings=headings,
                 tutor_history=tutor.history(lesson_id) if tutor else [],
+                lesson_position={"index": position, "total": len(ordered)},
             ),
         )
 
@@ -213,6 +269,8 @@ def create_app(
     def progress_page(request: Request, concept: str = ""):
         events = store.list(concept_id=concept or None, limit=200)
         views = learning.all_mastery()
+        lesson_titles = {lid: item.manifest.title for lid, item in pack.lessons.items()}
+        exercise_prompts = {eid: item.prompt for eid, item in pack.exercises.items()}
         return templates.TemplateResponse(
             request=request,
             name="progress.html",
@@ -224,14 +282,19 @@ def create_app(
                 filtered_total=store.count(concept_id=concept) if concept else 0,
                 readiness=learning.readiness(views),
                 views=views,
+                lesson_titles=lesson_titles,
+                exercise_prompts=exercise_prompts,
             ),
         )
 
     @app.get("/today", response_class=HTMLResponse)
     def today_page(request: Request):
         plan = learning.today_plan()
+        lesson_titles = {lid: item.manifest.title for lid, item in pack.lessons.items()}
         return templates.TemplateResponse(
-            request=request, name="today.html", context=ctx(request, plan=plan)
+            request=request,
+            name="today.html",
+            context=ctx(request, plan=plan, lesson_titles=lesson_titles),
         )
 
     @app.get("/concepts", response_class=HTMLResponse)
@@ -246,11 +309,18 @@ def create_app(
         for lesson in pack.lessons_in_order():
             for concept_id in lesson.manifest.concepts:
                 lesson_for_concept.setdefault(concept_id, lesson.manifest.id)
+        concept_titles = {cid: item.title for cid, item in pack.concepts.items()}
+        prereq_titles = {
+            cid: [concept_titles.get(p, p) for p in item.prerequisites]
+            for cid, item in pack.concepts.items()
+        }
         return templates.TemplateResponse(
             request=request, name="concepts.html",
             context=ctx(
                 request, views=views, due_counts=due_counts,
                 lesson_for_concept=lesson_for_concept,
+                concept_titles=concept_titles,
+                prereq_titles=prereq_titles,
                 graph=prerequisite_svg(pack, views),
             ),
         )
@@ -269,8 +339,15 @@ def create_app(
                 None,
             )
             rows.append({"review": review, "lesson_id": lesson_id})
+        concept_titles = {cid: item.title for cid, item in pack.concepts.items()}
+        exercise_prompts = {eid: item.prompt for eid, item in pack.exercises.items()}
         return templates.TemplateResponse(
-            request=request, name="review.html", context=ctx(request, rows=rows)
+            request=request, name="review.html",
+            context=ctx(
+                request, rows=rows,
+                concept_titles=concept_titles,
+                exercise_prompts=exercise_prompts,
+            ),
         )
 
     @app.post("/api/evidence")

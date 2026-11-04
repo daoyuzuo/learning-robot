@@ -24,8 +24,30 @@ def test_build_creates_standalone(tmp_path: Path) -> None:
     # The lesson body already starts with <article class="tb-lesson">; the
     # standalone template must not wrap it a second time.
     assert html.count('<article class="tb-lesson">') == 1
-    assert '<main class="tb-main tb-lesson-main">' in html
+    assert '<main class="tb-main tb-lesson-main" id="tb-main">' in html
     assert (tmp_path / "fixture" / "assets" / "widgets" / "demo.svg").is_file()
+
+
+def test_standalone_page_inlines_new_design_tokens(tmp_path: Path) -> None:
+    html_text = build_pack(FIXTURE, tmp_path)[0].read_text(encoding="utf-8")
+    assert "--tb-bg-elevated" in html_text
+    assert 'class="tb-btn"' in html_text
+    assert 'class="tb-top"' in html_text
+
+
+def test_standalone_page_has_no_external_requests(tmp_path: Path) -> None:
+    html_text = build_pack(FIXTURE, tmp_path)[0].read_text(encoding="utf-8")
+    assert "<link" not in html_text
+    assert "@import" not in html_text
+    assert "<script src=" not in html_text
+
+
+def test_standalone_page_shows_the_lesson_title_once(tmp_path: Path) -> None:
+    # The shared stylesheet hides `.tb-lesson h1`, so the standalone shell has
+    # to render the title itself or the offline page opens without one.
+    html_text = build_pack(FIXTURE, tmp_path)[0].read_text(encoding="utf-8")
+    assert "<h1>Demo Lesson</h1>" in html_text
+    assert 'class="tb-breadcrumb"' in html_text
 
 
 def test_standalone_js_falls_back_to_memory_when_storage_fails(tmp_path: Path) -> None:

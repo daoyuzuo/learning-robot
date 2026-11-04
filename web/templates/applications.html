@@ -1,18 +1,26 @@
 {% extends "base.html" %}
 {% block title %}求职 · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<p class="tb-eyebrow">求职</p>
 <h1>求职</h1>
 {% if error %}<p class="tb-app-error tb-callout" data-tone="error">{{ error }}</p>{% endif %}
 
-<p class="tb-app-counts tb-card">
-  {% for status in statuses %}{{ status_labels[status] }} {{ counts[status] }}{% if not loop.last %} · {% endif %}{% endfor %}
-</p>
+<div class="tb-stat-row tb-stat-row-compact">
+  {% for status in statuses %}
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">{{ status_labels[status] }}</div>
+    <div class="tb-kpi-value">{{ counts[status] }}</div>
+  </div>
+  {% endfor %}
+</div>
 
 {% if due %}
-<h2>到期跟进</h2>
+<div class="tb-section-title"><h2>到期跟进</h2><span class="tb-meta">{{ due|length }} 项</span></div>
 <div class="tb-table-wrap">
 <table>
-  <tr><th>公司</th><th>岗位</th><th>动作</th><th>日期</th><th>状态</th></tr>
+  <thead><tr><th>公司</th><th>岗位</th><th>动作</th><th>日期</th><th>状态</th></tr></thead>
+  <tbody>
   {% for item in due %}
   <tr>
     <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
@@ -20,35 +28,44 @@
     <td>{{ item.next_action_at }}</td><td><span class="tb-badge" data-status="{{ item.status }}">{{ status_labels[item.status] }}</span></td>
   </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
 {% endif %}
 
-<h2>全部投递</h2>
-<p class="tb-meta">
-  <a href="/applications">全部</a>
-  {% for status in statuses %} · <a href="/applications?status={{ status }}">{{ status_labels[status] }}</a>{% endfor %}
-</p>
+<div class="tb-section-title"><h2>全部投递</h2><span class="tb-meta">{{ items|length }} 条</span></div>
+<nav class="tb-tabs" aria-label="状态筛选">
+  <a href="/applications"{% if not selected %} aria-current="true"{% endif %}>全部</a>
+  {% for status in statuses %}<a href="/applications?status={{ status }}"{% if selected == status %} aria-current="true"{% endif %}>{{ status_labels[status] }}</a>{% endfor %}
+</nav>
+
 {% if items %}
 <div class="tb-table-wrap">
 <table>
-  <tr><th>公司</th><th>岗位</th><th>状态</th><th>投递日期</th><th>下一步</th><th>更新</th></tr>
+  <thead><tr><th>公司</th><th>岗位</th><th>状态</th><th>投递日期</th><th>下一步</th><th>更新</th></tr></thead>
+  <tbody>
   {% for item in items %}
   <tr>
     <td><a href="/applications/{{ item.id }}">{{ item.company }}</a></td>
     <td>{{ item.role }}</td><td><span class="tb-badge" data-status="{{ item.status }}">{{ status_labels[item.status] }}</span></td>
-    <td>{{ item.applied_at or "" }}</td>
+    <td>{{ item.applied_at or "—" }}</td>
     <td>{{ item.next_action }}{% if item.next_action_at %}（{{ item.next_action_at }}）{% endif %}</td>
-    <td>{{ item.updated_at }}</td>
+    <td>{{ item.updated_at | tb_date }}</td>
   </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
 {% else %}
-<p class="tb-callout" data-tone="info">还没有投递记录。</p>
+<div class="tb-callout" data-tone="info">
+  <div class="tb-empty tb-empty-plain">
+    {{ icon("briefcase", 30) }}
+    <p>还没有投递记录。用下面的表单记下第一家公司。</p>
+  </div>
+</div>
 {% endif %}
 
-<h2>新增投递</h2>
+<div class="tb-section-title"><h2>新增投递</h2></div>
 <form method="post" action="/applications" class="tb-app-form tb-form tb-card">
   <label>公司 <input type="text" name="company" maxlength="200" required value="{{ form.company or '' }}"></label>
   <label>岗位 <input type="text" name="role" maxlength="200" required value="{{ form.role or '' }}"></label>
@@ -62,6 +79,8 @@
   <label>下一步 <input type="text" name="next_action" maxlength="200" value="{{ form.next_action or '' }}"></label>
   <label>跟进日期 <input type="date" name="next_action_at" value="{{ form.next_action_at or '' }}"></label>
   <label>笔记 <textarea name="notes" rows="4" maxlength="5000">{{ form.notes or '' }}</textarea></label>
-  <button type="submit" class="tb-btn tb-btn-primary">保存投递</button>
+  <div class="tb-form-actions">
+    <button type="submit" class="tb-btn tb-btn-primary">保存投递</button>
+  </div>
 </form>
 {% endblock %}

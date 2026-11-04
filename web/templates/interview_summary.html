@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block title %}面试汇总 · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<nav class="tb-breadcrumb"><a href="/interview">面试</a> › 汇总</nav>
 <h1>面试汇总</h1>
 {% set status_labels = {"running": "进行中", "completed": "已完成", "abandoned": "已放弃"} %}
-<p class="tb-meta" data-status="{{ session.status }}">{{ session.created_at }} · <span class="tb-badge" data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</span> · {{ session.question_ids|length }} 题</p>
+<p class="tb-meta" data-status="{{ session.status }}">{{ session.created_at | tb_datetime }} · <span class="tb-badge" data-status="{{ session.status }}">{{ status_labels.get(session.status, session.status) }}</span> · {{ session.question_ids|length }} 题</p>
 {% if missing_questions %}
   <p class="tb-interview-error tb-callout" data-tone="error">题目已不在题库中：{{ missing_questions|join("、") }}</p>
 {% endif %}
@@ -13,17 +15,27 @@
 {% if session.status != "completed" %}
   <p class="tb-meta">本次尚未完成，以下只统计已确认的题目。</p>
 {% endif %}
-<h2>总分 {{ "%.2f"|format(summary.total) }}</h2>
+
+<div class="tb-stat-row">
+  <div class="tb-kpi tb-kpi-main">
+    <div class="tb-kpi-label">总分</div>
+    <div class="tb-kpi-value">{{ "%.2f"|format(summary.total) }}</div>
+    <div class="tb-kpi-sub">按维度权重加权</div>
+  </div>
+</div>
+
+<div class="tb-section-title"><h2>逐题</h2></div>
 <div class="tb-table-wrap">
 <table>
-  <tr><th>题目</th><th>概念</th><th>分数</th><th>回答</th><th>证据</th></tr>
+  <thead><tr><th>题目</th><th>概念</th><th>分数</th><th>回答</th><th>证据</th></tr></thead>
+  <tbody>
   {% for answer in summary.answers %}
   {% set question = questions.get(answer.question_id) %}
   <tr>
-    <td>{% if question %}{{ question.title }}{% else %}题目已不在题库中{% endif %}</td>
-    <td>{% if question %}{{ question.concepts|join("、") }}{% else %}—{% endif %}</td>
+    <td class="tb-cell-wrap">{% if question %}{{ question.title }}{% else %}题目已不在题库中{% endif %}</td>
+    <td class="tb-cell-wrap">{% if question %}{{ question.concepts|join("、") }}{% else %}—{% endif %}</td>
     <td>{% if answer.question_id in summary.question_totals %}{{ "%.2f"|format(summary.question_totals[answer.question_id]) }}{% else %}—{% endif %}</td>
-    <td>
+    <td class="tb-cell-wrap">
       {% if answer.answer %}
         <details><summary>查看</summary><p>{{ answer.answer }}</p></details>
       {% else %}—{% endif %}
@@ -39,19 +51,27 @@
     </td>
   </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
-<h2>维度均分</h2>
+
+<div class="tb-section-title"><h2>维度均分</h2></div>
 <div class="tb-table-wrap">
 <table>
-  <tr><th>维度</th><th>均分</th></tr>
+  <thead><tr><th>维度</th><th>均分</th><th>分布</th></tr></thead>
+  <tbody>
   {% for dimension, value in summary.dimension_averages.items() %}
-  <tr><td>{{ dimension }}</td><td>{{ "%.2f"|format(value) }}</td></tr>
+  <tr>
+    <td>{{ dimension }}</td>
+    <td>{{ "%.2f"|format(value) }}</td>
+    <td><span class="tb-meter" data-tone="{% if value < 0.5 %}low{% elif value < 0.8 %}mid{% else %}high{% endif %}"><i class="{{ pct_class(value) }}"></i></span></td>
+  </tr>
   {% endfor %}
+  </tbody>
 </table>
 </div>
 {% if summary.weakest_concepts %}
-<p>最低分概念：{{ summary.weakest_concepts|join("、") }}</p>
+<p class="tb-callout" data-tone="warn">最低分概念：{{ summary.weakest_concepts|join("、") }}</p>
 {% endif %}
-<p><a href="/interview">再来一次</a> · <a href="/today">回到今日</a></p>
+<p><a class="tb-btn tb-btn-ghost" href="/interview">再来一次</a> <a class="tb-btn tb-btn-ghost" href="/today">回到今日</a></p>
 {% endblock %}

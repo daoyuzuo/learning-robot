@@ -8,10 +8,11 @@
 </head>
 <body data-lesson-id="{% block lesson_id %}{% endblock %}">
   {% set path = request.url.path %}
+  {% from "_icons.html" import icon %}
   <a class="tb-skip-link" href="#tb-main">跳到主要内容</a>
   <header class="tb-top">
-    <a href="/" class="tb-brand">TestBridge</a>
-    <nav class="tb-nav" aria-label="主导航"><a href="/"{% if path == "/" or path.startswith("/lesson/") %} aria-current="page"{% endif %}>课程</a><a href="/today"{% if path.startswith("/today") %} aria-current="page"{% endif %}>今日</a><a href="/concepts"{% if path.startswith("/concepts") %} aria-current="page"{% endif %}>概念</a><a href="/review"{% if path.startswith("/review") %} aria-current="page"{% endif %}>复习</a><a href="/progress"{% if path.startswith("/progress") %} aria-current="page"{% endif %}>进度</a>{% if interview_available() %}<a href="/interview"{% if path.startswith("/interview") %} aria-current="page"{% endif %}>面试</a>{% endif %}<a href="/target"{% if path.startswith("/target") %} aria-current="page"{% endif %}>目标</a><a href="/applications"{% if path.startswith("/applications") %} aria-current="page"{% endif %}>求职</a></nav>
+    <a href="/" class="tb-brand" aria-label="TestBridge 首页">{{ icon("graduation-cap", 17) }}<span class="tb-brand-text">TestBridge</span></a>
+    <nav class="tb-nav" aria-label="主导航"><a href="/"{% if path == "/" or path.startswith("/lesson/") %} aria-current="page"{% endif %}>{{ icon("book-open", 14) }}课程</a><a href="/today"{% if path.startswith("/today") %} aria-current="page"{% endif %}>{{ icon("calendar-days", 14) }}今日</a><a href="/concepts"{% if path.startswith("/concepts") %} aria-current="page"{% endif %}>{{ icon("network", 14) }}概念</a><a href="/review"{% if path.startswith("/review") %} aria-current="page"{% endif %}>{{ icon("refresh-cw", 14) }}复习</a><a href="/progress"{% if path.startswith("/progress") %} aria-current="page"{% endif %}>{{ icon("trending-up", 14) }}进度</a>{% if interview_available() %}<a href="/interview"{% if path.startswith("/interview") %} aria-current="page"{% endif %}>{{ icon("mic", 14) }}面试</a>{% endif %}<a href="/target"{% if path.startswith("/target") %} aria-current="page"{% endif %}>{{ icon("target", 14) }}目标</a><a href="/applications"{% if path.startswith("/applications") %} aria-current="page"{% endif %}>{{ icon("briefcase", 14) }}求职</a></nav>
   </header>
   <main class="tb-main {% block main_class %}{% endblock %}" id="tb-main">{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}

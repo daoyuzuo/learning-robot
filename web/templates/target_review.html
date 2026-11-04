@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}审核目标 JD · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<nav class="tb-breadcrumb"><a href="/target">目标</a> › 审核</nav>
 <h1>审核目标 JD</h1>
 {% if error %}<p class="tb-target-error tb-callout" data-tone="error">{{ error }}</p>{% endif %}
 {% if suggestion and suggestion.note %}<p class="tb-target-error tb-callout" data-tone="error">{{ suggestion.note }}</p>{% endif %}
@@ -18,10 +20,11 @@
            value="{{ suggestion.target_role if suggestion else '' }}">
   </label>
 
-  <h2>概念权重</h2>
+  <div class="tb-section-title"><h2>概念权重</h2><span class="tb-meta">1.0 为默认，越高越重要</span></div>
   <div class="tb-table-wrap">
-  <table class="tb-target-weights">
-    <tr><th>概念</th><th>目标等级</th><th>当前权重</th><th>建议权重</th><th>JD 要求 / 理由</th></tr>
+  <table class="tb-target-weights tb-table-wide">
+    <thead><tr><th>概念</th><th>目标等级</th><th>当前权重</th><th>建议权重</th><th>JD 要求 / 理由</th></tr></thead>
+    <tbody>
     {% for row in rows %}
     <tr>
       <td>{{ row.title }}{% if row.rationale %}<br><span class="tb-meta">{{ row.rationale }}</span>{% endif %}</td>
@@ -31,9 +34,10 @@
         <input type="number" name="weight_{{ row.id }}" min="1" max="2" step="0.1"
                value="{{ row.suggested }}">
       </td>
-      <td>{{ row.requirements|join("；") }}</td>
+      <td class="tb-cell-wrap">{{ row.requirements|join("；") }}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
   </div>
 
@@ -42,7 +46,7 @@
   {% endif %}
 
   {% if unmapped %}
-  <h2>未映射要求</h2>
+  <div class="tb-section-title"><h2>未映射要求</h2></div>
   <ul>
     {% for item in unmapped %}
     <li>{{ item.text }}</li>
@@ -50,17 +54,21 @@
   </ul>
   {% endif %}
 
-  <button type="submit" class="tb-btn tb-btn-primary">确认并写入目标</button>
-  <a class="tb-btn tb-btn-ghost" href="/target">取消</a>
+  <div class="tb-form-actions">
+    <a class="tb-btn tb-btn-ghost" href="/target">取消</a>
+    <button type="submit" class="tb-btn tb-btn-primary">确认并写入目标</button>
+  </div>
 </form>
 
-<details>
+<details class="tb-card">
   <summary>JD 原文</summary>
   <pre>{{ source_text }}</pre>
 </details>
 
 <form method="post" action="/target/parse" class="tb-target-form tb-card">
   <textarea name="jd_text" hidden>{{ source_text }}</textarea>
-  <button type="submit" class="tb-btn">重新解析</button>
+  <div class="tb-form-actions">
+    <button type="submit" class="tb-btn">重新解析</button>
+  </div>
 </form>
 {% endblock %}

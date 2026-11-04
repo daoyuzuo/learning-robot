@@ -114,7 +114,8 @@ def test_review_lists_due_cards(tmp_path: Path) -> None:
     text = TestClient(app).get("/review").text
 
     assert "EX-SYNC-001" in text
-    assert "2020-01-01" in text
+    # Due dates render for humans in local short form, not as raw ISO strings.
+    assert "1月1日" in text
     assert 'href="/lesson/L-SYNC-001"' in text
 
 

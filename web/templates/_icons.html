@@ -1,0 +1,7 @@
+{#- Inline icon helper. Renders vendored Lucide geometry (see
+    src/testbridge/icons.py and web/static/LICENSES.md). No sprite, no <use>:
+    the paths are inlined so the offline single-file build works from file://
+    without any same-document reference. -#}
+{% macro icon(name, size=16, cls="") -%}
+{{ icon_svg(name, size, cls) | safe }}
+{%- endmacro %}

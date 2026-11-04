@@ -5,19 +5,22 @@ from __future__ import annotations
 import html
 from typing import Any
 
-NODE_WIDTH = 140
-NODE_HEIGHT = 44
-GAP_X = 20
+NODE_WIDTH = 152
+NODE_HEIGHT = 46
+GAP_X = 22
 GAP_Y = 46
 MARGIN = 12
-TITLE_LIMIT = 10
+TITLE_LIMIT = 14
 
-LEVEL_FILL = {
-    "L0": "#f3f4f6",
-    "L1": "#dbeafe",
-    "L2": "#bfdbfe",
-    "L3": "#93c5fd",
-    "L4": "#60a5fa",
+# Left-edge accent bar per mastery level. Drawn as a separate rect so the node
+# body stays neutral in both light and dark mode: colours come from CSS classes
+# (``tb-graph-node`` / ``tb-node-body``), never from attributes in the markup.
+LEVEL_BAR = {
+    "L0": "#d4d4d8",
+    "L1": "#c7d2fe",
+    "L2": "#a5b4fc",
+    "L3": "#818cf8",
+    "L4": "#6366f1",
 }
 
 
@@ -88,8 +91,7 @@ def prerequisite_svg(pack: Any, views: dict[str, Any] | None = None) -> str:
             edges.append(
                 f'<line class="tb-graph-edge" '
                 f'x1="{parent_x + NODE_WIDTH // 2}" y1="{parent_y + NODE_HEIGHT}" '
-                f'x2="{child_x + NODE_WIDTH // 2}" y2="{child_y}" '
-                f'stroke="#9ca3af" stroke-width="1.5"/>'
+                f'x2="{child_x + NODE_WIDTH // 2}" y2="{child_y}"/>'
             )
 
     nodes = []
@@ -99,15 +101,18 @@ def prerequisite_svg(pack: Any, views: dict[str, Any] | None = None) -> str:
         view = (views or {}).get(concept_id)
         mastery_level = getattr(view, "level", "L0")
         estimate = getattr(view, "estimate", 0.0)
-        fill = LEVEL_FILL.get(mastery_level, LEVEL_FILL["L0"])
+        bar = LEVEL_BAR.get(mastery_level, LEVEL_BAR["L0"])
         nodes.append(
-            f'<g data-concept="{html.escape(concept_id)}">'
-            f'<rect x="{x}" y="{y}" width="{NODE_WIDTH}" height="{NODE_HEIGHT}" '
-            f'rx="8" fill="{fill}" stroke="#6b7280" stroke-width="1"/>'
-            f'<text x="{x + 10}" y="{y + 18}" font-size="12" fill="#111827">'
+            f'<g class="tb-graph-node" data-concept="{html.escape(concept_id)}" '
+            f'data-level="{html.escape(mastery_level)}">'
+            f'<rect class="tb-node-body" x="{x}" y="{y}" width="{NODE_WIDTH}" '
+            f'height="{NODE_HEIGHT}" rx="10"/>'
+            f'<rect class="tb-node-bar" x="{x}" y="{y}" width="3" '
+            f'height="{NODE_HEIGHT}" rx="1.5" fill="{bar}"/>'
+            f'<text class="tb-graph-label" x="{x + 14}" y="{y + 19}">'
             f"{html.escape(_shorten(concept.title))}</text>"
-            f'<text x="{x + 10}" y="{y + 34}" font-size="11" fill="#4b5563">'
-            f"{html.escape(mastery_level)} · {estimate:.2f}</text>"
+            f'<text class="tb-graph-sub" x="{x + 14}" y="{y + 35}">'
+            f"{html.escape(f'{mastery_level} · {estimate:.2f}')}</text>"
             f"</g>"
         )
 

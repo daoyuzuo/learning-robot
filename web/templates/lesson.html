@@ -2,12 +2,19 @@
 {% block title %}{{ view.lesson.manifest.title }} · TestBridge{% endblock %}
 {% block lesson_id %}{{ view.lesson.manifest.id }}{% endblock %}
 {% block main_class %}tb-lesson-main{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
-<nav class="tb-breadcrumb">{{ view.module.title }}</nav>
+<nav class="tb-breadcrumb"><a href="/">课程</a> › {{ view.module.title }} › 第 {{ lesson_position.index }} 课 / 共 {{ lesson_position.total }} 课</nav>
 <h1>{{ view.lesson.manifest.title }}</h1>
-<p class="tb-meta">{{ view.lesson.manifest.minutes }} 分钟 · {{ view.lesson.manifest.target_level }}</p>
-<ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
+<p class="tb-meta">{{ icon("clock", 13) }} {{ view.lesson.manifest.minutes }} 分钟 · 目标 {{ view.lesson.manifest.target_level }}</p>
+
+<div class="tb-objectives-wrap">
+  <p class="tb-objectives-title">{{ icon("target", 15) }} 本课目标</p>
+  <ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
 <article class="tb-lesson">{{ view.body_html | safe }}</article>
+
 <section class="tb-tutor tb-card" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
   <h2>追问</h2>
   {% if tutor %}
@@ -28,7 +35,7 @@
     <label class="tb-tutor-web"><input type="checkbox" class="tb-tutor-web-toggle" checked> 联网搜索</label>
     {% endif %}
     <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
-    <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">提问</button>
+    <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">{{ icon("send", 14) }}提问</button>
     <p class="tb-tutor-error tb-callout" data-tone="error" hidden></p>
     <div class="tb-tutor-log">
       {% for message in tutor_history %}
@@ -48,13 +55,25 @@
     </div>
   {% endif %}
 </section>
+
 <aside class="tb-resources tb-card">
   <h2>资源</h2>
-  <ul>{% for item in view.resources %}<li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>{% endfor %}</ul>
+  <ul>
+  {% for item in view.resources %}
+    <li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>
+  {% endfor %}
+  </ul>
 </aside>
+
 <nav class="tb-pager">
-  {% if view.prev_lesson %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ view.prev_lesson.manifest.id }}">← {{ view.prev_lesson.manifest.title }}</a>{% endif %}
-  {% if view.next_lesson %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ view.next_lesson.manifest.id }}">{{ view.next_lesson.manifest.title }} →</a>{% endif %}
+  {% if view.prev_lesson %}<a href="/lesson/{{ view.prev_lesson.manifest.id }}">
+    <span class="tb-pager-label">← 上一课</span>
+    <span class="tb-pager-title">{{ view.prev_lesson.manifest.title }}</span>
+  </a>{% else %}<span></span>{% endif %}
+  {% if view.next_lesson %}<a class="tb-pager-next" href="/lesson/{{ view.next_lesson.manifest.id }}">
+    <span class="tb-pager-label">下一课 →</span>
+    <span class="tb-pager-title">{{ view.next_lesson.manifest.title }}</span>
+  </a>{% endif %}
 </nav>
 {% endblock %}
 {% block scripts %}

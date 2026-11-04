@@ -1,19 +1,51 @@
 {% extends "base.html" %}
 {% block title %}今日计划 · TestBridge{% endblock %}
+{% from "_icons.html" import icon %}
 {% block content %}
+<p class="tb-eyebrow">今日</p>
 <h1>今日计划</h1>
-<p>预算 {{ plan.budget_minutes }} 分钟，已排 {{ plan.total_minutes }} 分钟。</p>
+
+<div class="tb-stat-row">
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">时间预算</div>
+    <div class="tb-kpi-value">{{ plan.budget_minutes }}<small> 分钟</small></div>
+  </div>
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">已排</div>
+    <div class="tb-kpi-value">{{ plan.total_minutes }}<small> 分钟</small></div>
+  </div>
+  <div class="tb-kpi">
+    <div class="tb-kpi-label">待办</div>
+    <div class="tb-kpi-value">{{ plan.items|length }}<small> 项</small></div>
+  </div>
+</div>
+
 {% if plan.empty %}
-  <p class="tb-callout" data-tone="info">今天没有必须做的事。{% if plan.suggestion %}{{ plan.suggestion }}{% endif %}</p>
+<div class="tb-callout" data-tone="info">
+  <div class="tb-empty tb-empty-plain">
+    {{ icon("circle-check", 30) }}
+    <p>今天没有必须做的事。{% if plan.suggestion %}{{ plan.suggestion }}{% endif %}</p>
+    <a class="tb-btn tb-btn-primary" href="/concepts">看看最弱的概念</a>
+  </div>
+</div>
 {% else %}
+<div class="tb-card">
   <ol class="tb-plan">
   {% for item in plan.items %}
-    <li class="tb-card">
-      <strong class="tb-badge" data-status="{% if item.type == 'review' %}pending{% elif item.type == 'weak' %}weak{% else %}running{% endif %}">{{ item.type }}</strong> · {{ item.reason }} · {{ item.estimated_minutes }} 分钟
-      {% if item.lesson_id %}<a class="tb-btn tb-btn-ghost" href="/lesson/{{ item.lesson_id }}">打开课程</a>{% endif %}
-      {% if item.exercise_id %}<span class="tb-meta">{{ item.exercise_id }}</span>{% endif %}
+    <li class="tb-list-row">
+      <span class="tb-row-icon">{% if item.type == "review" %}{{ icon("refresh-cw", 16) }}{% elif item.type == "weak" %}{{ icon("target", 16) }}{% else %}{{ icon("book-open", 16) }}{% endif %}</span>
+      <div class="tb-row-main">
+        <span class="tb-row-title">
+          <span class="tb-badge" data-status="{{ item.type }}">{{ item.type | tb_label("plan_type") }}</span>
+          {{ lesson_titles.get(item.lesson_id) or item.exercise_id or item.concept_ids|join("、") }}
+        </span>
+        <span class="tb-row-sub">{{ item.reason }} · 预计 {{ item.estimated_minutes }} 分钟</span>
+      </div>
+      {% if item.lesson_id %}<a class="tb-btn tb-btn-primary" href="/lesson/{{ item.lesson_id }}">打开课程</a>{% endif %}
+      {% if item.exercise_id %}<a class="tb-btn" href="/review/session">去练习</a>{% endif %}
     </li>
   {% endfor %}
   </ol>
+</div>
 {% endif %}
 {% endblock %}
