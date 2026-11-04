@@ -16,6 +16,47 @@ from testbridge.contract.sanitize import sanitize_fragment
 _MOUNT_GAP = r"(?:\s|&nbsp;|&#160;|&#xa0;|&#xA0;)*"
 
 
+_TABLE_RE = re.compile(
+    r"<table\b[^>]*>.*?</table>", re.IGNORECASE | re.DOTALL
+)
+_WIDE_TABLE_COLUMNS = 5
+
+
+def _column_count(table_html: str) -> int:
+    """Widest row in the table, measured on the header if there is one."""
+    rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", table_html, re.IGNORECASE | re.DOTALL)
+    widest = 0
+    for row in rows:
+        cells = len(re.findall(r"<t[hd]\b", row, re.IGNORECASE))
+        widest = max(widest, cells)
+    return widest
+
+
+def _wrap_tables(body: str) -> str:
+    """Put every lesson table in the shared scroll container.
+
+    Lesson tables are authored without markup wrappers, but they can be wider
+    than the reading column. ``.tb-table-wrap`` gives them their own horizontal
+    scrollbar so the page itself never scrolls sideways, and it is the same
+    component the rest of the site uses. Tables with many columns also get the
+    existing ``tb-table-wide`` minimum width; otherwise the reading column
+    squeezes each term down to two or three characters per line.
+    """
+    def wrap(match: re.Match[str]) -> str:
+        table_html = match.group(0)
+        columns = _column_count(table_html)
+        if columns >= _WIDE_TABLE_COLUMNS:
+            table_html = re.sub(
+                r"^<table\b", '<table class="tb-table-wide"', table_html, count=1,
+                flags=re.IGNORECASE,
+            )
+        return f'<div class="tb-table-wrap">{table_html}</div>'
+
+    # Tables are never nested inside one another in a lesson, so a single
+    # non-greedy pass is enough and cannot double-wrap.
+    return _TABLE_RE.sub(wrap, body)
+
+
 @dataclass(frozen=True)
 class WidgetView:
     widget: Widget
@@ -143,7 +184,7 @@ def render_widget(widget: Widget, template_html: str) -> str:
 def render_lesson(pack: ContentPack, lesson_id: str) -> LessonView:
     lesson = pack.lesson(lesson_id)
     manifest = lesson.manifest
-    body = sanitize_fragment(lesson.body_html)
+    body = _wrap_tables(sanitize_fragment(lesson.body_html))
     exercises = [pack.exercise(item) for item in manifest.exercises]
     resources = [pack.resource(item) for item in manifest.resources]
     concepts = [pack.concept(item) for item in manifest.concepts]

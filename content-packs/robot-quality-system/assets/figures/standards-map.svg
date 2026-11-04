@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" width="860" height="400" role="img" aria-label="测试标准地图：ISO/IEC/IEEE 29119 各部分、ISTQB 术语体系与 Automotive SPICE 的分工与重叠">
+  <title>测试标准地图：29119、ISTQB 与 ASPICE 的分工</title>
+  <desc>29119 第 1–4 部分分别覆盖概念、过程、文档与技术；ISTQB 提供术语与人员认证；ASPICE 提供过程能力评估。三者覆盖的是流程、词汇与组织成熟度，都不直接证明产品符合性。</desc>
+  <rect x="16" y="16" width="828" height="368" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">三套标准各管什么，不管什么</text>
+
+  <g font-size="13" fill="#0f172a">
+    <rect x="40" y="70" width="250" height="240" rx="10" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="165" y="96" text-anchor="middle" font-weight="700">ISO/IEC/IEEE 29119</text>
+    <text x="165" y="116" text-anchor="middle" font-size="12" fill="#475569">测试「过程」与「技术」</text>
+    <text x="60" y="146">-1 概念与词汇</text>
+    <text x="60" y="170">-2 测试过程（组织/管理/动态）</text>
+    <text x="60" y="194">-3 测试文档</text>
+    <text x="60" y="218">-4 测试技术</text>
+    <text x="60" y="248" font-size="12" fill="#1e40af">写策略、准入准出、用例设计时对照</text>
+    <text x="60" y="272" font-size="12" fill="#1e40af">能回答：过程该有哪些活动与产物</text>
+    <text x="60" y="296" font-size="12" fill="#dc2626">不能回答：你的产品是否安全</text>
+
+    <rect x="310" y="70" width="230" height="240" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="425" y="96" text-anchor="middle" font-weight="700">ISTQB</text>
+    <text x="425" y="116" text-anchor="middle" font-size="12" fill="#475569">术语「定义」与人员「认证」</text>
+    <text x="330" y="146">术语表：defect / failure</text>
+    <text x="330" y="170">severity / priority</text>
+    <text x="330" y="194">验证与确认</text>
+    <text x="330" y="218">风险与测试级别</text>
+    <text x="330" y="248" font-size="12" fill="#166534">团队沟通统一用词时使用</text>
+    <text x="330" y="272" font-size="12" fill="#166534">能回答：这个词的准确定义</text>
+    <text x="330" y="296" font-size="12" fill="#dc2626">不能回答：过程是否被正确执行</text>
+
+    <rect x="560" y="70" width="260" height="240" rx="10" fill="#fef3c7" stroke="#d97706"/>
+    <text x="690" y="96" text-anchor="middle" font-weight="700">Automotive SPICE</text>
+    <text x="690" y="116" text-anchor="middle" font-size="12" fill="#475569">过程「能力」与「成熟度」</text>
+    <text x="580" y="146">过程参考模型</text>
+    <text x="580" y="170">能力等级 0–3</text>
+    <text x="580" y="194">评估与证据要求</text>
+    <text x="580" y="218">与 26262 的映射</text>
+    <text x="580" y="248" font-size="12" fill="#92400e">客户要求过程评估时使用</text>
+    <text x="580" y="272" font-size="12" fill="#92400e">能回答：过程有多成熟</text>
+    <text x="580" y="296" font-size="12" fill="#dc2626">不能回答：某个缺陷是否被覆盖</text>
+  </g>
+
+  <text x="36" y="352" font-size="12" fill="#475569">共同点：三者都描述「做什么、留下什么证据」，都不替代针对具体产品的测试设计与判定。</text>
+  <text x="36" y="372" font-size="12" fill="#475569">裁剪时逐条写：采用哪部分、裁掉哪部分、理由、谁批准。</text>
+</svg>

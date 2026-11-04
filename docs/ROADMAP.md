@@ -857,6 +857,58 @@ All checks passed
 
 ---
 
+## 2026-11-04 课程体系重排、讲评范围与呈现形式 — 已完成
+
+- **结构**：3 模块 21 课 → 4 模块 22 课（约 1,150 分钟、48 道练习）。
+  M01 体系基线（策略、风险、标准、功能安全、分层、门禁）→ M02 设计与验证
+  （方法、任务链、预言、SIL/HIL、实验、Flakiness）→ M03 缺陷、覆盖与回归 →
+  M04 行业标准、认证与综合。通用测试标准地图由第 15 课前移到第 3 课，
+  安全标准与功能安全紧随其后，解决“前 14 课引用标准却无基础”。
+- **新增课**：`L-002-004 SIL、HIL 与实时仿真验证`，新增概念 `sil-hil-validation`
+  与两条官方来源（[ASAM OpenSCENARIO XML 1.3.0](https://openscenario.asam.net/ASAM_OpenSCENARIO_XML/v1.3.0/)、
+  [ROS 2 Simulators 文档](https://docs.ros.org/en/humble/Tutorials/Advanced/Simulators/Simulation-Main.html)）。
+- **讲评范围**：`build_context` 增加 `exercise_ids`；讲评传 `[]`，提示词只含本次提交的
+  那道题，从根上消除“第一题讲评说第二题没做”。`PROMPT_VERSION` 升 `review/2`，
+  旧版本缓存自动重新生成，不需要手工清理历史数据。
+- **呈现形式**：课程实际引用 10 张图（标准地图、安全标准选取树、方法选择、验证阶梯、
+  证据链、回归三档、样本量、分层、任务链、PL/SIL/ASIL）；7 课新增可运行代码块
+  （样本量与 Wilson 区间、Flaky 统计、故障注入配置、急停延迟测算、回归筛选、
+  证据矩阵 CSV、仿真时钟配置）；22 课各至少 1 个提示块（`data-tone`，仅展示）。
+- **可验证性**：`tb lint` 新增 `lint.lesson_order`——先修概念必须在更早或本课出现，
+  让“重排是否真的更系统”从主观判断变成硬门禁。
+- **引擎改动（小）**：净化器白名单加 `data-tone`；渲染器把课程表格包进复用组件
+  `.tb-table-wrap`，列数 ≥5 时加 `tb-table-wide`；`tb/1` 契约版本未动。
+- **ID 策略**：有学习证据的 `L-001-001/002`、`EX-001-01/02`、`EX-002-01` 保持不动，
+  3 张复习卡与 2 个概念的掌握度无损；其余课与练习按全局课序重编号。
+- **作者流程**：`course-author` skill 增加“按新要求重排课程”五步（主线、先修核对、
+  ID 策略、两道门禁、文档同步），authoring-guide 增加“呈现形式按需选”一节。
+- 设计见 [课程体系重排、讲评范围与呈现形式](superpowers/specs/2026-11-04-course-restructure-and-review-scope-design.md)
+  （实施计划：[2026-11-04-course-restructure-and-review-scope.md](superpowers/plans/2026-11-04-course-restructure-and-review-scope.md)）
+
+**验证（实测，2026-11-04）：**
+
+```text
+$ .venv/Scripts/python.exe -m testbridge.cli validate content-packs/robot-quality-system
+0 error(s), 0 warning(s)
+
+$ .venv/Scripts/python.exe -m testbridge.cli depth content-packs/robot-quality-system
+22 lesson(s), 0 error(s)
+
+$ .venv/Scripts/python.exe -m testbridge.cli lint content-packs/robot-quality-system
+lint: 0 error(s), 0 warning(s)
+
+$ .venv/Scripts/python.exe -m pytest -q
+680 passed in 106.95s
+```
+
+- `tb build` 产出 22 课；抽检显示 11 张图路径可解析、无外链，代码块与提示块均保留。
+- 页面实测：`/`、`/today`、`/concepts`、`/review`、`/lesson/*` 全部 200；
+  新课程页截图确认图、表、代码块、提示块渲染正常。
+- 顺带修好既有的 `tests/test_css_tokens.py` 基线失败：`.tb-main` 的左右留白改成
+  流体 `clamp()` 后，测试仍按固定 token 解析；改为同时接受两种写法，检查的不变式不变。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。
@@ -900,5 +952,6 @@ P4.1 与 P4.2 已合并到 master；P4.3 已完成（分支 `p4.3-job-applicatio
 - Studio 大纲/参考资料与逐课意图：[2026-10-27-studio-intake-and-briefs-design.md](superpowers/specs/2026-10-27-studio-intake-and-briefs-design.md)
 - 课程级权威调研与自由课程量：[2026-10-31-course-authorities-and-flexible-volume-design.md](superpowers/specs/2026-10-31-course-authorities-and-flexible-volume-design.md)
 - Skill 驱动课程创作：[2026-11-01-skill-based-authoring-design.md](superpowers/specs/2026-11-01-skill-based-authoring-design.md)
+- 课程体系重排与讲评范围：[2026-11-04-course-restructure-and-review-scope-design.md](superpowers/specs/2026-11-04-course-restructure-and-review-scope-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

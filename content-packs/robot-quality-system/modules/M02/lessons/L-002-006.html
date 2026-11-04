@@ -101,6 +101,32 @@
       <li>记录失败时的完整日志、版本、环境和资源状态。</li>
     </ul>
     <p>不要用“重跑通过”作为关闭条件。重跑只能说明问题不稳定，不能说明问题不存在。</p>
+    <pre data-tb-block="code" data-language="python"><code># 从 CI 结果里统计每条用例近 30 天的失败率，并区分“偶发失败”与“真失败”
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+
+def flaky_report(runs, days=30, min_runs=10, threshold=0.10):
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    stats = defaultdict(lambda: {"pass": 0, "fail": 0})
+    for run in runs:
+        if run["finished_at"] < cutoff:
+            continue
+        stats[run["case_id"]]["fail" if run["failed"] else "pass"] += 1
+
+    report = []
+    for case_id, s in stats.items():
+        total = s["pass"] + s["fail"]
+        if total < min_runs or s["fail"] == 0:
+            continue
+        rate = s["fail"] / total
+        if rate >= threshold:
+            report.append((case_id, total, round(rate, 3)))
+    return sorted(report, key=lambda item: -item[2])
+
+# 输出示例：[('nav_turn_narrow', 20, 0.15)]
+# estop_recover 是 1/12 ≈ 8.3%，低于 10% 阈值被过滤——阈值先定，再谈要不要查。
+# 失败率只用来排序，定位仍要靠隔离复跑与日志对比。</code></pre>
+    <p>统计只能把“可疑用例”排到前面，不能直接给出原因。真正定位还是靠隔离复跑：单独跑、换环境跑、串行跑、固定种子跑，逐项比较差异。</p>
   </section>
   <section>
     <h2>五、基线是什么</h2>
@@ -226,6 +252,9 @@
       <li>如何向管理层解释 Flakiness 的成本？用重跑时间、误报率、漏检风险和发布延迟量化。</li>
     </ul>
   </section>
+  <aside class="tb-callout" data-tone="warn">
+    <p><strong>常见误区：</strong>重跑通过就可以关闭不稳定用例。重跑通过只说明这次没触发，没找到来源就关，下次还会失败。</p>
+  </aside>
   <section>
     <h2>小结</h2>
     <p>Flakiness 是质量信号系统的故障，不是测试的小毛病。先统计失败频率，再按时间、并发、环境、随机性、外部依赖和状态泄漏逐项排查；建立包含版本、场景、环境和样本量的基线；用箱线图、分位数和趋势图解释波动；对暂时无法修复的用例执行有期限的隔离。最重要的是，不要把“重跑通过”当成问题解决。</p>

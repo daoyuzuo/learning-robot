@@ -26,6 +26,43 @@ def test_render_replaces_placeholders() -> None:
     assert "{{offset}}" in view.body_html
 
 
+def test_render_wraps_lesson_tables_for_horizontal_scroll() -> None:
+    # minimal-pack has no table; ros2-qos does.
+    pack = load_pack(Path(__file__).parent / "fixtures" / "packs" / "ros2-qos")
+    view = render_lesson(pack, "L-QOS-002")
+    assert 'class="tb-table-wrap"' in view.body_html
+    assert view.body_html.count("<table") == view.body_html.count(
+        '<div class="tb-table-wrap">'
+    )
+
+
+def test_render_marks_wide_tables_only(tmp_path: Path) -> None:
+    pack_dir = _copy_pack(tmp_path)
+    lesson = pack_dir / "modules" / "M01" / "lessons" / "L-ONE.html"
+    narrow = "<table><tr><th>a</th><th>b</th></tr><tr><td>1</td><td>2</td></tr></table>"
+    wide = (
+        "<table><tr><th>a</th><th>b</th><th>c</th><th>d</th><th>e</th></tr>"
+        "<tr><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr></table>"
+    )
+    lesson.write_text(
+        lesson.read_text(encoding="utf-8").replace(
+            "</article>", narrow + wide + "</article>"
+        ),
+        encoding="utf-8",
+    )
+
+    body = render_lesson(load_pack(pack_dir), "L-ONE").body_html
+
+    assert body.count('class="tb-table-wrap"') == 2
+    assert body.count('class="tb-table-wide"') == 1
+
+
+def test_render_leaves_narrow_tables_unmarked() -> None:
+    pack = load_pack(Path(__file__).parent / "fixtures" / "packs" / "ros2-qos")
+    view = render_lesson(pack, "L-QOS-002")
+    assert 'class="tb-table-wide"' not in view.body_html
+
+
 def test_render_resolves_refs() -> None:
     pack = load_pack(FIXTURE)
     view = render_lesson(pack, "L-ONE")

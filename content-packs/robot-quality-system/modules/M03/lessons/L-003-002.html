@@ -120,6 +120,30 @@
       </tbody>
     </table>
     <p>每条假设都要有“如果成立，应该看到什么”。如果验证结果不符合预测，就要修正假设，而不是强行解释。</p>
+    <pre data-tb-block="code" data-language="python"><code># 假设驱动的最小工具：把日志切成事件，量出急停→制动指令的延迟分布
+import statistics
+
+def estop_latency_ms(events, clock_skew_ms=0):
+    """events: [(t_ms, name)]，按时间升序；返回每次急停到首个制动指令的延迟。"""
+    latencies, pending = [], None
+    for t, name in events:
+        if name == "estop_asserted":
+            pending = t
+        elif name == "brake_command" and pending is not None:
+            latencies.append(t - pending - clock_skew_ms)
+            pending = None
+    return latencies
+
+samples = estop_latency_ms([
+    (1000, "estop_asserted"), (1090, "brake_command"),
+    (3000, "estop_asserted"), (3082, "brake_command"),
+    (5200, "estop_asserted"), (5286, "brake_command"),
+])
+print(len(samples), statistics.mean(samples), max(samples))  # 3 86 90
+
+# 预测“状态机固定过滤 80 ms”时，延迟应集中在 80±5 ms；
+# 若出现 200 ms 的离群值，说明还有第二个原因，不能只修状态机。</code></pre>
+    <p>这段脚本只有十几行，但它把“我觉得是状态机”变成了可证伪的预测。假设驱动分析的产出不是结论，而是“下一次该看哪条日志”。</p>
   </section>
   <section>
     <h2>七、纠正与预防</h2>
@@ -191,6 +215,9 @@
     <p>会议结束后还要做横向排查：同一个状态机、同一类传感器、同一个通信模块是否也存在相同逻辑。只修一个现场问题，不做横向排查，等于把同类风险留在其他产品线里。</p>
     <p>根因分析的输出也要进入缺陷单、回归集和设计评审清单。否则分析结论只停留在复盘文档里，下一版仍然会用同样的架构犯同样的错误。根因分析不是一次性的会议，而是一条从现象到假设、证据、措施、验证的闭环记录。</p>
   </section>
+  <aside class="tb-callout" data-tone="warn">
+    <p><strong>常见误区：</strong>更换制动器让问题暂时消失，就等于找到根因。没有假设验证与预防措施，同一个缺陷会换个部件再来一次。</p>
+  </aside>
   <section>
     <h2>小结</h2>
     <p>根因分析的目标不是找到一个听起来合理的原因，而是找到一个可改变、可验证的系统原因，并用证据证明它。5Why 快但容易线性，鱼骨图广但需要验证，8D 适合跨团队闭环，FTA 适合组合失效。无论用哪种方法，都要把原因写成假设，用预测和证据来确认，再用纠正和预防措施把问题关掉。</p>

@@ -41,6 +41,27 @@ description: Use when creating or revising a TestBridge course pack from a topic
 8. **不要做**：不要修改 `src/testbridge/` 的引擎/契约代码来迁就内容；不要写 `draft`/Studio
    字段；不要把答案写进课程 HTML；不要虚构资源 URL；不要把未验证的第三方内容当官方来源。
 
+## 按新要求重排课程
+
+用户说“课程不够系统 / 顺序不对 / 想按某个主线重排”时，按这五步做。
+
+1. **先写下主线。** 一句话说清这次重排要解决的问题，以及“依据/标准”放在前段还是后段。
+   写不出这句话，就不要动文件——重排会变成随机洗牌。
+2. **列新模块与课序，再用先修图核对。** 对每课，它依赖的每个概念必须在本课或更早出现。
+   违反时 `tb lint` 会报 `lint.lesson_order`，不用人工逐条比。
+3. **定 ID 策略。**
+   - 有学习证据的 concept / exercise / lesson ID **能不动就不动**。先查
+     `data/testbridge.db` 的 `evidence`、`review_state`、`mastery_state` 三张表。
+   - 练习 ID 用 `EX-<全局课序 3 位>-<序号>`，全局唯一。
+   - **重排编号必须两步走**：先全部改到临时前缀，再统一落到最终值。一步到位会
+     互相覆盖——曾出现 `L-003-001 → L-001-003` 把待迁移的旧 `L-001-003` 冲掉。
+   - 同理，批量替换 ID 要用**单次映射**（一次扫描、回调查表），不要链式
+     `str.replace`，否则 `EX-015-01 → EX-003-01` 会被第二次替换再变成别的值。
+4. **结构改完依次跑** `tb validate` → `tb depth` → `tb lint`。`lint` 不过通常说明
+   课序与先修不自洽，而不是文字问题。
+5. **同步文档**：`docs/course-briefs/<id>/LESSON-BRIEFS.md` 的课序与所有 ID 引用、
+   `MISSION.md` 的课数/分钟数。交付说明里写清哪些 ID 变了、对学习记录有什么影响。
+
 ## 必须遵守的硬契约
 
 完整细节见 `references/content-contract.md`。最低要求：

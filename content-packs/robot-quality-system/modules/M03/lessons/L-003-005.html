@@ -104,6 +104,27 @@
       <li><strong>基于追溯：</strong>需求-用例矩阵中受影响的需求对应用例。</li>
     </ul>
     <p>实际项目通常组合使用。选择结果要写成可检查的清单：每条用例为什么进回归、对应哪个变更或风险、谁负责。没有理由的用例会越积越多，最后又变成全量回归。</p>
+    <figure>
+      <img src="../../../assets/figures/release-scope.svg" alt="从变更与影响分析推出必测、抽样与不测三档，并按档位分配回归时间预算">
+      <figcaption>图 1：三档划分的意义在于时间不够时知道先砍哪一档；先砍必测等于把高风险项放走。</figcaption>
+    </figure>
+    <pre data-tb-block="code" data-language="python"><code># 按变更影响面筛回归集：把“必测”与“抽样”分开打标，再去重
+import yaml
+
+def select(suite, changed_modules, high_risk):
+    picked = {"core": [], "sample": []}
+    for case in suite:
+        touched = set(case["modules"]) & set(changed_modules)
+        if touched or set(case["modules"]) & set(high_risk):
+            picked["core"].append(case["id"])
+        elif case.get("indirect"):
+            picked["sample"].append(case["id"])
+    return picked
+
+suite = yaml.safe_load(open("regression_suite.yaml"))["cases"]
+picked = select(suite, changed_modules=["planner"], high_risk=["estop", "brake"])
+print(len(picked["core"]), len(picked["sample"]))   # 核心 42 / 抽样 18</code></pre>
+    <p>这段脚本只做筛选，不做判定：它把“为什么进回归”固化成可复查的规则，评审时能逐条追问，而不是靠某个人记得。</p>
   </section>
   <section>
     <h2>五、准入、准出与回滚</h2>
@@ -211,6 +232,9 @@
     <p>回归基线要跟随版本更新，但更新必须有依据：需求变更、缺陷修复、环境变化、场景库更新。每次更新记录变更原因、影响范围和确认人。基线漂移会让“通过”失去意义：如果每次失败都改基线，回归就变成了“让测试适应现状”。</p>
     <p>还要定期清理不再对应任何需求或风险的用例。回归集只增不减，执行时间会越来越长，最后又退化成“跑不完的全量回归”。清理不是删除覆盖，而是把低价值、重复的用例合并或替换成更有效的场景。回归计划也不是一次性的文档，每次发布后要复盘：哪些用例真的抓到了问题，哪些只是陪跑，下一次怎么调整。复盘结论要进入下一版回归计划，否则回归集只会越来越长，优先级越来越模糊。这些数据是裁剪回归集的依据；没有数据支撑的裁剪，容易误删高风险覆盖。裁剪也要留记录，说明删了哪些用例、为什么，避免下一次又加回来；裁剪记录要归档。</p>
   </section>
+  <aside class="tb-callout" data-tone="error">
+    <p><strong>时间不够时的取舍顺序：</strong>先砍抽样、再谈接受不测项。反过来先砍必测，等于把高风险项悄悄放走。</p>
+  </aside>
   <section>
     <h2>小结</h2>
     <p>回归不是“再跑一遍”，而是“用影响分析和风险选择最值得跑的部分”。分层让冒烟、核心、全量和兼容性各司其职；门禁让发布决策基于证据；回滚方案保证出事时能退。把这三件事做好，比盲目扩大回归集更能提高发布质量。</p>

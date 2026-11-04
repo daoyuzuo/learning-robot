@@ -109,6 +109,25 @@
       </tbody>
     </table>
     <p>好的注入策略是分层组合：先用仿真和接口层快速覆盖大量组合，再把高风险场景放到硬件和现场层验证。不要把所有注入都推到实机，也不要用仿真结果替代现场安全验证。</p>
+    <pre data-tb-block="code" data-language="yaml"><code># 一个注入实验的配置：注入点、方式、持续时间、观测与恢复判据都要写死
+experiment: obstacle_jump_on_turn
+inject_at: perception/obstacles        # 接口层，不动感知内部
+inject:
+  kind: trajectory_jump                # 位置突变，模拟遮挡后目标重捕获
+  magnitude_m: 2.0
+  duration_ms: 300
+  start_condition: {topic: "cmd_vel", lateral_accel_gt: 0.0}
+observe:
+  - {name: stop_distance_m, sensor: chassis/odom}
+  - {name: max_decel_mps2, sensor: chassis/imu}
+  - {name: recovery_time_ms, sensor: planner/status}
+expect_degraded: stop_and_wait         # 允许停车，不允许绕行
+pass_criteria:
+  stop_distance_m: "<= 0.5"
+  recovery_time_ms: "<= 3000"
+  no_new_alarm: true
+replay: {bag: field_20261012, seed: 20261104}</code></pre>
+    <p>把这段配置和 rosbag 一起归档，实验才可复现。只写“注入 300 ms 延迟”而不写种子与回放，第二次跑出来的就不是同一个实验。</p>
   </section>
   <section>
     <h2>五、一次注入实验应该包含什么</h2>
@@ -212,6 +231,9 @@
       <li>新发现的失效模式是否回流到场景库和回归集？</li>
     </ul>
   </section>
+  <aside class="tb-callout" data-tone="warn">
+    <p><strong>常见误区：</strong>每个模块单测通过，整机任务链就没问题。接口不变不代表时序与降级行为不变，链路级验证不能省。</p>
+  </aside>
   <section>
     <h2>小结</h2>
     <p>任务链测试的核心不是把每个模块测一遍，而是把节点、接口、时序和失效传播放在一条链上看。长尾场景要来自现场、日志和领域知识，故障注入要有假设、观测、预期降级和恢复判据。真正安全的系统不是从不失效，而是失效时能按设计降级，并且能恢复。</p>

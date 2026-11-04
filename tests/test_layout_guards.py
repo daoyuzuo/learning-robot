@@ -42,11 +42,14 @@ def test_fixed_grids_collapse_on_narrow_screens() -> None:
 
 
 def test_lesson_tables_scroll_inside_the_body() -> None:
-    # A lesson table wider than a phone must not widen the page.
-    assert re.search(
-        r"\.tb-lesson table \{[^}]*overflow-x:\s*auto", CSS
-    )
+    # A lesson table wider than a phone must not widen the page. The renderer
+    # wraps every lesson table in `.tb-table-wrap`, and wide ones also get
+    # `.tb-table-wide` so their columns keep a readable floor width.
+    assert re.search(r"\.tb-lesson table \{[^}]*overflow-x:\s*auto", CSS)
     assert re.search(r"\.tb-lesson table \{[^}]*max-width:\s*100%", CSS)
+    assert re.search(
+        r"\.tb-table-wrap table\.tb-table-wide \{[^}]*min-width:\s*\d+px", CSS
+    )
 
 
 def test_table_wrapper_scrolls_and_page_does_not() -> None:

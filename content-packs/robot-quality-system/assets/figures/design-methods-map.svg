@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" width="860" height="400" role="img" aria-label="测试方法选择地图：按问题的形状选择等价类、边界值、判定表、状态迁移、场景法与组合测试">
+  <title>按问题的形状选测试设计方法</title>
+  <desc>输入空间大时用等价类和边界值；规则组合多时用判定表；有状态与事件顺序时用状态迁移；跨多个模块的端到端行为用场景法；参数多但交互弱时用组合或配对测试压缩。</desc>
+  <rect x="16" y="16" width="828" height="368" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">问题长什么样，方法就选哪个</text>
+
+  <g font-size="13" fill="#0f172a">
+    <rect x="40" y="72" width="230" height="74" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="155" y="94" text-anchor="middle" font-weight="700">输入范围连续或很大</text>
+    <text x="155" y="116" text-anchor="middle" font-size="12" fill="#475569">参数有上下限、阈值、档位</text>
+    <text x="155" y="136" text-anchor="middle" font-size="12" fill="#1e40af">→ 等价类 + 边界值</text>
+
+    <rect x="300" y="72" width="230" height="74" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="415" y="94" text-anchor="middle" font-weight="700">多个条件共同决定结果</text>
+    <text x="415" y="116" text-anchor="middle" font-size="12" fill="#475569">条件之间有与或非的组合</text>
+    <text x="415" y="136" text-anchor="middle" font-size="12" fill="#166534">→ 判定表</text>
+
+    <rect x="560" y="72" width="230" height="74" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="675" y="94" text-anchor="middle" font-weight="700">行为随状态变化</text>
+    <text x="675" y="116" text-anchor="middle" font-size="12" fill="#475569">事件顺序影响最终结果</text>
+    <text x="675" y="136" text-anchor="middle" font-size="12" fill="#92400e">→ 状态迁移</text>
+
+    <rect x="40" y="170" width="230" height="74" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+    <text x="155" y="192" text-anchor="middle" font-weight="700">跨模块的端到端行为</text>
+    <text x="155" y="214" text-anchor="middle" font-size="12" fill="#475569">任务链、用户操作路径</text>
+    <text x="155" y="234" text-anchor="middle" font-size="12" fill="#5b21b6">→ 场景法</text>
+
+    <rect x="300" y="170" width="230" height="74" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="415" y="192" text-anchor="middle" font-weight="700">参数多、交互弱</text>
+    <text x="415" y="214" text-anchor="middle" font-size="12" fill="#475569">全组合爆炸到上万条</text>
+    <text x="415" y="234" text-anchor="middle" font-size="12" fill="#991b1b">→ 组合测试 / 配对</text>
+
+    <rect x="560" y="170" width="230" height="74" rx="9" fill="#f1f5f9" stroke="#64748b"/>
+    <text x="675" y="192" text-anchor="middle" font-weight="700">不知道何时停</text>
+    <text x="675" y="214" text-anchor="middle" font-size="12" fill="#475569">方法用完了还在加用例</text>
+    <text x="675" y="234" text-anchor="middle" font-size="12" fill="#334155">→ 先定停止条件</text>
+  </g>
+
+  <rect x="40" y="272" width="750" height="86" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <g font-size="12" fill="#475569">
+    <text x="58" y="296" font-weight="700" fill="#0f172a">选择之后还要回答的两个问题</text>
+    <text x="58" y="320">一、这个方法的覆盖准则是什么？例如状态迁移至少要覆盖全部状态、全部合法迁移、关键非法迁移。</text>
+    <text x="58" y="342">二、它和别的方法的覆盖差异在哪？同一个需求用两种方法，写清各自多覆盖了哪类风险。</text>
+  </g>
+</svg>

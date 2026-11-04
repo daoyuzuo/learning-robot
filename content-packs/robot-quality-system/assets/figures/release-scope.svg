@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 380" width="860" height="380" role="img" aria-label="回归范围选择：从变更与影响分析推出必测、抽样与不测三档，并给出时间预算">
+  <title>回归范围的三档划分</title>
+  <desc>变更经影响分析后分成必测、抽样与不测三档。必测覆盖高风险与直接改动面，抽样覆盖间接依赖，不测项必须写清理由与接受人。时间预算按档位分配，而不是平均摊。</desc>
+  <rect x="16" y="16" width="828" height="348" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">回归不是全量，也不是拍脑袋</text>
+
+  <rect x="36" y="70" width="200" height="60" rx="9" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="136" y="94" text-anchor="middle" font-size="13" font-weight="700">变更</text>
+  <text x="136" y="114" text-anchor="middle" font-size="12" fill="#475569">代码 diff + 变更单</text>
+
+  <rect x="266" y="70" width="200" height="60" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="366" y="94" text-anchor="middle" font-size="13" font-weight="700">影响分析</text>
+  <text x="366" y="114" text-anchor="middle" font-size="12" fill="#475569">依赖关系 + 历史缺陷</text>
+
+  <rect x="496" y="70" width="200" height="60" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="596" y="94" text-anchor="middle" font-size="13" font-weight="700">回归分层</text>
+  <text x="596" y="114" text-anchor="middle" font-size="12" fill="#475569">核心 / 抽样 / 不测</text>
+
+  <rect x="726" y="70" width="102" height="60" rx="9" fill="#fef3c7" stroke="#d97706"/>
+  <text x="777" y="94" text-anchor="middle" font-size="13" font-weight="700">时间预算</text>
+  <text x="777" y="114" text-anchor="middle" font-size="12" fill="#475569">按档位分配</text>
+
+  <g stroke="#64748b" stroke-width="2" fill="none">
+    <line x1="236" y1="100" x2="266" y2="100"/>
+    <line x1="466" y1="100" x2="496" y2="100"/>
+    <line x1="696" y1="100" x2="726" y2="100"/>
+  </g>
+
+  <g font-size="12" fill="#0f172a">
+    <rect x="36" y="162" width="252" height="150" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="56" y="186" font-size="13" font-weight="700">必测（核心）</text>
+    <text x="56" y="210" fill="#475569">高风险项、直接改动面、</text>
+    <text x="56" y="230" fill="#475569">历史上同类改动坏过的地方</text>
+    <text x="56" y="256" fill="#991b1b">判据：每项都要有明确证据</text>
+    <text x="56" y="278" fill="#991b1b">典型占比：20%–30% 用例</text>
+    <text x="56" y="300" fill="#991b1b">时间：留给它的应超过一半</text>
+
+    <rect x="306" y="162" width="252" height="150" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="326" y="186" font-size="13" font-weight="700">抽样</text>
+    <text x="326" y="210" fill="#475569">间接依赖、低频路径、</text>
+    <text x="326" y="230" fill="#475569">稳定模块的回归抽检</text>
+    <text x="326" y="256" fill="#92400e">判据：抽样规则可解释</text>
+    <text x="326" y="278" fill="#92400e">典型占比：10%–20% 用例</text>
+    <text x="326" y="300" fill="#92400e">时间：够跑一轮即可</text>
+
+    <rect x="576" y="162" width="252" height="150" rx="9" fill="#f1f5f9" stroke="#64748b"/>
+    <text x="596" y="186" font-size="13" font-weight="700">不测</text>
+    <text x="596" y="210" fill="#475569">与本变更无关、风险已接受、</text>
+    <text x="596" y="230" fill="#475569">或由供应商 SLA 覆盖的部分</text>
+    <text x="596" y="256" fill="#334155">判据：写理由、风险、接受人、</text>
+    <text x="596" y="278" fill="#334155">触发条件、复核日期</text>
+    <text x="596" y="300" fill="#334155">时间：0，但要留记录</text>
+  </g>
+
+  <text x="36" y="344" font-size="12" fill="#475569">常见故障：时间不够时先砍必测、留抽样，恰好把高风险项放走。正确顺序是砍抽样、再谈接受不测项。</text>
+</svg>

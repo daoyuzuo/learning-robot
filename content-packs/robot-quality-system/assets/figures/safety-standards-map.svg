@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" width="880" height="420" role="img" aria-label="机器人安全标准选取树：从 ISO 12100 风险评估出发，按机器人类型分流到工业、协作、移动与服务机器人标准">
+  <title>机器人安全标准选取树</title>
+  <desc>所有机器人安全标准都以 ISO 12100 的风险评估与风险降低为共同基础。按机器人类型分流：工业机器人用 ISO 10218-1/-2，协作应用加 ISO/TS 15066，无人驾驶工业车辆用 ISO 3691-4，个人护理与服务机器人用 ISO 13482。</desc>
+  <rect x="16" y="16" width="848" height="388" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">从风险评估出发，按机器人类型分流</text>
+
+  <g font-size="13" fill="#0f172a">
+    <rect x="330" y="68" width="220" height="54" rx="9" fill="#e0e7ff" stroke="#4f46e5"/>
+    <text x="440" y="90" text-anchor="middle" font-weight="700">ISO 12100 风险评估</text>
+    <text x="440" y="110" text-anchor="middle" font-size="12" fill="#475569">识别危险 → 估计风险 → 降低风险</text>
+
+    <rect x="40" y="176" width="180" height="58" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="130" y="198" text-anchor="middle" font-weight="700">工业机器人</text>
+    <text x="130" y="218" text-anchor="middle" font-size="12" fill="#475569">ISO 10218-1 / -2</text>
+
+    <rect x="248" y="176" width="180" height="58" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="338" y="198" text-anchor="middle" font-weight="700">协作应用</text>
+    <text x="338" y="218" text-anchor="middle" font-size="12" fill="#475569">+ ISO/TS 15066</text>
+
+    <rect x="456" y="176" width="180" height="58" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="546" y="198" text-anchor="middle" font-weight="700">无人驾驶工业车辆</text>
+    <text x="546" y="218" text-anchor="middle" font-size="12" fill="#475569">ISO 3691-4</text>
+
+    <rect x="664" y="176" width="180" height="58" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="754" y="198" text-anchor="middle" font-weight="700">个人护理 / 服务</text>
+    <text x="754" y="218" text-anchor="middle" font-size="12" fill="#475569">ISO 13482</text>
+  </g>
+
+  <g stroke="#64748b" stroke-width="2" fill="none">
+    <polyline points="440,122 440,148"/>
+    <line x1="130" y1="148" x2="754" y2="148"/>
+    <line x1="130" y1="148" x2="130" y2="176"/>
+    <line x1="338" y1="148" x2="338" y2="176"/>
+    <line x1="546" y1="148" x2="546" y2="176"/>
+    <line x1="754" y1="148" x2="754" y2="176"/>
+  </g>
+
+  <g font-size="12" fill="#475569">
+    <rect x="40" y="262" width="804" height="112" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="58" y="286" font-weight="700" fill="#0f172a">组合要点</text>
+    <text x="58" y="310">本体证书 ≠ 工作站合规：10218-1 管本体，10218-2 管应用与集成，两者证据分开准备。</text>
+    <text x="58" y="332">协作机器人不加围栏也要做风险评估；15066 约束的是接触力与速度，不是「免评估」。</text>
+    <text x="58" y="354">移动机器人常与工业机器人同场：AGV 用 3691-4，上料机械臂仍走 10218，证据矩阵要分行写。</text>
+  </g>
+  <text x="58" y="396" font-size="12" fill="#475569">北美另有 ANSI/A3 R15.06 采纳 ISO 10218，出口项目需逐条对照版本差异。</text>
+</svg>

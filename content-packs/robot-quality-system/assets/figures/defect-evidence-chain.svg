@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 360" width="860" height="360" role="img" aria-label="缺陷证据链：从现象、复现条件、原始日志、最小化用例到可下钻结论">
+  <title>缺陷证据链的五个环节</title>
+  <desc>一条可独立复现的缺陷证据链包含现象、复现条件、原始日志、最小化用例与结论。任何一环缺失，别人都无法在不询问作者的情况下重现问题。</desc>
+  <rect x="16" y="16" width="828" height="328" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">证据链：从「偶发」到「可独立复现」</text>
+
+  <g font-size="12" fill="#0f172a">
+    <rect x="34" y="76" width="150" height="92" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="109" y="100" text-anchor="middle" font-size="13" font-weight="700">1 现象</text>
+    <text x="109" y="122" text-anchor="middle" fill="#475569">看到了什么</text>
+    <text x="109" y="140" text-anchor="middle" fill="#475569">时间、地点、车型</text>
+    <text x="109" y="158" text-anchor="middle" fill="#475569">预期 vs 实际</text>
+
+    <rect x="202" y="76" width="150" height="92" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="277" y="100" text-anchor="middle" font-size="13" font-weight="700">2 复现条件</text>
+    <text x="277" y="122" text-anchor="middle" fill="#475569">地图、版本、配置</text>
+    <text x="277" y="140" text-anchor="middle" fill="#475569">场景参数、随机种子</text>
+    <text x="277" y="158" text-anchor="middle" fill="#475569">复现率 N/M</text>
+
+    <rect x="370" y="76" width="150" height="92" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="445" y="100" text-anchor="middle" font-size="13" font-weight="700">3 原始日志</text>
+    <text x="445" y="122" text-anchor="middle" fill="#475569">各节点时间戳</text>
+    <text x="445" y="140" text-anchor="middle" fill="#475569">传感器数据包</text>
+    <text x="445" y="158" text-anchor="middle" fill="#475569">总线与调度记录</text>
+
+    <rect x="538" y="76" width="150" height="92" rx="9" fill="#ede9fe" stroke="#7c3aed"/>
+    <text x="613" y="100" text-anchor="middle" font-size="13" font-weight="700">4 最小化用例</text>
+    <text x="613" y="122" text-anchor="middle" fill="#475569">剥掉无关变量</text>
+    <text x="613" y="140" text-anchor="middle" fill="#475569">10 分钟内可跑完</text>
+    <text x="613" y="158" text-anchor="middle" fill="#475569">失败不依赖人工</text>
+
+    <rect x="706" y="76" width="122" height="92" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="767" y="100" text-anchor="middle" font-size="13" font-weight="700">5 结论</text>
+    <text x="767" y="122" text-anchor="middle" fill="#475569">类别与严重度</text>
+    <text x="767" y="140" text-anchor="middle" fill="#475569">影响范围</text>
+    <text x="767" y="158" text-anchor="middle" fill="#475569">下一步假设</text>
+  </g>
+
+  <g stroke="#64748b" stroke-width="2" fill="none">
+    <line x1="184" y1="122" x2="202" y2="122"/>
+    <line x1="352" y1="122" x2="370" y2="122"/>
+    <line x1="520" y1="122" x2="538" y2="122"/>
+    <line x1="688" y1="122" x2="706" y2="122"/>
+  </g>
+
+  <rect x="34" y="196" width="794" height="120" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <g font-size="12" fill="#475569">
+    <text x="52" y="220" font-weight="700" fill="#0f172a">哪一环最常缺</text>
+    <text x="52" y="244">第 2 环：只写「偶发」不写复现率与场景参数，导致缺陷无法排序，也无法判断是不是同一个。</text>
+    <text x="52" y="266">第 4 环：直接贴整段现场日志，别人跑不动，只能靠原作者的机器环境才能重现。</text>
+    <text x="52" y="288">第 5 环：结论只写「已修复」，不写类别与影响范围，逃逸分析时无法回溯到需求或用例缺口。</text>
+  </g>
+  <text x="36" y="336" font-size="12" fill="#475569">判断标准：换一个人，不问你任何问题，能否在半天内把这条缺陷复现出来。</text>
+</svg>

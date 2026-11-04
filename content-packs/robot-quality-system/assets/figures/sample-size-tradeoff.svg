@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 380" width="860" height="380" role="img" aria-label="样本量与置信区间的关系：置信水平、允许误差与比例 p 如何影响所需样本量">
+  <title>样本量由三个因素决定</title>
+  <desc>比例指标的样本量由置信水平 z、允许误差 e 和估计比例 p 共同决定。p 越接近 0.5，样本量越大；误差收紧一倍，样本量约放大四倍。分层后每层都要满足最小样本。</desc>
+  <rect x="16" y="16" width="828" height="348" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="36" y="48" font-size="17" font-weight="700" fill="#0f172a">n 不是拍出来的：三个输入决定一个输出</text>
+
+  <g font-size="13" fill="#0f172a">
+    <rect x="40" y="72" width="220" height="96" rx="9" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="150" y="96" text-anchor="middle" font-weight="700">置信水平 z</text>
+    <text x="150" y="120" text-anchor="middle" font-size="12" fill="#475569">90% → 1.645</text>
+    <text x="150" y="140" text-anchor="middle" font-size="12" fill="#475569">95% → 1.96</text>
+    <text x="150" y="160" text-anchor="middle" font-size="12" fill="#475569">99% → 2.576</text>
+
+    <rect x="320" y="72" width="220" height="96" rx="9" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="430" y="96" text-anchor="middle" font-weight="700">允许误差 e</text>
+    <text x="430" y="120" text-anchor="middle" font-size="12" fill="#475569">e = ±2% → n ≈ 188</text>
+    <text x="430" y="140" text-anchor="middle" font-size="12" fill="#475569">e = ±1% → n ≈ 753</text>
+    <text x="430" y="160" text-anchor="middle" font-size="12" fill="#475569">收紧一倍 ≈ 放大四倍</text>
+
+    <rect x="600" y="72" width="220" height="96" rx="9" fill="#fef3c7" stroke="#d97706"/>
+    <text x="710" y="96" text-anchor="middle" font-weight="700">估计比例 p</text>
+    <text x="710" y="120" text-anchor="middle" font-size="12" fill="#475569">p = 0.98 → p(1-p) = 0.0196</text>
+    <text x="710" y="140" text-anchor="middle" font-size="12" fill="#475569">p = 0.50 → p(1-p) = 0.25</text>
+    <text x="710" y="160" text-anchor="middle" font-size="12" fill="#475569">不确定时用最坏 0.5</text>
+  </g>
+
+  <rect x="40" y="188" width="780" height="90" rx="9" fill="#ffffff" stroke="#cbd5e1"/>
+  <g font-size="12" fill="#475569">
+    <text x="58" y="212" font-weight="700" fill="#0f172a">公式与一次手算</text>
+    <text x="58" y="236" fill="#0f172a">n ≈ z² × p × (1 − p) / e²</text>
+    <text x="58" y="258">95% 置信、p = 0.98、e = ±1%：1.96² × 0.98 × 0.02 ÷ 0.0001 ≈ 753 次</text>
+  </g>
+
+  <rect x="40" y="292" width="780" height="52" rx="9" fill="#fee2e2" stroke="#dc2626"/>
+  <g font-size="12" fill="#0f172a">
+    <text x="58" y="314" font-weight="700">最容易犯的错：拿总样本量除以分层数</text>
+    <text x="58" y="334" fill="#991b1b">9 层不是每层 84 次；p 或方差不同的层要按各自最坏情况算，否则合并结论的置信度不成立。</text>
+  </g>
+</svg>
