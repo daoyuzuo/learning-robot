@@ -17,6 +17,7 @@ from testbridge.tutor.prompts import SYSTEM_PROMPT, render_user_prompt
 from testbridge.tutor.store import TutorMessage, TutorStore
 
 MAX_QUESTION_CHARS = 500
+MAX_SELECTION_CHARS = 400
 HISTORY_MESSAGES = 8
 WEB_SEARCH_COUNT = 5
 WEB_QUERY_CHARS = 300
@@ -102,7 +103,13 @@ class TutorService:
         return [hit for _, _, hit in ranked[:WEB_SEARCH_COUNT]]
 
     def ask(
-        self, lesson_id: str, anchor: str, question: str, *, use_web: bool = True
+        self,
+        lesson_id: str,
+        anchor: str,
+        question: str,
+        *,
+        use_web: bool = True,
+        selection: str = "",
     ) -> TutorReply:
         if lesson_id not in self.pack.lessons:
             raise LessonNotFoundError(lesson_id)
@@ -110,6 +117,11 @@ class TutorService:
         text = question.strip()
         if not text or len(text) > MAX_QUESTION_CHARS:
             raise InvalidQuestionError("question must be 1-500 characters")
+
+        # A selection is whatever the learner happened to highlight, so it is
+        # trimmed instead of rejected: refusing to answer because they dragged
+        # too far would be a worse experience than quoting the first 400 chars.
+        quoted = " ".join((selection or "").split())[:MAX_SELECTION_CHARS]
 
         context = build_context(self.pack, lesson_id)
         focus = anchor if anchor in context.headings else ""
@@ -126,6 +138,7 @@ class TutorService:
             render_user_prompt(
                 context, focus, text, history,
                 web_hits=web_hits, today=date.today().isoformat(),
+                selection=quoted,
             ),
         )
         answer = parse_answer(
@@ -143,6 +156,7 @@ class TutorService:
                 anchor=focus,
                 role="user",
                 content=text,
+                selection=quoted,
             )
             self.store.append(
                 learner_id=self.learner_id,
@@ -153,6 +167,7 @@ class TutorService:
                 basis=answer.basis,
                 citations=answer.citations,
                 model=self.config.model,
+                selection=quoted,
             )
         except sqlite3.Error:
             saved = False

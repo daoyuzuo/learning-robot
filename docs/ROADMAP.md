@@ -822,6 +822,41 @@ $ .venv/Scripts/python.exe -m testbridge.cli build content-packs/robot-quality-s
 
 ---
 
+## 2026-11-04 追问侧栏与划词引用 — 已完成
+
+- **布局**：课程页改为两栏——正文列（`tb-lesson-column`，保持 46rem 阅读尺度）+ 右侧
+  常驻追问栏（`tb-tutor`，sticky、历史独立滚动、输入框固定栏底）。`≥1280px` 时并排，
+  低于该宽度自动退化为右下角浮钮 + 抽屉（`data-open` 驱动，Esc 可关）。
+- **划词引用**：在正文 `.tb-lesson` 内选中文字，输入框上方出现引用块；提交时随
+  `POST /api/tutor` 的 `selection` 字段发送，进入提示词 `<selection>` 块并落库。
+  选区跨导航/表头时忽略；超过 400 字截断而非报错。
+- **锚点联动**：选中段落所属的最近 `h2` 自动写入“围绕”下拉框；历史每条显示
+  「本节「…」」或「整节课」，看得出每个问题问的是哪一节。
+- **持久化**：`tutor_message` 增加 `selection` 列，用 `PRAGMA table_info` 检测 +
+  `ALTER TABLE` 幂等迁移，旧库不重建、历史不丢。
+- **边界不变**：追问仍不进证据；`tb/1`、判分/掌握度/调度语义未动；
+  CSP 未放宽（无内联 style/script）。
+- 设计见 [追问侧栏与划词引用](superpowers/specs/2026-11-04-tutor-sidebar-and-selection-design.md)
+  （实施计划：[2026-11-04-tutor-sidebar-and-selection.md](superpowers/plans/2026-11-04-tutor-sidebar-and-selection.md)）
+
+**验证（实测，2026-11-04）：**
+
+```text
+$ .venv/Scripts/python.exe -m pytest -q
+668 passed（基线 658，+10）
+
+$ ruff check（改动文件）
+All checks passed
+```
+
+- 浏览器端到端（Chrome DevTools Protocol，桩模型服务）：选中正文 → 引用块出现且锚点
+  自动切到「一、策略不是用例清单」→ 提交 → 历史两条消息均带引用 → SQLite 中
+  `selection` 与 `anchor` 均正确落库。
+- 提示词链路单独验证：`<selection>` 块出现在 `问题：` 之前，且划词内容被转义。
+- 布局实测：`/lesson/*` 在 320 / 768 / 1440 三档 `scrollWidth == 视口宽度`。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。

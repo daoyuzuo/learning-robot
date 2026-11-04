@@ -71,3 +71,18 @@ def test_lesson_uses_reading_width_and_cards(tmp_path: Path) -> None:
     assert 'class="tb-main tb-lesson-main"' in text
     assert 'class="tb-tutor tb-card"' in text
     assert 'class="tb-resources tb-card"' in text
+
+
+def test_lesson_shell_wraps_reading_column_and_tutor(tmp_path: Path) -> None:
+    text = client(tmp_path).get("/lesson/L-SYNC-001").text
+    assert 'class="tb-lesson-shell"' in text
+    assert 'class="tb-lesson-column"' in text
+    assert 'class="tb-tutor-fab"' in text
+    assert 'id="tb-tutor-panel"' in text
+
+
+def test_tutor_panel_has_a_selection_quote_slot(tmp_path: Path) -> None:
+    text = client(tmp_path).get("/lesson/L-SYNC-001").text
+    assert 'class="tb-tutor-quote-pending"' in text
+    # The passage travels in the JSON body, not as a form field.
+    assert 'name="tb-tutor-selection"' not in text

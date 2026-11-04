@@ -235,10 +235,103 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 
 .tb-main.tb-lesson-main {
-  max-width: 46rem;
+  max-width: 1180px;
   font-size: 16.5px;
   line-height: 1.85;
 }
+
+/* Two-pane lesson layout: reading column + docked tutor rail. ------- */
+
+.tb-lesson-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: var(--tb-space-8);
+  align-items: start;
+}
+
+.tb-lesson-column {
+  max-width: 46rem;
+  min-width: 0;
+}
+
+/* Keep lesson typography scoped to the reading column, not the rail. */
+.tb-lesson-column { font-size: 16.5px; line-height: 1.85; }
+
+.tb-tutor-head {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+}
+.tb-tutor-head h2 { margin: 0; font-size: var(--tb-text-lg); }
+
+.tb-tutor-count {
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+  background: var(--tb-bg-sunken);
+  padding: 1px 8px;
+  border-radius: var(--tb-radius-pill);
+}
+
+.tb-tutor-close {
+  margin-left: auto;
+  display: none;
+  border: 0;
+  background: transparent;
+  color: var(--tb-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--tb-radius-sm);
+}
+.tb-tutor-close:hover { background: var(--tb-bg-sunken); color: var(--tb-ink); }
+
+.tb-tutor-fab {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: var(--tb-radius-pill);
+  background: var(--tb-ink);
+  color: var(--tb-bg-elevated);
+  font: inherit;
+  font-size: var(--tb-text-sm);
+  font-weight: 600;
+  padding: 12px 18px;
+  cursor: pointer;
+  box-shadow: var(--tb-shadow-md);
+}
+
+/* A passage the learner highlighted, echoed above the question box. */
+.tb-tutor-quote,
+.tb-tutor-quote-pending {
+  margin: var(--tb-space-2) 0;
+  padding: var(--tb-space-2) var(--tb-space-3);
+  border-left: 3px solid var(--tb-accent);
+  background: var(--tb-accent-soft);
+  border-radius: var(--tb-radius-sm);
+  font-size: var(--tb-text-sm);
+  color: var(--tb-ink-2);
+  white-space: pre-wrap;
+}
+
+.tb-tutor-quote-pending {
+  position: relative;
+  padding-right: 32px;
+}
+
+.tb-tutor-quote-clear {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--tb-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+}
+.tb-tutor-quote-clear:hover { background: var(--tb-bg-sunken); color: var(--tb-ink); }
 
 /* --------------------------------------------------------------- typography */
 
@@ -1312,15 +1405,76 @@ td a:hover { text-decoration: underline; }
 }
 .tb-pager a.tb-pager-next { text-align: right; align-items: flex-end; }
 
-/* Tutor */
+/* Tutor rail ---------------------------------------------------------- */
 .tb-tutor {
   border: 1px solid var(--tb-line);
   border-radius: var(--tb-radius-md);
-  padding: var(--tb-space-5) var(--tb-space-6);
-  margin: var(--tb-space-10) 0;
+  padding: var(--tb-space-4) var(--tb-space-5);
+  margin: 0;
+  position: sticky;
+  top: 82px;
+  height: calc(100vh - 110px);
+  max-height: calc(100vh - 110px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tb-space-3);
 }
 .tb-tutor h2 { margin-top: 0; font-size: var(--tb-text-lg); }
 .tb-tutor textarea { margin: var(--tb-space-2) 0; }
+
+.tb-tutor-log {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 120px;
+  padding-right: 2px;
+}
+
+.tb-tutor-form { flex: none; }
+
+@media (max-width: 1280px) {
+  /* Below this width the rail would squeeze the reading column, so it
+     becomes a drawer that overlays the page instead. */
+  .tb-lesson-shell { grid-template-columns: minmax(0, 1fr); }
+
+  .tb-tutor-fab {
+    display: inline-flex;
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 40;
+  }
+
+  .tb-tutor {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
+    z-index: 41;
+    transform: translateX(100%);
+    transition: transform .22s ease-out;
+    background: var(--tb-bg-elevated);
+    box-shadow: -16px 0 48px rgb(0 0 0 / .12);
+    overflow: hidden;
+  }
+  .tb-tutor[data-open="true"] { transform: translateX(0); }
+  .tb-tutor-close { display: inline-flex; }
+}
+
+@media (max-width: 760px) {
+  .tb-tutor { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-tutor { transition: none; }
+}
 
 .tb-tutor-anchor-label { display: block; margin-bottom: var(--tb-space-3); }
 
@@ -1346,6 +1500,16 @@ td a:hover { text-decoration: underline; }
   padding: var(--tb-space-3) 0;
 }
 .tb-tutor-message:first-child { border-top: 0; }
+
+/* Context line: which section the question was asked against. */
+.tb-tutor-ctx {
+  font-size: var(--tb-text-xs);
+  color: var(--tb-faint);
+  margin: 0 0 var(--tb-space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tb-tutor-message p { margin: var(--tb-space-1) 0; }
 .tb-tutor-message[data-role="user"] p {
   color: var(--tb-muted);

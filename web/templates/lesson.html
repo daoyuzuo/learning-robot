@@ -4,77 +4,97 @@
 {% block main_class %}tb-lesson-main{% endblock %}
 {% from "_icons.html" import icon %}
 {% block content %}
-<nav class="tb-breadcrumb"><a href="/">课程</a> › {{ view.module.title }} › 第 {{ lesson_position.index }} 课 / 共 {{ lesson_position.total }} 课</nav>
-<h1>{{ view.lesson.manifest.title }}</h1>
-<p class="tb-meta">{{ icon("clock", 13) }} {{ view.lesson.manifest.minutes }} 分钟 · 目标 {{ view.lesson.manifest.target_level }}</p>
+<div class="tb-lesson-shell">
+  <div class="tb-lesson-column">
+    <nav class="tb-breadcrumb"><a href="/">课程</a> › {{ view.module.title }} › 第 {{ lesson_position.index }} 课 / 共 {{ lesson_position.total }} 课</nav>
+    <h1>{{ view.lesson.manifest.title }}</h1>
+    <p class="tb-meta">{{ icon("clock", 13) }} {{ view.lesson.manifest.minutes }} 分钟 · 目标 {{ view.lesson.manifest.target_level }}</p>
 
-<div class="tb-objectives-wrap">
-  <p class="tb-objectives-title">{{ icon("target", 15) }} 本课目标</p>
-  <ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
-</div>
-
-<article class="tb-lesson">{{ view.body_html | safe }}</article>
-
-<section class="tb-tutor tb-card" data-tutor-enabled="{{ 'true' if tutor else 'false' }}">
-  <h2>追问</h2>
-  {% if tutor %}
-  <p class="tb-tutor-web-status" data-web-status="{{ 'available' if tutor_web else 'unavailable' }}">
-    {% if tutor_web %}联网搜索：<strong data-web-state>已开启</strong>{% else %}联网搜索不可用：未配置搜索服务{% endif %}
-  </p>
-  {% endif %}
-  {% if not tutor %}
-    <p class="tb-tutor-hint tb-callout" data-tone="warn">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
-  {% else %}
-    <label class="tb-tutor-anchor-label">围绕
-      <select class="tb-tutor-anchor">
-        <option value="">整节课</option>
-        {% for heading in tutor_headings %}<option value="{{ heading }}">{{ heading }}</option>{% endfor %}
-      </select>
-    </label>
-    {% if tutor_web %}
-    <label class="tb-tutor-web"><input type="checkbox" class="tb-tutor-web-toggle" checked> 联网搜索</label>
-    {% endif %}
-    <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
-    <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">{{ icon("send", 14) }}提问</button>
-    <p class="tb-tutor-error tb-callout" data-tone="error" hidden></p>
-    <div class="tb-tutor-log">
-      {% for message in tutor_history %}
-        <div class="tb-tutor-message" data-role="{{ message.role }}">
-          {% if message.role == "assistant" %}
-            <span class="tb-tutor-basis" data-basis="{{ message.basis }}">
-              {%- if message.basis == "lesson" %}本课内容
-              {%- elif message.basis == "resource" %}包内资源
-              {%- elif message.basis == "web" %}网络来源
-              {%- else %}通用知识{% endif -%}
-            </span>
-          {% endif %}
-          <p>{{ message.content }}</p>
-          {% if message.citations %}<p class="tb-tutor-citations">依据：{% for citation in message.citations %}{% if citation.startswith("http") %}<a href="{{ citation }}" target="_blank" rel="noopener noreferrer">{{ citation }}</a>{% else %}{{ citation }}{% endif %}{% if not loop.last %}、{% endif %}{% endfor %}</p>{% endif %}
-        </div>
-      {% endfor %}
+    <div class="tb-objectives-wrap">
+      <p class="tb-objectives-title">{{ icon("target", 15) }} 本课目标</p>
+      <ul class="tb-objectives">{% for item in view.lesson.manifest.objectives %}<li>{{ item }}</li>{% endfor %}</ul>
     </div>
-  {% endif %}
-</section>
 
-<aside class="tb-resources tb-card">
-  <h2>资源</h2>
-  <ul>
-  {% for item in view.resources %}
-    <li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>
-  {% endfor %}
-  </ul>
-</aside>
+    <article class="tb-lesson">{{ view.body_html | safe }}</article>
 
-<nav class="tb-pager">
-  {% if view.prev_lesson %}<a href="/lesson/{{ view.prev_lesson.manifest.id }}">
-    <span class="tb-pager-label">← 上一课</span>
-    <span class="tb-pager-title">{{ view.prev_lesson.manifest.title }}</span>
-  </a>{% else %}<span></span>{% endif %}
-  {% if view.next_lesson %}<a class="tb-pager-next" href="/lesson/{{ view.next_lesson.manifest.id }}">
-    <span class="tb-pager-label">下一课 →</span>
-    <span class="tb-pager-title">{{ view.next_lesson.manifest.title }}</span>
-  </a>{% endif %}
-</nav>
+    <aside class="tb-resources tb-card">
+      <h2>资源</h2>
+      <ul>
+      {% for item in view.resources %}
+        <li><a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.title }}</a> <span class="tb-trust">{{ item.trust }}</span></li>
+      {% endfor %}
+      </ul>
+    </aside>
+
+    <nav class="tb-pager">
+      {% if view.prev_lesson %}<a href="/lesson/{{ view.prev_lesson.manifest.id }}">
+        <span class="tb-pager-label">← 上一课</span>
+        <span class="tb-pager-title">{{ view.prev_lesson.manifest.title }}</span>
+      </a>{% else %}<span></span>{% endif %}
+      {% if view.next_lesson %}<a class="tb-pager-next" href="/lesson/{{ view.next_lesson.manifest.id }}">
+        <span class="tb-pager-label">下一课 →</span>
+        <span class="tb-pager-title">{{ view.next_lesson.manifest.title }}</span>
+      </a>{% endif %}
+    </nav>
+  </div>
+
+  <button type="button" class="tb-tutor-fab" aria-expanded="false" aria-controls="tb-tutor-panel">
+    {{ icon("send", 15) }}追问
+  </button>
+
+  <aside class="tb-tutor tb-card" id="tb-tutor-panel" data-tutor-enabled="{{ 'true' if tutor else 'false' }}" data-open="false">
+    <div class="tb-tutor-head">
+      <h2>追问</h2>
+      {% if tutor %}<span class="tb-tutor-count">{{ tutor_history|length }} 条</span>{% endif %}
+      <button type="button" class="tb-tutor-close" aria-label="关闭追问栏">{{ icon("x", 16) }}</button>
+    </div>
+    {% if tutor %}
+    <p class="tb-tutor-web-status" data-web-status="{{ 'available' if tutor_web else 'unavailable' }}">
+      {% if tutor_web %}联网搜索：<strong data-web-state>已开启</strong>{% else %}联网搜索不可用：未配置搜索服务{% endif %}
+    </p>
+    {% endif %}
+    <blockquote class="tb-tutor-quote-pending" hidden></blockquote>
+    {% if not tutor %}
+      <p class="tb-tutor-hint tb-callout" data-tone="warn">未配置模型服务，追问不可用。缺少环境变量：{{ tutor_missing|join("、") }}。</p>
+    {% else %}
+      <div class="tb-tutor-log">
+        {% for message in tutor_history %}
+          <div class="tb-tutor-message" data-role="{{ message.role }}">
+            <p class="tb-tutor-ctx">
+              {% if message.role == "user" %}你{% else %}助手{% endif %} · {% if message.anchor %}本节「{{ message.anchor }}」{% else %}整节课{% endif %}
+            </p>
+            {% if message.role == "assistant" %}
+              <span class="tb-tutor-basis" data-basis="{{ message.basis }}">
+                {%- if message.basis == "lesson" %}本课内容
+                {%- elif message.basis == "resource" %}包内资源
+                {%- elif message.basis == "web" %}网络来源
+                {%- else %}通用知识{% endif -%}
+              </span>
+            {% endif %}
+            {% if message.selection %}<blockquote class="tb-tutor-quote">{{ message.selection }}</blockquote>{% endif %}
+            <p>{{ message.content }}</p>
+            {% if message.citations %}<p class="tb-tutor-citations">依据：{% for citation in message.citations %}{% if citation.startswith("http") %}<a href="{{ citation }}" target="_blank" rel="noopener noreferrer">{{ citation }}</a>{% else %}{{ citation }}{% endif %}{% if not loop.last %}、{% endif %}{% endfor %}</p>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="tb-tutor-form">
+        <label class="tb-tutor-anchor-label">围绕
+          <select class="tb-tutor-anchor">
+            <option value="">整节课</option>
+            {% for heading in tutor_headings %}<option value="{{ heading }}">{{ heading }}</option>{% endfor %}
+          </select>
+        </label>
+        {% if tutor_web %}
+        <label class="tb-tutor-web"><input type="checkbox" class="tb-tutor-web-toggle" checked> 联网搜索</label>
+        {% endif %}
+        <textarea class="tb-tutor-question" maxlength="500" rows="3" placeholder="针对这节课提问，最多 500 字"></textarea>
+        <button type="button" class="tb-tutor-submit tb-btn tb-btn-primary">{{ icon("send", 14) }}提问</button>
+        <p class="tb-tutor-error tb-callout" data-tone="error" hidden></p>
+      </div>
+    {% endif %}
+  </aside>
+</div>
 {% endblock %}
 {% block scripts %}
 <script src="/static/tb-runtime.js"></script>

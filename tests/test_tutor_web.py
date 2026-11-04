@@ -234,3 +234,27 @@ def test_history_is_shown_after_reload(tmp_path: Path) -> None:
 
     assert "为什么？" in text
     assert "因为订阅请求的可靠性更高。" in text
+
+
+def test_selection_is_accepted_and_persisted(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    response = app.post("/api/tutor", json={
+        "lesson_id": "L-QOS-002",
+        "question": "这句什么意思？",
+        "selection": "可靠性更高的订阅",
+    })
+
+    assert response.status_code == 200
+    stored = app.app.state.tutor.history("L-QOS-002")
+    assert any(message.selection == "可靠性更高的订阅" for message in stored)
+
+
+def test_oversized_selection_is_truncated_not_rejected(tmp_path: Path) -> None:
+    app = make_app(tmp_path)
+    response = app.post("/api/tutor", json={
+        "lesson_id": "L-QOS-002", "question": "问", "selection": "一" * 2000,
+    })
+
+    assert response.status_code == 200
+    stored = app.app.state.tutor.history("L-QOS-002")
+    assert all(len(message.selection) <= 400 for message in stored)

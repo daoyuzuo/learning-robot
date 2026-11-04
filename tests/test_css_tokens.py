@@ -52,8 +52,10 @@ def test_braces_are_balanced() -> None:
 
 
 def test_reading_measure_and_legacy_class_hooks_survive() -> None:
-    # The design keeps the wide dashboard and a narrow reading column.
-    assert re.search(r"\.tb-main\.tb-lesson-main\s*\{[^}]*max-width:\s*46rem", CSS)
+    # The lesson page is now two panes; the *reading column* keeps the
+    # comfortable measure while the shell widens to fit the tutor rail.
+    assert re.search(r"\.tb-lesson-column\s*\{[^}]*max-width:\s*46rem", CSS)
+    assert re.search(r"\.tb-main\.tb-lesson-main\s*\{[^}]*max-width:\s*1180px", CSS)
     # Existing templates and tests reference these class names.
     for hook in (
         ".tb-card",

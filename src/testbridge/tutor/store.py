@@ -40,6 +40,21 @@ class TutorMessage:
     citations: list[str]
     model: str | None
     created_at: str
+    selection: str = ""
+
+
+def _ensure_selection_column(conn: sqlite3.Connection) -> None:
+    """Add ``selection`` to pre-existing databases without rebuilding them.
+
+    The table was created before the tutor could quote a passage. Adding the
+    column in place keeps every stored conversation; the column is NOT NULL
+    with an empty default so older rows read back as "no selection".
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(tutor_message)")}
+    if "selection" not in columns:
+        conn.execute(
+            "ALTER TABLE tutor_message ADD COLUMN selection TEXT NOT NULL DEFAULT ''"
+        )
 
 
 class TutorStore:
@@ -48,6 +63,7 @@ class TutorStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.path) as conn:
             conn.executescript(SCHEMA_SQL)
+            _ensure_selection_column(conn)
 
     def append(
         self,
@@ -60,6 +76,7 @@ class TutorStore:
         basis: str | None = None,
         citations: list[str] | tuple[str, ...] = (),
         model: str | None = None,
+        selection: str = "",
     ) -> TutorMessage:
         message = TutorMessage(
             id=uuid4().hex,
@@ -72,20 +89,21 @@ class TutorStore:
             citations=list(citations),
             model=model,
             created_at=iso(utcnow()),
+            selection=selection,
         )
         with sqlite3.connect(self.path) as conn:
             conn.execute(
                 """
                 INSERT INTO tutor_message
                 (id, learner_id, lesson_id, anchor, role, content, basis,
-                 citations_json, model, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 citations_json, model, created_at, selection)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     message.id, message.learner_id, message.lesson_id,
                     message.anchor, message.role, message.content, message.basis,
                     json.dumps(message.citations, ensure_ascii=False),
-                    message.model, message.created_at,
+                    message.model, message.created_at, message.selection,
                 ),
             )
         return message
@@ -119,4 +137,5 @@ class TutorStore:
             citations=json.loads(row["citations_json"]),
             model=row["model"],
             created_at=row["created_at"],
+            selection=row["selection"] or "",
         )

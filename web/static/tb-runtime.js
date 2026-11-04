@@ -261,16 +261,118 @@
       general: "通用知识",
     };
 
-    function appendMessage(role, content, basis, citations) {
+    const SELECTION_MAX = 400;
+    const lessonBody = document.querySelector(".tb-lesson");
+    const pendingQuote = tutor.querySelector(".tb-tutor-quote-pending");
+    let selection = "";
+
+    function normalize(text) {
+      return String(text || "").replace(/\s+/g, " ").trim();
+    }
+
+    function headingFor(node) {
+      let current = node;
+      while (current && current !== lessonBody) {
+        if (current.nodeType === 1) {
+          for (const heading of current.querySelectorAll("h2")) {
+            return normalize(heading.textContent);
+          }
+        }
+        let sibling = current.previousElementSibling || current;
+        while (sibling && sibling.previousElementSibling) {
+          sibling = sibling.previousElementSibling;
+          if (sibling.tagName === "H2") return normalize(sibling.textContent);
+        }
+        current = current.parentElement;
+      }
+      return "";
+    }
+
+    function paintQuote() {
+      if (!pendingQuote) return;
+      if (!selection) {
+        pendingQuote.hidden = true;
+        pendingQuote.textContent = "";
+        return;
+      }
+      pendingQuote.hidden = false;
+      pendingQuote.textContent = selection;
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "tb-tutor-quote-clear";
+      clear.setAttribute("aria-label", "清除引用的正文");
+      clear.textContent = "×";
+      clear.addEventListener("click", () => {
+        selection = "";
+        paintQuote();
+      });
+      pendingQuote.appendChild(clear);
+    }
+
+    // Only quotes prose inside the lesson body: a selection that spans the
+    // header or the navigation is not a passage the tutor should ground on.
+    function captureSelection() {
+      if (!lessonBody) return;
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      const text = normalize(sel.toString());
+      if (!text) return;
+      const anchorNode = sel.getRangeAt(0).commonAncestorContainer;
+      const container = anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement;
+      if (!container || !lessonBody.contains(container)) return;
+
+      selection = text.slice(0, SELECTION_MAX);
+      paintQuote();
+
+      const heading = headingFor(container);
+      if (heading && anchor) {
+        const match = Array.from(anchor.options).find((o) => o.value === heading);
+        if (match) anchor.value = heading;
+      }
+    }
+
+    if (lessonBody) {
+      document.addEventListener("mouseup", () => setTimeout(captureSelection, 0));
+      document.addEventListener("keyup", (event) => {
+        if (event.shiftKey) setTimeout(captureSelection, 0);
+      });
+    }
+
+    const fab = document.querySelector(".tb-tutor-fab");
+    const closeButton = tutor.querySelector(".tb-tutor-close");
+    function setOpen(open) {
+      tutor.dataset.open = open ? "true" : "false";
+      if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && input) input.focus();
+    }
+    if (fab) fab.addEventListener("click", () => setOpen(tutor.dataset.open !== "true"));
+    if (closeButton) closeButton.addEventListener("click", () => setOpen(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && tutor.dataset.open === "true") setOpen(false);
+    });
+
+    function appendMessage(role, content, basis, citations, quote) {
       const item = document.createElement("div");
       item.className = "tb-tutor-message";
       item.dataset.role = role;
+      const ctx = document.createElement("p");
+      ctx.className = "tb-tutor-ctx";
+      const focus = anchor ? anchor.value : "";
+      ctx.textContent = (role === "user" ? "你" : "助手")
+        + " · " + (focus ? "本节「" + focus + "」" : "整节课");
+      item.appendChild(ctx);
       if (basis) {
         const badge = document.createElement("span");
         badge.className = "tb-tutor-basis";
         badge.dataset.basis = basis;
         badge.textContent = basisLabels[basis] || basisLabels.general;
         item.appendChild(badge);
+      }
+      if (quote) {
+        const block = document.createElement("blockquote");
+        block.className = "tb-tutor-quote";
+        block.textContent = quote;
+        item.appendChild(block);
       }
       const body = document.createElement("p");
       body.textContent = content;
@@ -302,6 +404,7 @@
       if (!question) return;
       button.disabled = true;
       error.hidden = true;
+      const quoted = selection;
       try {
         const response = await fetch("/api/tutor", {
           method: "POST",
@@ -311,14 +414,15 @@
             anchor: anchor ? anchor.value : "",
             question,
             web: webToggle ? webToggle.checked : true,
+            selection: quoted,
           }),
         });
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload.detail ? payload.detail.message : "追问失败");
         }
-        appendMessage("user", question, null, []);
-        appendMessage("assistant", payload.answer, payload.basis, payload.citations);
+        appendMessage("user", question, null, [], quoted);
+        appendMessage("assistant", payload.answer, payload.basis, payload.citations, quoted);
         if (payload.web_sources && payload.web_sources.length) {
           const sources = document.createElement("ul");
           sources.className = "tb-tutor-web-sources";
@@ -355,6 +459,8 @@
           log.appendChild(warn);
         }
         input.value = "";
+        selection = "";
+        paintQuote();
       } catch (err) {
         error.hidden = false;
         error.textContent = "追问失败：" + err.message;

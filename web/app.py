@@ -61,6 +61,7 @@ class TutorRequest(BaseModel):
     anchor: str = ""
     question: str
     web: bool = True
+    selection: str = ""
 
 
 class ReviewRequest(BaseModel):
@@ -484,6 +485,7 @@ def create_app(
             reply = tutor.ask(
                 payload.lesson_id, payload.anchor, payload.question,
                 use_web=payload.web,
+                selection=payload.selection,
             )
         except LessonNotFoundError:
             raise HTTPException(
