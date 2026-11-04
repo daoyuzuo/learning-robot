@@ -10,9 +10,9 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from testbridge.career.jd import (
+    MAX_TARGET_ROLE_CHARS,
     JdError,
     JdSuggestion,
-    MAX_TARGET_ROLE_CHARS,
     manual_suggestion,
     parse_suggestion,
     parse_with_llm,

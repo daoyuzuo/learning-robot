@@ -235,7 +235,10 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 
 .tb-main.tb-lesson-main {
-  max-width: 1180px;
+  /* Wide enough for the reading column (46rem) plus the tutor rail (400px)
+     and its gutter. A narrower shell silently shrinks the reading column
+     below its intended measure. */
+  max-width: 1220px;
   font-size: 16.5px;
   line-height: 1.85;
 }

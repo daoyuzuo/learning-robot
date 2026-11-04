@@ -55,7 +55,41 @@ def test_reading_measure_and_legacy_class_hooks_survive() -> None:
     # The lesson page is now two panes; the *reading column* keeps the
     # comfortable measure while the shell widens to fit the tutor rail.
     assert re.search(r"\.tb-lesson-column\s*\{[^}]*max-width:\s*46rem", CSS)
-    assert re.search(r"\.tb-main\.tb-lesson-main\s*\{[^}]*max-width:\s*1180px", CSS)
+
+    # The shell must be wide enough for the full reading measure (46rem), the
+    # rail, the gutter, *and* the page's own horizontal padding. Miss any of
+    # those and the column silently shrinks below 46rem while every other
+    # assertion still passes.
+    spacing = {name: int(value) for name, value in re.findall(
+        r"(--tb-space-\d+):\s*(\d+)px", CSS
+    )}
+
+    shell = re.search(
+        r"\.tb-main\.tb-lesson-main\s*\{[^}]*max-width:\s*(\d+)px", CSS
+    )
+    assert shell, "lesson shell has no explicit max-width"
+
+    rail = re.search(r"grid-template-columns:\s*minmax\(0,\s*1fr\)\s*(\d+)px", CSS)
+    assert rail, "lesson shell has no tutor rail column"
+
+    gap = re.search(r"\.tb-lesson-shell\s*\{[^}]*gap:\s*var\(--tb-space-(\d+)\)", CSS)
+    assert gap, "lesson shell loses its gutter"
+    gutter = spacing[f"--tb-space-{gap.group(1)}"]
+
+    main_rule = re.search(r"^\.tb-main \{[^}]*\}", CSS, re.MULTILINE)
+    assert main_rule, "no base .tb-main rule"
+    padding = re.search(
+        r"padding:\s*var\(--tb-space-\d+\)\s*var\(--tb-space-(\d+)\)", main_rule.group(0)
+    )
+    assert padding, "base .tb-main loses its horizontal padding"
+    side_padding = spacing[f"--tb-space-{padding.group(1)}"]
+
+    needed = 46 * 16 + int(rail.group(1)) + gutter + side_padding * 2
+    assert int(shell.group(1)) >= needed, (
+        f"shell max-width {shell.group(1)}px cannot fit a 46rem column plus a "
+        f"{rail.group(1)}px rail, {gutter}px gutter and {side_padding * 2}px padding "
+        f"(needs {needed}px)"
+    )
     # Existing templates and tests reference these class names.
     for hook in (
         ".tb-card",
