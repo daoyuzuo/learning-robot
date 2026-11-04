@@ -50,7 +50,10 @@ REVIEW_SYSTEM_PROMPT = (
     "1. 用中文，先给结论，再给理由，300 字以内。\n"
     "2. 指出具体错在哪一步、或哪里写得好；不要泛泛而谈。\n"
     "3. 只使用 <lesson> 与 <submission> 里的信息；不要臆造 rubric 之外的维度。\n"
-    "4. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
+    "4. 只讲评 <submission> 中的这一道题；不要提及其他练习，"
+    "不要说“第 N 题还没做”这类话。\n"
+    "5. strengths 与 gaps 只能针对本次作答，不得要求补做其他题。\n"
+    "6. 只输出一个 JSON 对象，不要代码块、不要额外文字。格式：\n"
     '{"verdict": "correct|partial|incorrect", "explanation": "...", '
     '"strengths": ["..."], "gaps": ["..."], '
     '"rubric": [{"dimension": "...", "met": true, "comment": "..."}], '
@@ -78,7 +81,10 @@ def build_review_context(pack: ContentPack, event: EvidenceEvent) -> ReviewConte
     if exercise is None:
         raise KeyError(f"unknown exercise: {event.exercise_id}")
 
-    base = build_context(pack, lesson_id).text
+    # Only this exercise's prompt belongs in the review. The lesson context
+    # would otherwise list the learner's other exercises, and the model reads
+    # an unsubmitted one as "you skipped question N".
+    base = build_context(pack, lesson_id, exercise_ids=[]).text
     options = " ".join(f"{option.id}. {option.text}" for option in exercise.options)
     rubric_lines = [
         f"- {item.dimension}（权重 {item.weight}）：{item.criteria}"

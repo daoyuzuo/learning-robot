@@ -102,3 +102,49 @@ def test_parse_caps_strengths_and_gaps() -> None:
     review = parse_review(raw, [])
     assert len(review.strengths) == 3
     assert len(review.gaps) == 3
+
+
+OTHER = load_pack(Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "sample-sensors")
+
+
+def test_review_context_omits_other_exercises() -> None:
+    lesson = OTHER.lesson("L-SYNC-001")
+    submitted = lesson.manifest.exercises[0]
+    others = [eid for eid in lesson.manifest.exercises if eid != submitted]
+    assert others, "fixture must have more than one exercise to prove the rule"
+    event = new_event(
+        kind="exercise_attempt",
+        lesson_id="L-SYNC-001",
+        exercise_id=submitted,
+        concept_ids=["timestamp-basics"],
+        outcome="correct",
+        score=1.0,
+        max_score=1.0,
+        payload={"response": "x"},
+    )
+
+    context = build_review_context(OTHER, event)
+
+    for exercise_id in others:
+        assert OTHER.exercises[exercise_id].prompt not in context.text
+
+
+def test_build_context_default_still_lists_all_exercises() -> None:
+    from testbridge.tutor.context import build_context
+
+    lesson = OTHER.lesson("L-SYNC-001")
+    text = build_context(OTHER, "L-SYNC-001").text
+
+    for exercise_id in lesson.manifest.exercises:
+        assert OTHER.exercises[exercise_id].prompt in text
+
+
+def test_build_context_with_explicit_ids_lists_only_those() -> None:
+    from testbridge.tutor.context import build_context
+
+    lesson = OTHER.lesson("L-SYNC-001")
+    first, second = lesson.manifest.exercises[0], lesson.manifest.exercises[1]
+    text = build_context(OTHER, "L-SYNC-001", exercise_ids=[first]).text
+
+    assert OTHER.exercises[first].prompt in text
+    assert OTHER.exercises[second].prompt not in text

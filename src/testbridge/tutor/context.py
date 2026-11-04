@@ -47,7 +47,12 @@ def _headings(body: str) -> list[str]:
     ]
 
 
-def build_context(pack: ContentPack, lesson_id: str) -> TutorContext:
+def build_context(
+    pack: ContentPack,
+    lesson_id: str,
+    *,
+    exercise_ids: list[str] | None = None,
+) -> TutorContext:
     lesson = pack.lesson(lesson_id)
     manifest = lesson.manifest
     body = _SCRIPT_RE.sub(" ", lesson.body_html)
@@ -70,7 +75,10 @@ def build_context(pack: ContentPack, lesson_id: str) -> TutorContext:
         parts.append("概念：\n" + "\n".join(concept_lines))
 
     exercise_lines = []
-    for exercise_id in manifest.exercises:
+    # Review prompts pass ``[]`` so only the submitted exercise (already quoted
+    # in <submission>) is in play; a bare tutor question keeps every prompt.
+    selected = manifest.exercises if exercise_ids is None else exercise_ids
+    for exercise_id in selected:
         exercise = pack.exercises.get(exercise_id)
         if exercise is None:
             continue

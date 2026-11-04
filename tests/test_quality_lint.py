@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 
 from testbridge.cli import main
 from testbridge.content.repository import ContentValidationError, load_pack
@@ -173,3 +174,31 @@ def test_cli_lint_json(capsys) -> None:
     assert main(["lint", str(MINIMAL), "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is True
+
+
+def test_out_of_order_prerequisites_are_errors(tmp_path: Path) -> None:
+    from testbridge.content.repository import load_pack as load_fixture
+
+    pack = tmp_path / "pack"
+    shutil.copytree(
+        Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos", pack
+    )
+    module_yaml = pack / "modules" / "M01" / "module.yaml"
+    data = yaml.safe_load(module_yaml.read_text(encoding="utf-8"))
+    data["lessons"] = ["L-QOS-003", "L-QOS-001", "L-QOS-002"]
+    module_yaml.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+
+    report = evaluate_lint(load_fixture(pack))
+
+    offending = [issue for issue in report.errors if issue.code == "lint.lesson_order"]
+    assert offending, _codes(report)
+    assert offending[0].lesson_id == "L-QOS-003"
+
+
+def test_in_order_packs_pass_the_order_rule() -> None:
+    from testbridge.content.repository import load_pack as load_fixture
+
+    root = Path(__file__).parents[1] / "tests" / "fixtures" / "packs"
+    for path in (root / "ros2-qos", root / "sample-sensors", MINIMAL):
+        codes = _codes(evaluate_lint(load_fixture(path)))
+        assert "lint.lesson_order" not in codes, path

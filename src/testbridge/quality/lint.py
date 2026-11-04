@@ -145,6 +145,40 @@ def _check_lesson(pack: ContentPack, lesson) -> list[LintIssue]:
     return issues
 
 
+def _check_lesson_order(pack: ContentPack) -> list[LintIssue]:
+    """Every prerequisite must be taught no later than the lesson using it.
+
+    A reordered course can look plausible lesson by lesson while a concept is
+    explained before its prerequisite ever appears. Lesson position, not file
+    numbering, is what the learner experiences, so this compares against the
+    order ``lessons_in_order()`` yields.
+    """
+    lessons = pack.lessons_in_order()
+    first_seen: dict[str, int] = {}
+    for index, lesson in enumerate(lessons):
+        for concept_id in lesson.manifest.concepts:
+            first_seen.setdefault(concept_id, index)
+
+    issues: list[LintIssue] = []
+    for index, lesson in enumerate(lessons):
+        for concept_id in lesson.manifest.concepts:
+            concept = pack.concepts.get(concept_id)
+            if concept is None:
+                continue
+            for prerequisite in concept.prerequisites:
+                taught_at = first_seen.get(prerequisite)
+                if taught_at is None or taught_at <= index:
+                    continue
+                issues.append(LintIssue(
+                    "lint.lesson_order",
+                    f"{concept_id} 的先修 {prerequisite} 在第 {taught_at + 1} 课，"
+                    f"晚于本课（第 {index + 1} 课）",
+                    "error",
+                    lesson.manifest.id,
+                ))
+    return issues
+
+
 def _check_quiz(pack: ContentPack) -> list[LintIssue]:
     issues: list[LintIssue] = []
     choice = [
@@ -206,5 +240,6 @@ def evaluate_lint(pack: ContentPack) -> LintReport:
     issues: list[LintIssue] = []
     for lesson in pack.lessons_in_order():
         issues.extend(_check_lesson(pack, lesson))
+    issues.extend(_check_lesson_order(pack))
     issues.extend(_check_quiz(pack))
     return LintReport(issues=issues)

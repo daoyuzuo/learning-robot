@@ -18,7 +18,7 @@ from testbridge.tutor.review import (
 )
 from testbridge.tutor.review_store import ExerciseReviewStore, to_review
 
-PROMPT_VERSION = "review/1"
+PROMPT_VERSION = "review/2"
 SUPPORTED_KINDS = ("exercise_attempt", "self_assess")
 
 
@@ -67,7 +67,10 @@ class ReviewService:
 
         if not refresh:
             stored = self.reviews.get(evidence_id)
-            if stored is not None:
+            # A review written by an older prompt version is not reused: the
+            # prompt changed what counts as in-scope, so the reply would keep
+            # the very behaviour the new prompt removes.
+            if stored is not None and stored.prompt_version == PROMPT_VERSION:
                 return ReviewReply(
                     review=to_review(stored), cached=True, saved=True,
                     evidence_event=None,

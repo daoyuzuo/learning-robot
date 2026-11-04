@@ -16,6 +16,7 @@ from testbridge.tutor.review_service import (
     ReviewService,
     UnsupportedEvidenceError,
 )
+from testbridge.tutor.review import parse_review
 from testbridge.tutor.review_store import ExerciseReviewStore
 
 PACK = load_pack(Path(__file__).parents[1] / "tests" / "fixtures" / "packs" / "ros2-qos")
@@ -90,7 +91,7 @@ def test_review_returns_parsed_result_and_evidence_event(tmp_path: Path) -> None
     assert reply.evidence_event.kind == "llm_review"
     assert reply.evidence_event.score == 0.5
     assert reply.evidence_event.payload["evidence_id"] == attempt.id
-    assert reply.evidence_event.payload["prompt_version"] == "review/1"
+    assert reply.evidence_event.payload["prompt_version"] == "review/2"
     assert client.calls == 1
 
 
@@ -219,3 +220,52 @@ def test_store_failure_still_returns_review(tmp_path: Path) -> None:
     assert reply.saved is False
     assert reply.review.explanation
     assert reply.evidence_event is not None
+
+
+def test_stale_prompt_version_regenerates_and_overwrites(tmp_path: Path) -> None:
+    client = FakeClient()
+    db = tmp_path / "e.db"
+    evidence = EvidenceStore(db)
+    reviews = ExerciseReviewStore(db)
+    service = ReviewService(PACK, evidence, reviews, client, CONFIG)
+    attempt = short_answer_attempt(evidence)
+
+    reviews.put(
+        evidence_id=attempt.id,
+        learner_id="local",
+        lesson_id="L-QOS-002",
+        exercise_id="EX-QOS-005",
+        review=parse_review(REPLY, ["机制", "场景"]),
+        model="old-model",
+        prompt_version="review/1",
+    )
+
+    reply = service.review(attempt.id)
+
+    assert reply.cached is False
+    assert client.calls == 1
+    assert reviews.get(attempt.id).prompt_version == "review/2"
+
+
+def test_current_prompt_version_still_hits_cache(tmp_path: Path) -> None:
+    client = FakeClient()
+    db = tmp_path / "e.db"
+    evidence = EvidenceStore(db)
+    reviews = ExerciseReviewStore(db)
+    service = ReviewService(PACK, evidence, reviews, client, CONFIG)
+    attempt = short_answer_attempt(evidence)
+
+    reviews.put(
+        evidence_id=attempt.id,
+        learner_id="local",
+        lesson_id="L-QOS-002",
+        exercise_id="EX-QOS-005",
+        review=parse_review(REPLY, ["机制", "场景"]),
+        model="demo-model",
+        prompt_version="review/2",
+    )
+
+    reply = service.review(attempt.id)
+
+    assert reply.cached is True
+    assert client.calls == 0

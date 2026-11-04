@@ -21,6 +21,9 @@ ALLOWED_ATTRIBUTES = {
     "*": {
         "class", "id", "data-tb-block", "data-tb-exercise", "data-tb-widget",
         "data-tb-resource", "data-tb-figure", "data-variant", "data-language",
+        # ``data-tone`` only selects one of four predefined callout styles in
+        # the stylesheet; it carries no URL, script or style payload.
+        "data-tone",
         "title", "role", "aria-label", "aria-describedby", "aria-hidden",
         "focusable",
     },

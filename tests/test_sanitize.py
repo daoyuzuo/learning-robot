@@ -124,3 +124,20 @@ def test_svg_still_drops_scripts_and_styles() -> None:
     assert "onload" not in clean
     assert "style=" not in clean
     assert "<script" not in clean
+
+
+def test_data_tone_survives_sanitization() -> None:
+    out = sanitize_fragment('<aside class="tb-callout" data-tone="warn">注意</aside>')
+    assert 'data-tone="warn"' in out
+
+
+def test_data_tone_does_not_open_scripting() -> None:
+    out = sanitize_fragment(
+        '<aside data-tone="warn" style="color:red" onclick="x()">注意</aside>'
+    )
+    assert "style" not in out
+    assert "onclick" not in out
+    assert "javascript:" not in sanitize_fragment(
+        '<a href="javascript:alert(1)" data-tone="info">x</a>'
+    )
+    assert find_forbidden_html('<p style="color:red">x</p>')
