@@ -118,14 +118,24 @@ def new_event(
 
 
 class EvidenceStore:
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        on_append: Callable[[EvidenceEvent], None] | None = None,
+    ) -> None:
         self.path = path
+        # Called only when a new row is actually written, so a hook can mirror
+        # the log (the Web app exports a committable snapshot) without also
+        # firing for idempotent re-imports.
+        self.on_append = on_append
         path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.path) as conn:
             conn.executescript(SCHEMA_SQL)
 
     def append(self, event: EvidenceEvent) -> None:
-        self._insert(event)
+        inserted = self._insert(event)
+        if inserted and self.on_append is not None:
+            self.on_append(event)
 
     def _insert(self, event: EvidenceEvent) -> bool:
         with sqlite3.connect(self.path) as conn:

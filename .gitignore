@@ -10,6 +10,8 @@ htmlcov/
 .env
 data/*.db
 data/artifacts/
+# Learning state is committed as a text snapshot; the SQLite file above is not.
+!data/state/
 dist/
 
 .DS_Store

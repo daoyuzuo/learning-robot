@@ -113,7 +113,20 @@ class LearningStore:
             concept_overrides=json.loads(row["concept_overrides_json"]),
         )
 
-    def set_goal(self, goal: Goal) -> None:
+    def goal_updated_at(self, learner_id: str = "local") -> str | None:
+        """Timestamp of the stored goal, or ``None`` when no row exists."""
+        with sqlite3.connect(self.path) as conn:
+            row = conn.execute(
+                "SELECT updated_at FROM goal WHERE learner_id = ?", (learner_id,)
+            ).fetchone()
+        return row[0] if row else None
+
+    def set_goal(self, goal: Goal, updated_at: str | None = None) -> None:
+        """Write the goal; ``updated_at`` defaults to now.
+
+        Sync passes the snapshot's own timestamp so importing a state file and
+        re-exporting it stays byte-identical instead of bumping every startup.
+        """
         with sqlite3.connect(self.path) as conn:
             conn.execute(
                 """
@@ -132,7 +145,7 @@ class LearningStore:
                     goal.learner_id, goal.target_role, goal.weekly_hours,
                     goal.daily_minutes,
                     json.dumps(goal.concept_overrides, ensure_ascii=False),
-                    iso(utcnow()),
+                    updated_at or iso(utcnow()),
                 ),
             )
 

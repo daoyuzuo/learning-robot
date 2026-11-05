@@ -48,7 +48,7 @@ class TargetJdStore:
             ).fetchone()
         return self._row_to_target(row) if row else None
 
-    def save(self, target: TargetJd) -> TargetJd:
+    def save(self, target: TargetJd, updated_at: str | None = None) -> TargetJd:
         saved = TargetJd(
             learner_id=target.learner_id,
             source_text=target.source_text,
@@ -56,7 +56,7 @@ class TargetJdStore:
             requirements=list(target.requirements),
             weights=dict(target.weights),
             model=target.model,
-            updated_at=iso(utcnow()),
+            updated_at=updated_at or iso(utcnow()),
         )
         with sqlite3.connect(self.path) as conn:
             conn.execute(
@@ -85,6 +85,13 @@ class TargetJdStore:
     def count(self) -> int:
         with sqlite3.connect(self.path) as conn:
             return int(conn.execute("SELECT COUNT(*) FROM target_jd").fetchone()[0])
+
+    def updated_at(self, learner_id: str = "local") -> str | None:
+        with sqlite3.connect(self.path) as conn:
+            row = conn.execute(
+                "SELECT updated_at FROM target_jd WHERE learner_id = ?", (learner_id,)
+            ).fetchone()
+        return row[0] if row else None
 
     @staticmethod
     def _row_to_target(row: sqlite3.Row) -> TargetJd:

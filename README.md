@@ -134,6 +134,35 @@ tb quality content-packs/my-course --json
 
 它只是写作建议；交付前必须通过 `tb validate` 的 `tb/1` 契约。
 
+## 学习记录同步到仓库
+
+学习与答题记录写在 `data/testbridge.db`（SQLite，不入库）。同一份状态会镜像到
+**可提交的纯文本快照** `data/state/`：
+
+```
+data/state/evidence.jsonl   # 一条证据一行，按 (created_at, id) 升序
+data/state/goal.json        # 目标角色、每周时长、每日分钟、概念权重
+data/state/target-jd.json   # 目标 JD 与权重（存在时）
+data/state/manifest.json    # schema、事件数、learner 列表（由内容决定）
+```
+
+- `tb serve` 启动时先导入快照，再按证据重建掌握度/复习；此后每次提交练习都会
+  自动更新快照。**提交前跑一次 `git add data/state && git commit` 即可跨机同步。**
+- 换机器 clone 后直接 `tb serve`，记录自动回来；也可手动一次性导入：
+  `tb state-sync --db data/testbridge.db --dir data/state --pack content-packs/my-course`。
+- 两台机器各自学习不会互相覆盖：事件按 `id` 幂等并集，`goal` / `target-jd` 按
+  `updated_at` 后写者胜；派生状态永远从证据重建。
+- 快照目录默认是数据库同级的 `state/`；`TESTBRIDGE_STATE_DIR=<path>` 可改，
+  `TESTBRIDGE_STATE_DIR=0` 关闭（回到只有本地数据库的行为）。
+- 快照不可写时不影响答题，`/progress` 顶部会提示，答题仍留在数据库里。
+- SQLite、`data/artifacts/` 里的产出物、Tutor 对话与投递记录仍然不入库。
+
+```bash
+tb state-export --db data/testbridge.db   # 数据库 → 快照
+tb state-import --db data/testbridge.db   # 快照 → 数据库
+tb state-sync   --db data/testbridge.db --pack content-packs/my-course  # 双向 + 重建
+```
+
 ## 文档
 
 - [总设计](docs/superpowers/specs/2026-10-24-teaching-engine-design.md)
@@ -153,7 +182,7 @@ content-packs/      # 可替换的内容包（正式课程）
 src/testbridge/     # 教学引擎
 web/                # 学习界面
 tests/              # 契约、运行时、Web 测试；示例包在 tests/fixtures/packs/
-data/               # SQLite 与学习者数据（gitignore）
+data/               # SQLite 与学习者数据（gitignore）；data/state/ 是可提交的快照
 dist/               # 单文件课程构建产物（gitignore）
 ```
 

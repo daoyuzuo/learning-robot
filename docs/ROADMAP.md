@@ -909,6 +909,48 @@ $ .venv/Scripts/python.exe -m pytest -q
 
 ---
 
+## 2026-11-05 学习状态同步到仓库 — 已完成
+
+- **问题**：学习/答题记录只写 `data/testbridge.db`，而 `.gitignore` 的 `data/*.db`
+  把它排除，换机器 clone 后 `/progress`、`/concepts`、`/review` 全空，清库即永久丢失。
+- **修复**：新增 `src/testbridge/sync.py`，把证据与个人设置镜像到 `data/state/`
+  （纯文本、可 diff、按 `(created_at, id)` 升序，两机各自追加即可被 git 合并）：
+  `evidence.jsonl` + `goal.json` + `target-jd.json` + `manifest.json`。
+- **自动双向**：`tb serve` 启动时导入快照并 `rebuild_state` 重建掌握度/复习；
+  每次证据写入（练习、产出物、AI 讲评、面试确认）自动导出快照。
+  快照目录默认取 DB 同级的 `state/`，测试与临时库不会污染仓库；
+  `TESTBRIDGE_STATE_DIR` 可改路径，`=0` 关闭。
+- **合并语义**：事件按 `id` 幂等并集；`goal` / `target-jd` 用既有 `updated_at`
+  比较，旧快照不会覆盖新设置；派生状态一律重建，不写入快照。
+- **CLI**：`tb state-export` / `state-import` / `state-sync`（带 `--pack` 时重建派生状态）。
+- **失败降级**：快照只读或不可写不影响答题，错误显示在 `/progress` 顶部。
+- **不改变边界**：证据仍是唯一事实来源，不写掌握度，不入库 SQLite 与 `data/artifacts/`，
+  Tutor 对话与投递记录仍属于过程状态。
+- 设计见 [学习状态同步](superpowers/specs/2026-11-05-state-sync-design.md)
+  （实施计划：[2026-11-05-state-sync.md](superpowers/plans/2026-11-05-state-sync.md)）
+
+**验证（实测）：**
+
+```text
+$ pytest -q
+702 passed in 111.53s
+
+$ tb validate content-packs/robot-quality-system
+0 error(s), 0 warning(s)
+
+$ tb state-sync --db data/testbridge.db --dir data/state --pack content-packs/robot-quality-system
+state: data/state
+events: 6 (imported 0)
+changed: yes          # 第二次运行 changed: no，工作区不再变化
+
+$ tb state-import --db <空库> --dir data/state --pack content-packs/robot-quality-system
+readiness: 0.09 / M01 0.28 … 与原库逐项一致
+```
+
+- `git check-ignore data/state/evidence.jsonl` 无输出：快照可提交，SQLite 仍被忽略。
+
+---
+
 ## 后续期摘要
 
 P2、P3.1、P3.2、P3.3、P3.4、P3.5、P4.1、P4.2、P4.3 已实现。当前范围、退出标准与遗留以上方章节为准。
@@ -953,5 +995,6 @@ P4.1 与 P4.2 已合并到 master；P4.3 已完成（分支 `p4.3-job-applicatio
 - 课程级权威调研与自由课程量：[2026-10-31-course-authorities-and-flexible-volume-design.md](superpowers/specs/2026-10-31-course-authorities-and-flexible-volume-design.md)
 - Skill 驱动课程创作：[2026-11-01-skill-based-authoring-design.md](superpowers/specs/2026-11-01-skill-based-authoring-design.md)
 - 课程体系重排与讲评范围：[2026-11-04-course-restructure-and-review-scope-design.md](superpowers/specs/2026-11-04-course-restructure-and-review-scope-design.md)
+- 学习状态同步：[2026-11-05-state-sync-design.md](superpowers/specs/2026-11-05-state-sync-design.md)
 - Agent 守则：[../CLAUDE.md](../CLAUDE.md)
 - 开源项目调研：[research/ai-teaching-open-source.md](research/ai-teaching-open-source.md)

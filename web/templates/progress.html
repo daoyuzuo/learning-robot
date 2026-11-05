@@ -34,6 +34,14 @@
 </div>
 {% endif %}
 
+{% if sync_status.error %}
+<div class="tb-card">
+  <div class="tb-callout" data-tone="warn">{{ sync_status.error }}<br>答题仍保存在本地数据库；修好目录权限后重启服务即可重新写入快照。</div>
+</div>
+{% elif sync_status.state_dir %}
+<p class="tb-meta">学习记录快照：<code>{{ sync_status.state_dir.as_posix() }}</code>{% if sync_status.imported %} · 启动时补入 {{ sync_status.imported }} 条{% endif %} · 提交练习后自动更新，随 git 提交即可跨机同步</p>
+{% endif %}
+
 <div class="tb-section-title"><h2>掌握度</h2><span class="tb-meta">等级由证据推导，不能手填</span></div>
 <div class="tb-table-wrap">
 <table>

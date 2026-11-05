@@ -47,6 +47,9 @@ P2 学习闭环与 P4.1–P4.3 运行时功能保留：Tutor 联网追问、面�
 2. **内容状态与学习状态分离。**
    - 内容：concepts / lessons / exercises / resources，可版本化、可整包替换。
    - 学习：evidence / mastery / review，追加式、可重建。
+   - 学习状态的**可提交镜像**是 `data/state/`（`evidence.jsonl` + `goal.json` +
+     `target-jd.json` + `manifest.json`，见 `src/testbridge/sync.py`）。它只是证据日志的
+     另一种序列化，不是第二本账；SQLite 与 `data/artifacts/` 仍不入库。
 
 3. **确定性核心，AI 在边缘。**
    - 判分、掌握度、调度不依赖 LLM。

@@ -380,6 +380,61 @@ def _cmd_verify_resources(args) -> int:
     return 1 if failures else 0
 
 
+def _cmd_state(args) -> int:
+    from testbridge.sync import (
+        export_state,
+        import_state,
+        package_all,
+        resolve_state_dir,
+        sync_state,
+    )
+
+    db_path = Path(args.db)
+    state_dir = resolve_state_dir(db_path, args.dir)
+    if state_dir is None:
+        print(
+            "ERROR state: snapshot directory is disabled "
+            "(set TESTBRIDGE_STATE_DIR=0 to keep it that way)",
+            file=sys.stderr,
+        )
+        return 2
+
+    warnings: list[str] = []
+    try:
+        if args.command == "state-export":
+            report = export_state(db_path, state_dir, args.learner_id)
+        elif args.command == "state-import" and args.pack:
+            report = package_all(
+                db_path, state_dir, Path(args.pack), args.learner_id,
+                on_warning=warnings.append,
+            )
+        elif args.command == "state-import":
+            report = import_state(db_path, state_dir, on_warning=warnings.append)
+        elif args.pack:
+            report = package_all(
+                db_path, state_dir, Path(args.pack), args.learner_id,
+                on_warning=warnings.append,
+            )
+        else:
+            report = sync_state(
+                db_path, state_dir, args.learner_id, on_warning=warnings.append
+            )
+    except (OSError, ValueError) as exc:
+        print(f"ERROR state: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"state: {report.state_dir.as_posix()}")
+    print(f"events: {report.total} (imported {report.imported})")
+    print(f"changed: {'yes' if report.changed else 'no'}")
+    if report.goal_merged:
+        print("goal: merged from snapshot")
+    if report.target_merged:
+        print("target: merged from snapshot")
+    for message in warnings:
+        print(f"WARN {message}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tb")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -435,6 +490,29 @@ def main(argv: list[str] | None = None) -> int:
     import_cmd = sub.add_parser("evidence-import")
     import_cmd.add_argument("db")
     import_cmd.add_argument("path")
+
+    state_export = sub.add_parser(
+        "state-export", help="write the committable learning snapshot"
+    )
+    state_export.add_argument("--db", default="data/testbridge.db")
+    state_export.add_argument("--dir", default=None)
+    state_export.add_argument("--learner-id", default="local")
+
+    state_import = sub.add_parser(
+        "state-import", help="merge a snapshot back into the database"
+    )
+    state_import.add_argument("--db", default="data/testbridge.db")
+    state_import.add_argument("--dir", default=None)
+    state_import.add_argument("--pack", default=None, help="also rebuild derived state")
+    state_import.add_argument("--learner-id", default="local")
+
+    state_sync = sub.add_parser(
+        "state-sync", help="import, export, and optionally rebuild in one step"
+    )
+    state_sync.add_argument("--db", default="data/testbridge.db")
+    state_sync.add_argument("--dir", default=None)
+    state_sync.add_argument("--pack", default=None)
+    state_sync.add_argument("--learner-id", default="local")
 
     rebuild = sub.add_parser("rebuild-state")
     rebuild.add_argument("--pack", required=True)
@@ -559,6 +637,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"imported {count}")
         return 0
+
+    if args.command in {"state-export", "state-import", "state-sync"}:
+        return _cmd_state(args)
 
     if args.command == "rebuild-state":
         service = _load_learning(args.pack, args.db, args.learner_id)

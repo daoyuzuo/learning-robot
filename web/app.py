@@ -19,10 +19,12 @@ from testbridge.concept_graph import prerequisite_svg
 from testbridge.content.repository import load_pack
 from testbridge.evidence.store import EvidenceStore, new_event
 from testbridge.exercise.grading import grade, kind_for_exercise
+from testbridge.learning.rebuild import rebuild_state
 from testbridge.learning.service import LearningService
 from testbridge.learning.store import LearningStore
 from testbridge.lesson.renderer import render_exercise_form, render_lesson
 from testbridge.readiness import LEVEL_ORDER
+from testbridge.sync import export_state, import_state, resolve_state_dir
 from testbridge.tutor.client import (
     OpenAICompatibleClient,
     TutorTimeoutError,
@@ -45,6 +47,28 @@ from testbridge.tutor.store import TutorStore
 
 BASE = Path(__file__).resolve().parent
 ROOT = BASE.parent
+
+
+def _snapshot_hook(
+    database: Path,
+    snapshot: Path | None,
+    status: dict[str, Any],
+) -> Any:
+    """Mirror every new evidence row into the committable snapshot.
+
+    Failures are recorded on ``app.state.sync_status`` and surfaced on
+    ``/progress``: a read-only checkout must still accept answers.
+    """
+    if snapshot is None:
+        return None
+
+    def mirror(_event) -> None:
+        try:
+            export_state(database, snapshot)
+        except OSError as exc:
+            status["error"] = f"快照写入失败：{exc}"
+
+    return mirror
 
 
 class EvidenceRequest(BaseModel):
@@ -80,6 +104,7 @@ def create_app(
     interview_config: TutorConfig | None = None,
     target_llm=None,
     target_config: TutorConfig | None = None,
+    state_dir: str | Path | None = None,
 ) -> FastAPI:
     if pack_dir is None:
         raise ValueError("请指定课程包目录，例如 tb serve content-packs/<id>")
@@ -87,9 +112,22 @@ def create_app(
     database = db_path or ROOT / "data" / "testbridge.db"
     uploads = artifacts_dir or ROOT / "data" / "artifacts"
     pack = load_pack(pack_path)
-    store = EvidenceStore(database)
+    snapshot = resolve_state_dir(database, state_dir)
+    sync_status: dict[str, Any] = {"state_dir": snapshot, "error": None, "imported": 0}
+    store = EvidenceStore(database, on_append=_snapshot_hook(database, snapshot, sync_status))
     learning_store = LearningStore(database)
     learning = LearningService(pack, store, learning_store)
+
+    # Merge the committed snapshot first, then replay it into mastery/review.
+    # A broken or unwritable snapshot must never stop the app from starting.
+    if snapshot is not None:
+        try:
+            reported = import_state(database, snapshot)
+            sync_status["imported"] = reported.imported
+            if reported.imported:
+                rebuild_state(learning)
+        except (OSError, ValueError) as exc:
+            sync_status["error"] = f"导入失败：{exc}"
 
     config = load_config()
     tutor_search = None
@@ -115,6 +153,8 @@ def create_app(
     app.state.learning = learning
     app.state.tutor = tutor
     app.state.reviewer = reviewer
+    app.state.state_dir = snapshot
+    app.state.sync_status = sync_status
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -285,6 +325,7 @@ def create_app(
                 views=views,
                 lesson_titles=lesson_titles,
                 exercise_prompts=exercise_prompts,
+                sync_status=sync_status,
             ),
         )
 
