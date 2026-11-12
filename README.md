@@ -189,21 +189,20 @@ dist/               # 单文件课程构建产物（gitignore）
 ## 快速开始
 
 ```bash
-python -m venv .venv
-source .venv/Scripts/activate
-python -m pip install -e ".[dev]"
+# 依赖由 uv 管理（uv.lock 锁定版本；dev 依赖在 [dependency-groups] 中默认安装）
+uv sync
 
 # 生成合法空包，然后让编程 AI 按 course-author skill 填充内容
-python -m testbridge.cli scaffold my-course --title "我的课程"
+uv run tb scaffold my-course --title "我的课程"
 
 # 校验内容包
-python -m testbridge.cli validate content-packs/my-course
+uv run tb validate content-packs/my-course
 
 # 构建可离线打开的单文件课程
-python -m testbridge.cli build content-packs/my-course --out dist
+uv run tb build content-packs/my-course --out dist
 
 # 启动学习界面（--open 启动后自动打开浏览器）
-python -m testbridge.cli serve content-packs/my-course --port 8000 --open
+uv run tb serve content-packs/my-course --port 8000 --open
 ```
 
 打开 http://127.0.0.1:8000 。还没有课程时，先让 Claude Code 读
